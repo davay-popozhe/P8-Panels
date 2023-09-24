@@ -1,25 +1,25 @@
 create or replace package PKG_P8PANELS as
 
-  /* Èñïîëíåíèå äåéñòâèé êëèåíòñêèõ ïðèëîæåíèé */
+  /* Ð˜ÑÐ¿Ð¾Ð»Ð½ÐµÐ½Ð¸Ðµ Ð´ÐµÐ¹ÑÑ‚Ð²Ð¸Ð¹ ÐºÐ»Ð¸ÐµÐ½Ñ‚ÑÐºÐ¸Ñ… Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ð¹ */
   procedure PROCESS
   (
-    CIN                     in clob,    -- Âõîäíûå ïàðàìåòðû
-    COUT                    out clob    -- Ðåçóëüòàò
+    CIN                     in clob,    -- Ð’Ñ…Ð¾Ð´Ð½Ñ‹Ðµ Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ñ‹
+    COUT                    out clob    -- Ð ÐµÐ·ÑƒÐ»ÑŒÑ‚Ð°Ñ‚
   );
 
 end PKG_P8PANELS;
 /
 create or replace package body PKG_P8PANELS as
 
-  /* Èñïîëíåíèå äåéñòâèé êëèåíòñêèõ ïðèëîæåíèé */
+  /* Ð˜ÑÐ¿Ð¾Ð»Ð½ÐµÐ½Ð¸Ðµ Ð´ÐµÐ¹ÑÑ‚Ð²Ð¸Ð¹ ÐºÐ»Ð¸ÐµÐ½Ñ‚ÑÐºÐ¸Ñ… Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ð¹ */
   procedure PROCESS
   (
-    CIN                     in clob,    -- Âõîäíûå ïàðàìåòðû
-    COUT                    out clob    -- Ðåçóëüòàò
+    CIN                     in clob,    -- Ð’Ñ…Ð¾Ð´Ð½Ñ‹Ðµ Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ñ‹
+    COUT                    out clob    -- Ð ÐµÐ·ÑƒÐ»ÑŒÑ‚Ð°Ñ‚
   )
   is
   begin
-    /* Áàçîâîå èñïîëíåíèå äåéñòâèÿ */
+    /* Ð‘Ð°Ð·Ð¾Ð²Ð¾Ðµ Ð¸ÑÐ¿Ð¾Ð»Ð½ÐµÐ½Ð¸Ðµ Ð´ÐµÐ¹ÑÑ‚Ð²Ð¸Ñ */
     PKG_P8PANELS_BASE.PROCESS(CIN => CIN, COUT => COUT);
   end PROCESS;
 

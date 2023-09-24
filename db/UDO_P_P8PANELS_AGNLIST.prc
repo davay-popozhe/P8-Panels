@@ -1,53 +1,53 @@
 create or replace procedure UDO_P_P8PANELS_AGNLIST
 (
-  NPAGE_NUMBER              in number,                             -- Íîìåð ñòðàíèöû (èãíîðèðóåòñÿ ïðè NPAGE_SIZE=0)
-  NPAGE_SIZE                in number,                             -- Êîëè÷åñòâî çàïèñåé íà ñòðàíèöå (0 - âñå)
-  CFILTERS                  in clob,                               -- Ôèëüòðû
-  CORDERS                   in clob,                               -- Ñîðòèðîâêè
-  NINCLUDE_DEF              in number,                             -- Ïðèçíàê âêëþ÷åíèÿ îïèñàíèÿ êîëîíîê òàáëèöû â îòâåò
-  COUT                      out clob                               -- Ñåðèàëèçîâàííàÿ òàáëèöà äàííûõ
+  NPAGE_NUMBER              in number,                             -- ÐÐ¾Ð¼ÐµÑ€ ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†Ñ‹ (Ð¸Ð³Ð½Ð¾Ñ€Ð¸Ñ€ÑƒÐµÑ‚ÑÑ Ð¿Ñ€Ð¸ NPAGE_SIZE=0)
+  NPAGE_SIZE                in number,                             -- ÐšÐ¾Ð»Ð¸Ñ‡ÐµÑÑ‚Ð²Ð¾ Ð·Ð°Ð¿Ð¸ÑÐµÐ¹ Ð½Ð° ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†Ðµ (0 - Ð²ÑÐµ)
+  CFILTERS                  in clob,                               -- Ð¤Ð¸Ð»ÑŒÑ‚Ñ€Ñ‹
+  CORDERS                   in clob,                               -- Ð¡Ð¾Ñ€Ñ‚Ð¸Ñ€Ð¾Ð²ÐºÐ¸
+  NINCLUDE_DEF              in number,                             -- ÐŸÑ€Ð¸Ð·Ð½Ð°Ðº Ð²ÐºÐ»ÑŽÑ‡ÐµÐ½Ð¸Ñ Ð¾Ð¿Ð¸ÑÐ°Ð½Ð¸Ñ ÐºÐ¾Ð»Ð¾Ð½Ð¾Ðº Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹ Ð² Ð¾Ñ‚Ð²ÐµÑ‚
+  COUT                      out clob                               -- Ð¡ÐµÑ€Ð¸Ð°Ð»Ð¸Ð·Ð¾Ð²Ð°Ð½Ð½Ð°Ñ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ð° Ð´Ð°Ð½Ð½Ñ‹Ñ…
 )
 is
-  NCOMPANY                  PKG_STD.TREF := GET_SESSION_COMPANY(); -- Îðãàíèçàöèÿ ñåàíñà
-  NIDENT                    PKG_STD.TREF := GEN_IDENT();           -- Èäåíòèôèêàòîð îòáîðà
-  RF                        PKG_P8PANELS_VISUAL.TFILTERS;          -- Ôèëüòðû
-  RO                        PKG_P8PANELS_VISUAL.TORDERS;           -- Ñîðòèðîâêè
-  RDG                       PKG_P8PANELS_VISUAL.TDATA_GRID;        -- Îïèñàíèå òàáëèöû
-  RDG_ROW                   PKG_P8PANELS_VISUAL.TROW;              -- Ñòðîêà òàáëèöû
-  RCOL_VALS                 PKG_P8PANELS_VISUAL.TCOL_VALS;         -- Ïðåäîïðåäåë¸ííûå çíà÷åíèÿ ñòîëáöîâ
-  NROW_FROM                 PKG_STD.TREF;                          -- Íîìåð ñòðîêè ñ
-  NROW_TO                   PKG_STD.TREF;                          -- Íîìåð ñòðîêè ïî
-  CSQL                      clob;                                  -- Áóôåð äëÿ çàïðîñà
-  ICURSOR                   integer;                               -- Êóðñîð äëÿ èñïîëíåíèÿ çàïðîñà
-  RAGENT                    AGNLIST%rowtype;                       -- Áóôåð äëÿ çàïèñè êóðñîðà
+  NCOMPANY                  PKG_STD.TREF := GET_SESSION_COMPANY(); -- ÐžÑ€Ð³Ð°Ð½Ð¸Ð·Ð°Ñ†Ð¸Ñ ÑÐµÐ°Ð½ÑÐ°
+  NIDENT                    PKG_STD.TREF := GEN_IDENT();           -- Ð˜Ð´ÐµÐ½Ñ‚Ð¸Ñ„Ð¸ÐºÐ°Ñ‚Ð¾Ñ€ Ð¾Ñ‚Ð±Ð¾Ñ€Ð°
+  RF                        PKG_P8PANELS_VISUAL.TFILTERS;          -- Ð¤Ð¸Ð»ÑŒÑ‚Ñ€Ñ‹
+  RO                        PKG_P8PANELS_VISUAL.TORDERS;           -- Ð¡Ð¾Ñ€Ñ‚Ð¸Ñ€Ð¾Ð²ÐºÐ¸
+  RDG                       PKG_P8PANELS_VISUAL.TDATA_GRID;        -- ÐžÐ¿Ð¸ÑÐ°Ð½Ð¸Ðµ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹
+  RDG_ROW                   PKG_P8PANELS_VISUAL.TROW;              -- Ð¡Ñ‚Ñ€Ð¾ÐºÐ° Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹
+  RCOL_VALS                 PKG_P8PANELS_VISUAL.TCOL_VALS;         -- ÐŸÑ€ÐµÐ´Ð¾Ð¿Ñ€ÐµÐ´ÐµÐ»Ñ‘Ð½Ð½Ñ‹Ðµ Ð·Ð½Ð°Ñ‡ÐµÐ½Ð¸Ñ ÑÑ‚Ð¾Ð»Ð±Ñ†Ð¾Ð²
+  NROW_FROM                 PKG_STD.TREF;                          -- ÐÐ¾Ð¼ÐµÑ€ ÑÑ‚Ñ€Ð¾ÐºÐ¸ Ñ
+  NROW_TO                   PKG_STD.TREF;                          -- ÐÐ¾Ð¼ÐµÑ€ ÑÑ‚Ñ€Ð¾ÐºÐ¸ Ð¿Ð¾
+  CSQL                      clob;                                  -- Ð‘ÑƒÑ„ÐµÑ€ Ð´Ð»Ñ Ð·Ð°Ð¿Ñ€Ð¾ÑÐ°
+  ICURSOR                   integer;                               -- ÐšÑƒÑ€ÑÐ¾Ñ€ Ð´Ð»Ñ Ð¸ÑÐ¿Ð¾Ð»Ð½ÐµÐ½Ð¸Ñ Ð·Ð°Ð¿Ñ€Ð¾ÑÐ°
+  RAGENT                    AGNLIST%rowtype;                       -- Ð‘ÑƒÑ„ÐµÑ€ Ð´Ð»Ñ Ð·Ð°Ð¿Ð¸ÑÐ¸ ÐºÑƒÑ€ÑÐ¾Ñ€Ð°
 begin
-  /* ×èòàåì ôèëüòðû */
+  /* Ð§Ð¸Ñ‚Ð°ÐµÐ¼ Ñ„Ð¸Ð»ÑŒÑ‚Ñ€Ñ‹ */
   RF := PKG_P8PANELS_VISUAL.TFILTERS_FROM_XML(CFILTERS => CFILTERS);
-  /* ×èòåì ñîðòèðîâêè */
+  /* Ð§Ð¸Ñ‚ÐµÐ¼ ÑÐ¾Ñ€Ñ‚Ð¸Ñ€Ð¾Ð²ÐºÐ¸ */
   RO := PKG_P8PANELS_VISUAL.TORDERS_FROM_XML(CORDERS => CORDERS);
-  /* Ïðåîáðàçóåì íîìåð è ðàçìåð ñòðàíèöû â íîìåð ñòðîê ñ è ïî */
+  /* ÐŸÑ€ÐµÐ¾Ð±Ñ€Ð°Ð·ÑƒÐµÐ¼ Ð½Ð¾Ð¼ÐµÑ€ Ð¸ Ñ€Ð°Ð·Ð¼ÐµÑ€ ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†Ñ‹ Ð² Ð½Ð¾Ð¼ÐµÑ€ ÑÑ‚Ñ€Ð¾Ðº Ñ Ð¸ Ð¿Ð¾ */
   PKG_P8PANELS_VISUAL.UTL_ROWS_LIMITS_CALC(NPAGE_NUMBER => NPAGE_NUMBER,
                                            NPAGE_SIZE   => NPAGE_SIZE,
                                            NROW_FROM    => NROW_FROM,
                                            NROW_TO      => NROW_TO);
-  /* Èíèöèàëèçèðóåì òàáëèöó äàííûõ */
+  /* Ð˜Ð½Ð¸Ñ†Ð¸Ð°Ð»Ð¸Ð·Ð¸Ñ€ÑƒÐµÐ¼ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñƒ Ð´Ð°Ð½Ð½Ñ‹Ñ… */
   RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE();
-  /* Äîáàâëÿåì â òàáëèöó îïèñàíèå êîëîíîê */
+  /* Ð”Ð¾Ð±Ð°Ð²Ð»ÑÐµÐ¼ Ð² Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñƒ Ð¾Ð¿Ð¸ÑÐ°Ð½Ð¸Ðµ ÐºÐ¾Ð»Ð¾Ð½Ð¾Ðº */
   PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                              SNAME      => 'RN',
-                                             SCAPTION   => 'Ðåã. íîìåð',
+                                             SCAPTION   => 'Ð ÐµÐ³. Ð½Ð¾Ð¼ÐµÑ€',
                                              SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                              BVISIBLE   => false);
   PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                              SNAME      => 'AGNABBR',
-                                             SCAPTION   => 'Ìíåìîêîä',
+                                             SCAPTION   => 'ÐœÐ½ÐµÐ¼Ð¾ÐºÐ¾Ð´',
                                              SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
                                              SCOND_FROM => 'AgentAbbr',
                                              BORDER     => true,
                                              BFILTER    => true);
   PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                              SNAME      => 'AGNNAME',
-                                             SCAPTION   => 'Íàèìåíîâàíèå',
+                                             SCAPTION   => 'ÐÐ°Ð¸Ð¼ÐµÐ½Ð¾Ð²Ð°Ð½Ð¸Ðµ',
                                              SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
                                              SCOND_FROM => 'AgentName',
                                              BORDER     => true,
@@ -56,7 +56,7 @@ begin
   PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 1);
   PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                              SNAME      => 'AGNTYPE',
-                                             SCAPTION   => 'Òèï',
+                                             SCAPTION   => 'Ð¢Ð¸Ð¿',
                                              SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                              SCOND_FROM => 'AgentType',
                                              BORDER     => true,
@@ -64,15 +64,15 @@ begin
                                              RCOL_VALS  => RCOL_VALS);
   PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                              SNAME      => 'AGNBURN',
-                                             SCAPTION   => 'Äàòà ðîæäåíèÿ',
+                                             SCAPTION   => 'Ð”Ð°Ñ‚Ð° Ñ€Ð¾Ð¶Ð´ÐµÐ½Ð¸Ñ',
                                              SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_DATE,
                                              SCOND_FROM => 'AgentBornFrom',
                                              SCOND_TO   => 'AgentBornTo',
                                              BORDER     => true,
                                              BFILTER    => true);
-  /* Îáõîäèì äàííûå */
+  /* ÐžÐ±Ñ…Ð¾Ð´Ð¸Ð¼ Ð´Ð°Ð½Ð½Ñ‹Ðµ */
   begin
-    /* Ñîáèðàåì çàïðîñ */
+    /* Ð¡Ð¾Ð±Ð¸Ñ€Ð°ÐµÐ¼ Ð·Ð°Ð¿Ñ€Ð¾Ñ */
     CSQL := 'select *
           from (select D.*,
                        ROWNUM NROW
@@ -84,60 +84,60 @@ begin
                           from AGNLIST AG
                          where AG.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
          where F.NROW between :NROW_FROM and :NROW_TO';
-    /* Ó÷ò¸ì ñîðòèðîâêè */
+    /* Ð£Ñ‡Ñ‚Ñ‘Ð¼ ÑÐ¾Ñ€Ñ‚Ð¸Ñ€Ð¾Ð²ÐºÐ¸ */
     PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
-    /* Ó÷ò¸ì ôèëüòðû */
+    /* Ð£Ñ‡Ñ‚Ñ‘Ð¼ Ñ„Ð¸Ð»ÑŒÑ‚Ñ€Ñ‹ */
     PKG_P8PANELS_VISUAL.TFILTERS_SET_QUERY(NIDENT     => NIDENT,
                                            NCOMPANY   => NCOMPANY,
                                            SUNIT      => 'AGNLIST',
                                            SPROCEDURE => 'P_AGNLIST_BASE_COND',
                                            RDATA_GRID => RDG,
                                            RFILTERS   => RF);
-    /* Ðàçáèðàåì åãî */
+    /* Ð Ð°Ð·Ð±Ð¸Ñ€Ð°ÐµÐ¼ ÐµÐ³Ð¾ */
     ICURSOR := PKG_SQL_DML.OPEN_CURSOR(SWHAT => 'SELECT');
     PKG_SQL_DML.PARSE(ICURSOR => ICURSOR, SQUERY => CSQL);
-    /* Äåëàåì ïîäñòàíîâêó ïàðàìåòðîâ */
+    /* Ð”ÐµÐ»Ð°ÐµÐ¼ Ð¿Ð¾Ð´ÑÑ‚Ð°Ð½Ð¾Ð²ÐºÑƒ Ð¿Ð°Ñ€Ð°Ð¼ÐµÑ‚Ñ€Ð¾Ð² */
     PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NIDENT', NVALUE => NIDENT);
     PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_FROM', NVALUE => NROW_FROM);
     PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_TO', NVALUE => NROW_TO);
-    /* Îïèñûâàåì ñòðóêòóðó çàïèñè êóðñîðà */
+    /* ÐžÐ¿Ð¸ÑÑ‹Ð²Ð°ÐµÐ¼ ÑÑ‚Ñ€ÑƒÐºÑ‚ÑƒÑ€Ñƒ Ð·Ð°Ð¿Ð¸ÑÐ¸ ÐºÑƒÑ€ÑÐ¾Ñ€Ð° */
     PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 1);
     PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 2);
     PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 3);
     PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 4);
     PKG_SQL_DML.DEFINE_COLUMN_DATE(ICURSOR => ICURSOR, IPOSITION => 5);
-    /* Äåëàåì âûáîðêó */
+    /* Ð”ÐµÐ»Ð°ÐµÐ¼ Ð²Ñ‹Ð±Ð¾Ñ€ÐºÑƒ */
     if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
       null;
     end if;
-    /* Îáõîäèì âûáðàííûå çàïèñè */
+    /* ÐžÐ±Ñ…Ð¾Ð´Ð¸Ð¼ Ð²Ñ‹Ð±Ñ€Ð°Ð½Ð½Ñ‹Ðµ Ð·Ð°Ð¿Ð¸ÑÐ¸ */
     while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
     loop
-      /* Èçâëåêàåì î÷åðåäíóþ çàïèñü */
+      /* Ð˜Ð·Ð²Ð»ÐµÐºÐ°ÐµÐ¼ Ð¾Ñ‡ÐµÑ€ÐµÐ´Ð½ÑƒÑŽ Ð·Ð°Ð¿Ð¸ÑÑŒ */
       PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 1, NVALUE => RAGENT.RN);
       PKG_SQL_DML.COLUMN_VALUE_STR(ICURSOR => ICURSOR, IPOSITION => 2, SVALUE => RAGENT.AGNABBR);
       PKG_SQL_DML.COLUMN_VALUE_STR(ICURSOR => ICURSOR, IPOSITION => 3, SVALUE => RAGENT.AGNNAME);
       PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 4, NVALUE => RAGENT.AGNTYPE);
       PKG_SQL_DML.COLUMN_VALUE_DATE(ICURSOR => ICURSOR, IPOSITION => 5, DVALUE => RAGENT.AGNBURN);
-      /* Èíèöèàëèçèðóåì ñòðîêó òàáëèöû äàííûõ */
+      /* Ð˜Ð½Ð¸Ñ†Ð¸Ð°Ð»Ð¸Ð·Ð¸Ñ€ÑƒÐµÐ¼ ÑÑ‚Ñ€Ð¾ÐºÑƒ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹ Ð´Ð°Ð½Ð½Ñ‹Ñ… */
       RDG_ROW := PKG_P8PANELS_VISUAL.TROW_MAKE();
-      /* Äîáàâëÿåì êîëîíêè ñ äàííûìè */
+      /* Ð”Ð¾Ð±Ð°Ð²Ð»ÑÐµÐ¼ ÐºÐ¾Ð»Ð¾Ð½ÐºÐ¸ Ñ Ð´Ð°Ð½Ð½Ñ‹Ð¼Ð¸ */
       PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'RN', NVALUE => RAGENT.RN);
       PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'AGNABBR', SVALUE => RAGENT.AGNABBR);
       PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'AGNNAME', SVALUE => RAGENT.AGNNAME);
       PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'AGNTYPE', NVALUE => RAGENT.AGNTYPE);
       PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'AGNBURN', DVALUE => RAGENT.AGNBURN);
-      /* Äîáàâëÿåì ñòðîêó â òàáëèöó */
+      /* Ð”Ð¾Ð±Ð°Ð²Ð»ÑÐµÐ¼ ÑÑ‚Ñ€Ð¾ÐºÑƒ Ð² Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñƒ */
       PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
     end loop;
-    /* Îñâîáîæäàåì êóðñîð */
+    /* ÐžÑÐ²Ð¾Ð±Ð¾Ð¶Ð´Ð°ÐµÐ¼ ÐºÑƒÑ€ÑÐ¾Ñ€ */
     PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
   exception
     when others then
       PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
       raise;
   end;
-  /* Ñåðèàëèçóåì îïèñàíèå */
+  /* Ð¡ÐµÑ€Ð¸Ð°Ð»Ð¸Ð·ÑƒÐµÐ¼ Ð¾Ð¿Ð¸ÑÐ°Ð½Ð¸Ðµ */
   COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
 end;
 /

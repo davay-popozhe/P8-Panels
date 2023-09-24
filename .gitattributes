@@ -1,0 +1,3 @@
+*.sql working-tree-encoding=cp1251 eol=crlf
+*.pck working-tree-encoding=cp1251 eol=crlf
+*.prc working-tree-encoding=cp1251 eol=crlf

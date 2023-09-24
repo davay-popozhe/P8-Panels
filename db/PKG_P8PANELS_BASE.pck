@@ -1,102 +1,102 @@
 create or replace package PKG_P8PANELS_BASE as
 
-  /*Константы - Типовой постфикс тега для массива (при переводе XML -> JSON) */
+  /*РљРѕРЅСЃС‚Р°РЅС‚С‹ - РўРёРїРѕРІРѕР№ РїРѕСЃС‚С„РёРєСЃ С‚РµРіР° РґР»СЏ РјР°СЃСЃРёРІР° (РїСЂРё РїРµСЂРµРІРѕРґРµ XML -> JSON) */
   SXML_ALWAYS_ARRAY_POSTFIX  constant PKG_STD.TSTRING := '__SYSTEM__ARRAY__';
 
-  /* Конвертация строки в число */
+  /* РљРѕРЅРІРµСЂС‚Р°С†РёСЏ СЃС‚СЂРѕРєРё РІ С‡РёСЃР»Рѕ */
   function UTL_S2N
   (
-    SVALUE                  in varchar2 -- Конвертируемое строковое значение
-  ) return                  number;     -- Конвертированное число
+    SVALUE                  in varchar2 -- РљРѕРЅРІРµСЂС‚РёСЂСѓРµРјРѕРµ СЃС‚СЂРѕРєРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ
+  ) return                  number;     -- РљРѕРЅРІРµСЂС‚РёСЂРѕРІР°РЅРЅРѕРµ С‡РёСЃР»Рѕ
 
-  /* Конвертация даты в число */
+  /* РљРѕРЅРІРµСЂС‚Р°С†РёСЏ РґР°С‚С‹ РІ С‡РёСЃР»Рѕ */
   function UTL_S2D
   (
-    SVALUE                  in varchar2 -- Конвертируемое строковое значение
-  ) return                  date;       -- Конвертированная дата
+    SVALUE                  in varchar2 -- РљРѕРЅРІРµСЂС‚РёСЂСѓРµРјРѕРµ СЃС‚СЂРѕРєРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ
+  ) return                  date;       -- РљРѕРЅРІРµСЂС‚РёСЂРѕРІР°РЅРЅР°СЏ РґР°С‚Р°
   
-  /* Базовое исполнение действий */
+  /* Р‘Р°Р·РѕРІРѕРµ РёСЃРїРѕР»РЅРµРЅРёРµ РґРµР№СЃС‚РІРёР№ */
   procedure PROCESS
   (
-    CIN                     in clob,    -- Входные параметры
-    COUT                    out clob    -- Результат
+    CIN                     in clob,    -- Р’С…РѕРґРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹
+    COUT                    out clob    -- Р РµР·СѓР»СЊС‚Р°С‚
   );
 
 end PKG_P8PANELS_BASE;
 /
 create or replace package body PKG_P8PANELS_BASE as
 
-  /* Константы - коды дествий запросов */
-  SRQ_ACTION_EXEC_STORED    constant PKG_STD.TSTRING := 'EXEC_STORED'; -- Запрос на исполнение хранимой процедуры
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - РєРѕРґС‹ РґРµСЃС‚РІРёР№ Р·Р°РїСЂРѕСЃРѕРІ */
+  SRQ_ACTION_EXEC_STORED    constant PKG_STD.TSTRING := 'EXEC_STORED'; -- Р—Р°РїСЂРѕСЃ РЅР° РёСЃРїРѕР»РЅРµРЅРёРµ С…СЂР°РЅРёРјРѕР№ РїСЂРѕС†РµРґСѓСЂС‹
 
-  /* Константы - тэги запросов */
-  SRQ_TAG_XREQUEST          constant PKG_STD.TSTRING := 'XREQUEST';   -- Корневой тэг запроса
-  SRQ_TAG_XPAYLOAD          constant PKG_STD.TSTRING := 'XPAYLOAD';   -- Тэг для данных запроса
-  SRQ_TAG_SACTION           constant PKG_STD.TSTRING := 'SACTION';    -- Тэг для действия запроса
-  SRQ_TAG_SSTORED           constant PKG_STD.TSTRING := 'SSTORED';    -- Тэг для имени хранимого объекта в запросе
-  SRQ_TAG_SRESP_ARG         constant PKG_STD.TSTRING := 'SRESP_ARG';  -- Тэг для имени аргумента, формирующего данные ответа
-  SRQ_TAG_XARGUMENTS        constant PKG_STD.TSTRING := 'XARGUMENTS'; -- Тэг для списка аргументов хранимого объекта/выборки в запросе
-  SRQ_TAG_XARGUMENT         constant PKG_STD.TSTRING := 'XARGUMENT';  -- Тэг для аргумента хранимого объекта/выборки в запросе
-  SRQ_TAG_SNAME             constant PKG_STD.TSTRING := 'SNAME';      -- Тэг для наименования в запросе
-  SRQ_TAG_SDATA_TYPE        constant PKG_STD.TSTRING := 'SDATA_TYPE'; -- Тэг для типа данных в запросе
-  SRQ_TAG_VALUE             constant PKG_STD.TSTRING := 'VALUE';      -- Тэг для значения в запросе
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - С‚СЌРіРё Р·Р°РїСЂРѕСЃРѕРІ */
+  SRQ_TAG_XREQUEST          constant PKG_STD.TSTRING := 'XREQUEST';   -- РљРѕСЂРЅРµРІРѕР№ С‚СЌРі Р·Р°РїСЂРѕСЃР°
+  SRQ_TAG_XPAYLOAD          constant PKG_STD.TSTRING := 'XPAYLOAD';   -- РўСЌРі РґР»СЏ РґР°РЅРЅС‹С… Р·Р°РїСЂРѕСЃР°
+  SRQ_TAG_SACTION           constant PKG_STD.TSTRING := 'SACTION';    -- РўСЌРі РґР»СЏ РґРµР№СЃС‚РІРёСЏ Р·Р°РїСЂРѕСЃР°
+  SRQ_TAG_SSTORED           constant PKG_STD.TSTRING := 'SSTORED';    -- РўСЌРі РґР»СЏ РёРјРµРЅРё С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РІ Р·Р°РїСЂРѕСЃРµ
+  SRQ_TAG_SRESP_ARG         constant PKG_STD.TSTRING := 'SRESP_ARG';  -- РўСЌРі РґР»СЏ РёРјРµРЅРё Р°СЂРіСѓРјРµРЅС‚Р°, С„РѕСЂРјРёСЂСѓСЋС‰РµРіРѕ РґР°РЅРЅС‹Рµ РѕС‚РІРµС‚Р°
+  SRQ_TAG_XARGUMENTS        constant PKG_STD.TSTRING := 'XARGUMENTS'; -- РўСЌРі РґР»СЏ СЃРїРёСЃРєР° Р°СЂРіСѓРјРµРЅС‚РѕРІ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р°/РІС‹Р±РѕСЂРєРё РІ Р·Р°РїСЂРѕСЃРµ
+  SRQ_TAG_XARGUMENT         constant PKG_STD.TSTRING := 'XARGUMENT';  -- РўСЌРі РґР»СЏ Р°СЂРіСѓРјРµРЅС‚Р° С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р°/РІС‹Р±РѕСЂРєРё РІ Р·Р°РїСЂРѕСЃРµ
+  SRQ_TAG_SNAME             constant PKG_STD.TSTRING := 'SNAME';      -- РўСЌРі РґР»СЏ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ РІ Р·Р°РїСЂРѕСЃРµ
+  SRQ_TAG_SDATA_TYPE        constant PKG_STD.TSTRING := 'SDATA_TYPE'; -- РўСЌРі РґР»СЏ С‚РёРїР° РґР°РЅРЅС‹С… РІ Р·Р°РїСЂРѕСЃРµ
+  SRQ_TAG_VALUE             constant PKG_STD.TSTRING := 'VALUE';      -- РўСЌРі РґР»СЏ Р·РЅР°С‡РµРЅРёСЏ РІ Р·Р°РїСЂРѕСЃРµ
 
-  /* Константы - тэги ответов */
-  SRESP_TAG_XPAYLOAD        constant PKG_STD.TSTRING := 'XPAYLOAD';       -- Тэг для данных ответа
-  SRESP_TAG_XOUT_ARGUMENTS  constant PKG_STD.TSTRING := 'XOUT_ARGUMENTS'; -- Тэг для выходных аргументов хранимого объекта в ответе
-  SRESP_TAG_SDATA_TYPE      constant PKG_STD.TSTRING := 'SDATA_TYPE';     -- Тэг для типа данных в ответе
-  SRESP_TAG_VALUE           constant PKG_STD.TSTRING := 'VALUE';          -- Тэг для значения в ответе
-  SRESP_TAG_SNAME           constant PKG_STD.TSTRING := 'SNAME';          -- Тэг для наименования в ответе
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - С‚СЌРіРё РѕС‚РІРµС‚РѕРІ */
+  SRESP_TAG_XPAYLOAD        constant PKG_STD.TSTRING := 'XPAYLOAD';       -- РўСЌРі РґР»СЏ РґР°РЅРЅС‹С… РѕС‚РІРµС‚Р°
+  SRESP_TAG_XOUT_ARGUMENTS  constant PKG_STD.TSTRING := 'XOUT_ARGUMENTS'; -- РўСЌРі РґР»СЏ РІС‹С…РѕРґРЅС‹С… Р°СЂРіСѓРјРµРЅС‚РѕРІ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РІ РѕС‚РІРµС‚Рµ
+  SRESP_TAG_SDATA_TYPE      constant PKG_STD.TSTRING := 'SDATA_TYPE';     -- РўСЌРі РґР»СЏ С‚РёРїР° РґР°РЅРЅС‹С… РІ РѕС‚РІРµС‚Рµ
+  SRESP_TAG_VALUE           constant PKG_STD.TSTRING := 'VALUE';          -- РўСЌРі РґР»СЏ Р·РЅР°С‡РµРЅРёСЏ РІ РѕС‚РІРµС‚Рµ
+  SRESP_TAG_SNAME           constant PKG_STD.TSTRING := 'SNAME';          -- РўСЌРі РґР»СЏ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ РІ РѕС‚РІРµС‚Рµ
 
-  /* Константы - типы данных */
-  SDATA_TYPE_STR            constant PKG_STD.TSTRING := 'STR';  -- Тип данных "строка"
-  SDATA_TYPE_NUMB           constant PKG_STD.TSTRING := 'NUMB'; -- Тип данных "число"
-  SDATA_TYPE_DATE           constant PKG_STD.TSTRING := 'DATE'; -- Тип данных "дата"
-  SDATA_TYPE_CLOB           constant PKG_STD.TSTRING := 'CLOB'; -- Тип данных "текст"
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - С‚РёРїС‹ РґР°РЅРЅС‹С… */
+  SDATA_TYPE_STR            constant PKG_STD.TSTRING := 'STR';  -- РўРёРї РґР°РЅРЅС‹С… "СЃС‚СЂРѕРєР°"
+  SDATA_TYPE_NUMB           constant PKG_STD.TSTRING := 'NUMB'; -- РўРёРї РґР°РЅРЅС‹С… "С‡РёСЃР»Рѕ"
+  SDATA_TYPE_DATE           constant PKG_STD.TSTRING := 'DATE'; -- РўРёРї РґР°РЅРЅС‹С… "РґР°С‚Р°"
+  SDATA_TYPE_CLOB           constant PKG_STD.TSTRING := 'CLOB'; -- РўРёРї РґР°РЅРЅС‹С… "С‚РµРєСЃС‚"
   
-  /* Константы - состояния объектов БД */
-  SDB_OBJECT_STATE_VALID    constant PKG_STD.TSTRING := 'VALID'; -- Объект валиден
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - СЃРѕСЃС‚РѕСЏРЅРёСЏ РѕР±СЉРµРєС‚РѕРІ Р‘Р” */
+  SDB_OBJECT_STATE_VALID    constant PKG_STD.TSTRING := 'VALID'; -- РћР±СЉРµРєС‚ РІР°Р»РёРґРµРЅ
 
-  /* Типы данных - аргументы */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - Р°СЂРіСѓРјРµРЅС‚С‹ */
   type TARGUMENT is record
   (
-    SNAME                   PKG_STD.TSTRING,  -- Наименование
-    SDATA_TYPE              PKG_STD.TSTRING,  -- Тип данных (см. константы SPWS_DATA_TYPE_*)
-    SVALUE                  PKG_STD.TSTRING,  -- Значение (строка)
-    NVALUE                  PKG_STD.TLNUMBER, -- Значение (число)
-    DVALUE                  PKG_STD.TLDATE,   -- Значение (дата)
-    CVALUE                  clob              -- Значение (текст)
+    SNAME                   PKG_STD.TSTRING,  -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+    SDATA_TYPE              PKG_STD.TSTRING,  -- РўРёРї РґР°РЅРЅС‹С… (СЃРј. РєРѕРЅСЃС‚Р°РЅС‚С‹ SPWS_DATA_TYPE_*)
+    SVALUE                  PKG_STD.TSTRING,  -- Р—РЅР°С‡РµРЅРёРµ (СЃС‚СЂРѕРєР°)
+    NVALUE                  PKG_STD.TLNUMBER, -- Р—РЅР°С‡РµРЅРёРµ (С‡РёСЃР»Рѕ)
+    DVALUE                  PKG_STD.TLDATE,   -- Р—РЅР°С‡РµРЅРёРµ (РґР°С‚Р°)
+    CVALUE                  clob              -- Р—РЅР°С‡РµРЅРёРµ (С‚РµРєСЃС‚)
   );
 
-  /* Типы данных - коллекция аргументов запроса */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - РєРѕР»Р»РµРєС†РёСЏ Р°СЂРіСѓРјРµРЅС‚РѕРІ Р·Р°РїСЂРѕСЃР° */
   type TARGUMENTS is table of TARGUMENT;
 
-  /* Конвертация строки в число */
+  /* РљРѕРЅРІРµСЂС‚Р°С†РёСЏ СЃС‚СЂРѕРєРё РІ С‡РёСЃР»Рѕ */
   function UTL_S2N
   (
-    SVALUE                  in varchar2      -- Конвертируемое строковое значение
-  ) return                  number           -- Конвертированное число
+    SVALUE                  in varchar2      -- РљРѕРЅРІРµСЂС‚РёСЂСѓРµРјРѕРµ СЃС‚СЂРѕРєРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ
+  ) return                  number           -- РљРѕРЅРІРµСЂС‚РёСЂРѕРІР°РЅРЅРѕРµ С‡РёСЃР»Рѕ
   is
-    NVALUE                  PKG_STD.TNUMBER; -- Результат работы
+    NVALUE                  PKG_STD.TNUMBER; -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   begin
-    /* Пробуем конвертировать */
+    /* РџСЂРѕР±СѓРµРј РєРѕРЅРІРµСЂС‚РёСЂРѕРІР°С‚СЊ */
     NVALUE := TO_NUMBER(replace(SVALUE, ',', '.'));
-    /* Отдаём результат */
+    /* РћС‚РґР°С‘Рј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return NVALUE;
   exception
     when others then
-      P_EXCEPTION(0, 'Неверный формат числа (%s).', SVALUE);
+      P_EXCEPTION(0, 'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ С‡РёСЃР»Р° (%s).', SVALUE);
   end UTL_S2N;
   
-  /* Конвертация даты в число */
+  /* РљРѕРЅРІРµСЂС‚Р°С†РёСЏ РґР°С‚С‹ РІ С‡РёСЃР»Рѕ */
   function UTL_S2D
   (
-    SVALUE                  in varchar2      -- Конвертируемое строковое значение
-  ) return                  date             -- Конвертированная дата
+    SVALUE                  in varchar2      -- РљРѕРЅРІРµСЂС‚РёСЂСѓРµРјРѕРµ СЃС‚СЂРѕРєРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ
+  ) return                  date             -- РљРѕРЅРІРµСЂС‚РёСЂРѕРІР°РЅРЅР°СЏ РґР°С‚Р°
   is
-    DVALUE                  PKG_STD.TLDATE; -- Результат работы
+    DVALUE                  PKG_STD.TLDATE; -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   begin
-    /* Пробуем конвертировать */
+    /* РџСЂРѕР±СѓРµРј РєРѕРЅРІРµСЂС‚РёСЂРѕРІР°С‚СЊ */
     begin
       DVALUE := TO_DATE(SVALUE, 'YYYY-MM-DD');
     exception
@@ -113,157 +113,157 @@ create or replace package body PKG_P8PANELS_BASE as
             end;
         end;
     end;
-    /* Отдаём результат */
+    /* РћС‚РґР°С‘Рј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return DVALUE;
   exception
     when others then
-      P_EXCEPTION(0, 'Неверный формат даты (%s).', SVALUE);
+      P_EXCEPTION(0, 'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РґР°С‚С‹ (%s).', SVALUE);
   end UTL_S2D;
 
-  /* Формирование сообщения об отсутствии значения */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС‚СЃСѓС‚СЃС‚РІРёРё Р·РЅР°С‡РµРЅРёСЏ */
   function MSG_NO_DATA_MAKE
   (
-    SPATH                   in varchar2 := null, -- Путь по которому ожидалось значение
-    SMESSAGE_OBJECT         in varchar2 := null  -- Наимемнование объекта для формулирования сообщения об ошибке
-  ) return                  varchar2             -- Сформированное сообщение об ошибке
+    SPATH                   in varchar2 := null, -- РџСѓС‚СЊ РїРѕ РєРѕС‚РѕСЂРѕРјСѓ РѕР¶РёРґР°Р»РѕСЃСЊ Р·РЅР°С‡РµРЅРёРµ
+    SMESSAGE_OBJECT         in varchar2 := null  -- РќР°РёРјРµРјРЅРѕРІР°РЅРёРµ РѕР±СЉРµРєС‚Р° РґР»СЏ С„РѕСЂРјСѓР»РёСЂРѕРІР°РЅРёСЏ СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ
+  ) return                  varchar2             -- РЎС„РѕСЂРјРёСЂРѕРІР°РЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ РѕР± РѕС€РёР±РєРµ
   is
-    SPATH_                  PKG_STD.TSTRING;     -- Буфер для пути
-    SMESSAGE_OBJECT_        PKG_STD.TSTRING;     -- Буфер для наименования объекта
+    SPATH_                  PKG_STD.TSTRING;     -- Р‘СѓС„РµСЂ РґР»СЏ РїСѓС‚Рё
+    SMESSAGE_OBJECT_        PKG_STD.TSTRING;     -- Р‘СѓС„РµСЂ РґР»СЏ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ РѕР±СЉРµРєС‚Р°
   begin
-    /* Подготовим путь к выдаче */
+    /* РџРѕРґРіРѕС‚РѕРІРёРј РїСѓС‚СЊ Рє РІС‹РґР°С‡Рµ */
     if (SPATH is not null) then
       SPATH_ := ' (' || SPATH || ')';
     end if;
-    /* Подготовим наименование объекта к выдаче */
+    /* РџРѕРґРіРѕС‚РѕРІРёРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ РѕР±СЉРµРєС‚Р° Рє РІС‹РґР°С‡Рµ */
     if (SMESSAGE_OBJECT is not null) then
-      SMESSAGE_OBJECT_ := ' элемента "' || SMESSAGE_OBJECT || '"';
+      SMESSAGE_OBJECT_ := ' СЌР»РµРјРµРЅС‚Р° "' || SMESSAGE_OBJECT || '"';
     else
-      SMESSAGE_OBJECT_ := ' элемента';
+      SMESSAGE_OBJECT_ := ' СЌР»РµРјРµРЅС‚Р°';
     end if;
-    /* Вернём сформированное сообщение */
-    return 'Не указано значение' || SMESSAGE_OBJECT_ || SPATH_ || '.';
+    /* Р’РµСЂРЅС‘Рј СЃС„РѕСЂРјРёСЂРѕРІР°РЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ */
+    return 'РќРµ СѓРєР°Р·Р°РЅРѕ Р·РЅР°С‡РµРЅРёРµ' || SMESSAGE_OBJECT_ || SPATH_ || '.';
   end MSG_NO_DATA_MAKE;
 
-  /* Конвертация стандартного типа данных (PKG_STD) в тип данных сервиса (PWS) */
+  /* РљРѕРЅРІРµСЂС‚Р°С†РёСЏ СЃС‚Р°РЅРґР°СЂС‚РЅРѕРіРѕ С‚РёРїР° РґР°РЅРЅС‹С… (PKG_STD) РІ С‚РёРї РґР°РЅРЅС‹С… СЃРµСЂРІРёСЃР° (PWS) */
   function STD_DATA_TYPE_TO_STR
   (
-    NSTD_DATA_TYPE          in number        -- Станартный тип данных
-  ) return                  varchar2         -- Соответствующий тип данных сервиса
+    NSTD_DATA_TYPE          in number        -- РЎС‚Р°РЅР°СЂС‚РЅС‹Р№ С‚РёРї РґР°РЅРЅС‹С…
+  ) return                  varchar2         -- РЎРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РёР№ С‚РёРї РґР°РЅРЅС‹С… СЃРµСЂРІРёСЃР°
   is
-    SRES                    PKG_STD.TSTRING; -- Буфер для результата
+    SRES                    PKG_STD.TSTRING; -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р°
   begin
-    /* Работаем от типа данных */
+    /* Р Р°Р±РѕС‚Р°РµРј РѕС‚ С‚РёРїР° РґР°РЅРЅС‹С… */
     case NSTD_DATA_TYPE
-      /* Строка */
+      /* РЎС‚СЂРѕРєР° */
       when PKG_STD.DATA_TYPE_STR then
         SRES := SDATA_TYPE_STR;
-      /* Число */
+      /* Р§РёСЃР»Рѕ */
       when PKG_STD.DATA_TYPE_NUM then
         SRES := SDATA_TYPE_NUMB;
-      /* Дата */
+      /* Р”Р°С‚Р° */
       when PKG_STD.DATA_TYPE_DATE then
         SRES := SDATA_TYPE_DATE;
-      /* Текст */
+      /* РўРµРєСЃС‚ */
       when PKG_STD.DATA_TYPE_CLOB then
         SRES := SDATA_TYPE_CLOB;
-      /* Неизвестный тип данных */
+      /* РќРµРёР·РІРµСЃС‚РЅС‹Р№ С‚РёРї РґР°РЅРЅС‹С… */
       else
-        P_EXCEPTION(0, 'Тип данных "%s" не поддерживается.', TO_CHAR(NSTD_DATA_TYPE));
+        P_EXCEPTION(0, 'РўРёРї РґР°РЅРЅС‹С… "%s" РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚СЃСЏ.', TO_CHAR(NSTD_DATA_TYPE));
     end case;
-    /* Возвращаем результат */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return SRES;
   end STD_DATA_TYPE_TO_STR;
 
-  /* Считывание значения ветки XML (строка) */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ Р·РЅР°С‡РµРЅРёСЏ РІРµС‚РєРё XML (СЃС‚СЂРѕРєР°) */
   function NODE_SVAL_GET
   (
-    XROOT                   in PKG_XPATH.TNODE, -- Корневая ветка для считывания значения
-    SPATH                   in varchar2,        -- Путь для считывания данных
-    NREQUIRED               in number := 0,     -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-    SMESSAGE_OBJECT         in varchar2 := null -- Наимемнование объекта для формулирования сообщения об ошибке
-  ) return                  varchar2            -- Считанное значение
+    XROOT                   in PKG_XPATH.TNODE, -- РљРѕСЂРЅРµРІР°СЏ РІРµС‚РєР° РґР»СЏ СЃС‡РёС‚С‹РІР°РЅРёСЏ Р·РЅР°С‡РµРЅРёСЏ
+    SPATH                   in varchar2,        -- РџСѓС‚СЊ РґР»СЏ СЃС‡РёС‚С‹РІР°РЅРёСЏ РґР°РЅРЅС‹С…
+    NREQUIRED               in number := 0,     -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+    SMESSAGE_OBJECT         in varchar2 := null -- РќР°РёРјРµРјРЅРѕРІР°РЅРёРµ РѕР±СЉРµРєС‚Р° РґР»СЏ С„РѕСЂРјСѓР»РёСЂРѕРІР°РЅРёСЏ СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ
+  ) return                  varchar2            -- РЎС‡РёС‚Р°РЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ
   is
-    XNODE                   PKG_XPATH.TNODE;    -- Искомая ветка со значением (подходящая под шаблон)
-    SVAL                    PKG_STD.TSTRING;    -- Результат работы
+    XNODE                   PKG_XPATH.TNODE;    -- РСЃРєРѕРјР°СЏ РІРµС‚РєР° СЃРѕ Р·РЅР°С‡РµРЅРёРµРј (РїРѕРґС…РѕРґСЏС‰Р°СЏ РїРѕРґ С€Р°Р±Р»РѕРЅ)
+    SVAL                    PKG_STD.TSTRING;    -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   begin
-    /* Найдем нужную ветку по шаблону */
+    /* РќР°Р№РґРµРј РЅСѓР¶РЅСѓСЋ РІРµС‚РєСѓ РїРѕ С€Р°Р±Р»РѕРЅСѓ */
     XNODE := PKG_XPATH.SINGLE_NODE(RPARENT_NODE => XROOT, SPATTERN => SPATH);
-    /* Если там нет ничего */
+    /* Р•СЃР»Рё С‚Р°Рј РЅРµС‚ РЅРёС‡РµРіРѕ */
     if (PKG_XPATH.IS_NULL(RNODE => XNODE)) then
-      /* Его и вернём */
+      /* Р•РіРѕ Рё РІРµСЂРЅС‘Рј */
       SVAL := null;
     else
-      /* Что-то есть - читаем данные */
+      /* Р§С‚Рѕ-С‚Рѕ РµСЃС‚СЊ - С‡РёС‚Р°РµРј РґР°РЅРЅС‹Рµ */
       begin
         SVAL := PKG_XPATH.VALUE(RNODE => XNODE);
       exception
         when others then
-          P_EXCEPTION(0, 'Неверный формат строки (%s).', SPATH);
+          P_EXCEPTION(0, 'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ СЃС‚СЂРѕРєРё (%s).', SPATH);
       end;
     end if;
-    /* Если значения нет, а оно должно быть - скажем об этом */
+    /* Р•СЃР»Рё Р·РЅР°С‡РµРЅРёСЏ РЅРµС‚, Р° РѕРЅРѕ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ - СЃРєР°Р¶РµРј РѕР± СЌС‚РѕРј */
     if ((SVAL is null) and (NREQUIRED = 1)) then
       P_EXCEPTION(0, MSG_NO_DATA_MAKE(SPATH => SPATH, SMESSAGE_OBJECT => SMESSAGE_OBJECT));
     end if;
-    /* Отдаём результат */
+    /* РћС‚РґР°С‘Рј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return SVAL;
   end NODE_SVAL_GET;
 
-  /* Считывание значения ветки XML (число) */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ Р·РЅР°С‡РµРЅРёСЏ РІРµС‚РєРё XML (С‡РёСЃР»Рѕ) */
   function NODE_NVAL_GET
   (
-    XROOT                   in PKG_XPATH.TNODE, -- Корневая ветка для считывания значения
-    SPATH                   in varchar2,        -- Путь для считывания данных
-    NREQUIRED               in number := 0,     -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-    SMESSAGE_OBJECT         in varchar2 := null -- Наимемнование объекта для формулирования сообщения об ошибке
-  ) return                  number              -- Считанное значение
+    XROOT                   in PKG_XPATH.TNODE, -- РљРѕСЂРЅРµРІР°СЏ РІРµС‚РєР° РґР»СЏ СЃС‡РёС‚С‹РІР°РЅРёСЏ Р·РЅР°С‡РµРЅРёСЏ
+    SPATH                   in varchar2,        -- РџСѓС‚СЊ РґР»СЏ СЃС‡РёС‚С‹РІР°РЅРёСЏ РґР°РЅРЅС‹С…
+    NREQUIRED               in number := 0,     -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+    SMESSAGE_OBJECT         in varchar2 := null -- РќР°РёРјРµРјРЅРѕРІР°РЅРёРµ РѕР±СЉРµРєС‚Р° РґР»СЏ С„РѕСЂРјСѓР»РёСЂРѕРІР°РЅРёСЏ СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ
+  ) return                  number              -- РЎС‡РёС‚Р°РЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ
   is
-    XNODE                   PKG_XPATH.TNODE;    -- Искомая ветка со значением (подходящая под шаблон)
-    NVAL                    PKG_STD.TLNUMBER;   -- Результат работы
+    XNODE                   PKG_XPATH.TNODE;    -- РСЃРєРѕРјР°СЏ РІРµС‚РєР° СЃРѕ Р·РЅР°С‡РµРЅРёРµРј (РїРѕРґС…РѕРґСЏС‰Р°СЏ РїРѕРґ С€Р°Р±Р»РѕРЅ)
+    NVAL                    PKG_STD.TLNUMBER;   -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   begin
-    /* Найдем нужную ветку по шаблону */
+    /* РќР°Р№РґРµРј РЅСѓР¶РЅСѓСЋ РІРµС‚РєСѓ РїРѕ С€Р°Р±Р»РѕРЅСѓ */
     XNODE := PKG_XPATH.SINGLE_NODE(RPARENT_NODE => XROOT, SPATTERN => SPATH);
-    /* Если там нет ничего */
+    /* Р•СЃР»Рё С‚Р°Рј РЅРµС‚ РЅРёС‡РµРіРѕ */
     if (PKG_XPATH.IS_NULL(RNODE => XNODE)) then
-      /* Его и вернём */
+      /* Р•РіРѕ Рё РІРµСЂРЅС‘Рј */
       NVAL := null;
     else
-      /* Что-то есть - читаем данные */
+      /* Р§С‚Рѕ-С‚Рѕ РµСЃС‚СЊ - С‡РёС‚Р°РµРј РґР°РЅРЅС‹Рµ */
       begin
         NVAL := PKG_XPATH.VALUE_NUM(RNODE => XNODE);
       exception
         when others then
-          P_EXCEPTION(0, 'Неверный формат числа (%s).', SPATH);
+          P_EXCEPTION(0, 'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ С‡РёСЃР»Р° (%s).', SPATH);
       end;
     end if;
-    /* Если значения нет, а оно должно быть - скажем об этом */
+    /* Р•СЃР»Рё Р·РЅР°С‡РµРЅРёСЏ РЅРµС‚, Р° РѕРЅРѕ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ - СЃРєР°Р¶РµРј РѕР± СЌС‚РѕРј */
     if ((NVAL is null) and (NREQUIRED = 1)) then
       P_EXCEPTION(0, MSG_NO_DATA_MAKE(SPATH => SPATH, SMESSAGE_OBJECT => SMESSAGE_OBJECT));
     end if;
-    /* Отдаём результат */
+    /* РћС‚РґР°С‘Рј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return NVAL;
   end NODE_NVAL_GET;
 
-  /* Считывание значения ветки XML (дата) */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ Р·РЅР°С‡РµРЅРёСЏ РІРµС‚РєРё XML (РґР°С‚Р°) */
   function NODE_DVAL_GET
   (
-    XROOT                   in PKG_XPATH.TNODE, -- Корневая ветка для считывания значения
-    SPATH                   in varchar2,        -- Путь для считывания данных
-    NREQUIRED               in number := 0,     -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-    SMESSAGE_OBJECT         in varchar2 := null -- Наимемнование объекта для формулирования сообщения об ошибке
-  ) return                  date                -- Считанное значение
+    XROOT                   in PKG_XPATH.TNODE, -- РљРѕСЂРЅРµРІР°СЏ РІРµС‚РєР° РґР»СЏ СЃС‡РёС‚С‹РІР°РЅРёСЏ Р·РЅР°С‡РµРЅРёСЏ
+    SPATH                   in varchar2,        -- РџСѓС‚СЊ РґР»СЏ СЃС‡РёС‚С‹РІР°РЅРёСЏ РґР°РЅРЅС‹С…
+    NREQUIRED               in number := 0,     -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+    SMESSAGE_OBJECT         in varchar2 := null -- РќР°РёРјРµРјРЅРѕРІР°РЅРёРµ РѕР±СЉРµРєС‚Р° РґР»СЏ С„РѕСЂРјСѓР»РёСЂРѕРІР°РЅРёСЏ СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ
+  ) return                  date                -- РЎС‡РёС‚Р°РЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ
   is
-    XNODE                   PKG_XPATH.TNODE;    -- Искомая ветка со значением (подходящая под шаблон)
-    DVAL                    PKG_STD.TLDATE;     -- Результат работы
+    XNODE                   PKG_XPATH.TNODE;    -- РСЃРєРѕРјР°СЏ РІРµС‚РєР° СЃРѕ Р·РЅР°С‡РµРЅРёРµРј (РїРѕРґС…РѕРґСЏС‰Р°СЏ РїРѕРґ С€Р°Р±Р»РѕРЅ)
+    DVAL                    PKG_STD.TLDATE;     -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   begin
-    /* Найдем нужную ветку по шаблону */
+    /* РќР°Р№РґРµРј РЅСѓР¶РЅСѓСЋ РІРµС‚РєСѓ РїРѕ С€Р°Р±Р»РѕРЅСѓ */
     XNODE := PKG_XPATH.SINGLE_NODE(RPARENT_NODE => XROOT, SPATTERN => SPATH);
-    /* Если там нет ничего */
+    /* Р•СЃР»Рё С‚Р°Рј РЅРµС‚ РЅРёС‡РµРіРѕ */
     if (PKG_XPATH.IS_NULL(RNODE => XNODE)) then
-      /* Его и вернём */
+      /* Р•РіРѕ Рё РІРµСЂРЅС‘Рј */
       DVAL := null;
     else
-      /* Что-то есть - читаем данные */
+      /* Р§С‚Рѕ-С‚Рѕ РµСЃС‚СЊ - С‡РёС‚Р°РµРј РґР°РЅРЅС‹Рµ */
       begin
         DVAL := PKG_XPATH.VALUE_DATE(RNODE => XNODE);
       exception
@@ -277,449 +277,449 @@ create or replace package body PKG_P8PANELS_BASE as
               exception
                 when others then
                   P_EXCEPTION(0,
-                              'Неверный формат даты (%s). Ожидалось: YYYY-MM-DD"T"HH24:MI:SS.FF3tzh:tzm, YYYY-MM-DD"T"HH24:MI:SS.FF3, YYYY-MM-DD"T"HH24:MI:SS, YYYY-MM-DD.',
+                              'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РґР°С‚С‹ (%s). РћР¶РёРґР°Р»РѕСЃСЊ: YYYY-MM-DD"T"HH24:MI:SS.FF3tzh:tzm, YYYY-MM-DD"T"HH24:MI:SS.FF3, YYYY-MM-DD"T"HH24:MI:SS, YYYY-MM-DD.',
                               SPATH);
               end;
           end;
       end;
     end if;
-    /* Если значения нет, а оно должно быть - скажем об этом */
+    /* Р•СЃР»Рё Р·РЅР°С‡РµРЅРёСЏ РЅРµС‚, Р° РѕРЅРѕ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ - СЃРєР°Р¶РµРј РѕР± СЌС‚РѕРј */
     if ((DVAL is null) and (NREQUIRED = 1)) then
       P_EXCEPTION(0, MSG_NO_DATA_MAKE(SPATH => SPATH, SMESSAGE_OBJECT => SMESSAGE_OBJECT));
     end if;
-    /* Отдаём результат */
+    /* РћС‚РґР°С‘Рј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return DVAL;
   end NODE_DVAL_GET;
   
-  /* Считывание значения ветки XML (текст) */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ Р·РЅР°С‡РµРЅРёСЏ РІРµС‚РєРё XML (С‚РµРєСЃС‚) */
   function NODE_CVAL_GET
   (
-    XROOT                   in PKG_XPATH.TNODE, -- Корневая ветка для считывания значения
-    SPATH                   in varchar2,        -- Путь для считывания данных
-    NREQUIRED               in number := 0,     -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-    SMESSAGE_OBJECT         in varchar2 := null -- Наимемнование объекта для формулирования сообщения об ошибке
-  ) return                  clob                -- Считанное значение
+    XROOT                   in PKG_XPATH.TNODE, -- РљРѕСЂРЅРµРІР°СЏ РІРµС‚РєР° РґР»СЏ СЃС‡РёС‚С‹РІР°РЅРёСЏ Р·РЅР°С‡РµРЅРёСЏ
+    SPATH                   in varchar2,        -- РџСѓС‚СЊ РґР»СЏ СЃС‡РёС‚С‹РІР°РЅРёСЏ РґР°РЅРЅС‹С…
+    NREQUIRED               in number := 0,     -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+    SMESSAGE_OBJECT         in varchar2 := null -- РќР°РёРјРµРјРЅРѕРІР°РЅРёРµ РѕР±СЉРµРєС‚Р° РґР»СЏ С„РѕСЂРјСѓР»РёСЂРѕРІР°РЅРёСЏ СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ
+  ) return                  clob                -- РЎС‡РёС‚Р°РЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ
   is
-    XNODE                   PKG_XPATH.TNODE;    -- Искомая ветка со значением (подходящая под шаблон)
-    CVAL                    clob;               -- Результат работы
+    XNODE                   PKG_XPATH.TNODE;    -- РСЃРєРѕРјР°СЏ РІРµС‚РєР° СЃРѕ Р·РЅР°С‡РµРЅРёРµРј (РїРѕРґС…РѕРґСЏС‰Р°СЏ РїРѕРґ С€Р°Р±Р»РѕРЅ)
+    CVAL                    clob;               -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   begin
-    /* Найдем нужную ветку по шаблону */
+    /* РќР°Р№РґРµРј РЅСѓР¶РЅСѓСЋ РІРµС‚РєСѓ РїРѕ С€Р°Р±Р»РѕРЅСѓ */
     XNODE := PKG_XPATH.SINGLE_NODE(RPARENT_NODE => XROOT, SPATTERN => SPATH);
-    /* Если там нет ничего */
+    /* Р•СЃР»Рё С‚Р°Рј РЅРµС‚ РЅРёС‡РµРіРѕ */
     if (PKG_XPATH.IS_NULL(RNODE => XNODE)) then
-      /* Его и вернём */
+      /* Р•РіРѕ Рё РІРµСЂРЅС‘Рј */
       CVAL := null;
     else
-      /* Что-то есть - читаем данные */
+      /* Р§С‚Рѕ-С‚Рѕ РµСЃС‚СЊ - С‡РёС‚Р°РµРј РґР°РЅРЅС‹Рµ */
       begin
         CVAL := PKG_XPATH.VALUE_CLOB(RNODE => XNODE);
       exception
         when others then
-          P_EXCEPTION(0, 'Неверный формат текстовых данных (%s).', SPATH);
+          P_EXCEPTION(0, 'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ С‚РµРєСЃС‚РѕРІС‹С… РґР°РЅРЅС‹С… (%s).', SPATH);
       end;
     end if;
-    /* Если значения нет, а оно должно быть - скажем об этом */
+    /* Р•СЃР»Рё Р·РЅР°С‡РµРЅРёСЏ РЅРµС‚, Р° РѕРЅРѕ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ - СЃРєР°Р¶РµРј РѕР± СЌС‚РѕРј */
     if ((CVAL is null) and (NREQUIRED = 1)) then
       P_EXCEPTION(0, MSG_NO_DATA_MAKE(SPATH => SPATH, SMESSAGE_OBJECT => SMESSAGE_OBJECT));
     end if;
-    /* Отдаём результат */
+    /* РћС‚РґР°С‘Рј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return CVAL;
   end NODE_CVAL_GET;
   
-  /* Считывание аргумента из коллекции */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ Р°СЂРіСѓРјРµРЅС‚Р° РёР· РєРѕР»Р»РµРєС†РёРё */
   function TARGUMENTS_GET
   (
-    ARGUMENTS               in TARGUMENTS, -- Коллекция аргументов
-    SARGUMENT               in varchar2,   -- Код аргумента
-    NREQUIRED               in number := 0 -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-  ) return                  TARGUMENT      -- Найденный аргумент
+    ARGUMENTS               in TARGUMENTS, -- РљРѕР»Р»РµРєС†РёСЏ Р°СЂРіСѓРјРµРЅС‚РѕРІ
+    SARGUMENT               in varchar2,   -- РљРѕРґ Р°СЂРіСѓРјРµРЅС‚Р°
+    NREQUIRED               in number := 0 -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+  ) return                  TARGUMENT      -- РќР°Р№РґРµРЅРЅС‹Р№ Р°СЂРіСѓРјРµРЅС‚
   is
   begin
-    /* Если данные в коллекции есть */
+    /* Р•СЃР»Рё РґР°РЅРЅС‹Рµ РІ РєРѕР»Р»РµРєС†РёРё РµСЃС‚СЊ */
     if ((ARGUMENTS is not null) and (ARGUMENTS.COUNT > 0)) then
-      /* Обходим её */
+      /* РћР±С…РѕРґРёРј РµС‘ */
       for I in ARGUMENTS.FIRST .. ARGUMENTS.LAST
       loop
-        /* Если встретился нужный аргумент */
+        /* Р•СЃР»Рё РІСЃС‚СЂРµС‚РёР»СЃСЏ РЅСѓР¶РЅС‹Р№ Р°СЂРіСѓРјРµРЅС‚ */
         if (ARGUMENTS(I).SNAME = SARGUMENT) then
-          /* Вернём его */
+          /* Р’РµСЂРЅС‘Рј РµРіРѕ */
           return ARGUMENTS(I);
         end if;
       end loop;
     end if;
-    /* Если мы здесь - аргумент не нашелся, будем выдавать сообщение об ошибке если он был обязательным */
+    /* Р•СЃР»Рё РјС‹ Р·РґРµСЃСЊ - Р°СЂРіСѓРјРµРЅС‚ РЅРµ РЅР°С€РµР»СЃСЏ, Р±СѓРґРµРј РІС‹РґР°РІР°С‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ РѕР± РѕС€РёР±РєРµ РµСЃР»Рё РѕРЅ Р±С‹Р» РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рј */
     if (NREQUIRED = 1) then
-      P_EXCEPTION(0, 'Не задан обязательный аргумент "%s".', SARGUMENT);
+      P_EXCEPTION(0, 'РќРµ Р·Р°РґР°РЅ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Р№ Р°СЂРіСѓРјРµРЅС‚ "%s".', SARGUMENT);
     else
-      /* Он не обязательный - вернём отсутствие данных */
+      /* РћРЅ РЅРµ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Р№ - РІРµСЂРЅС‘Рј РѕС‚СЃСѓС‚СЃС‚РІРёРµ РґР°РЅРЅС‹С… */
       return null;
     end if;
   end TARGUMENTS_GET;
 
-  /* Считывание значения аргумента из коллекции (строка) */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ Р·РЅР°С‡РµРЅРёСЏ Р°СЂРіСѓРјРµРЅС‚Р° РёР· РєРѕР»Р»РµРєС†РёРё (СЃС‚СЂРѕРєР°) */
   function TARGUMENTS_SVAL_GET
   (
-    ARGUMENTS               in TARGUMENTS, -- Коллекция аргументов
-    SARGUMENT               in varchar2,   -- Код аргумента
-    NREQUIRED               in number := 0 -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-  ) return                  varchar2       -- Значение аргумента
+    ARGUMENTS               in TARGUMENTS, -- РљРѕР»Р»РµРєС†РёСЏ Р°СЂРіСѓРјРµРЅС‚РѕРІ
+    SARGUMENT               in varchar2,   -- РљРѕРґ Р°СЂРіСѓРјРµРЅС‚Р°
+    NREQUIRED               in number := 0 -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+  ) return                  varchar2       -- Р—РЅР°С‡РµРЅРёРµ Р°СЂРіСѓРјРµРЅС‚Р°
   is
   begin
-    /* Считаем и вернём значение */
+    /* РЎС‡РёС‚Р°РµРј Рё РІРµСЂРЅС‘Рј Р·РЅР°С‡РµРЅРёРµ */
     return TARGUMENTS_GET(ARGUMENTS => ARGUMENTS, SARGUMENT => SARGUMENT, NREQUIRED => NREQUIRED).SVALUE;
   end TARGUMENTS_SVAL_GET;
 
-  /* Считывание значения параметра из запроса (число) */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ Р·РЅР°С‡РµРЅРёСЏ РїР°СЂР°РјРµС‚СЂР° РёР· Р·Р°РїСЂРѕСЃР° (С‡РёСЃР»Рѕ) */
   function TARGUMENTS_NVAL_GET
   (
-    ARGUMENTS               in TARGUMENTS, -- Коллекция аргументов
-    SARGUMENT               in varchar2,   -- Код аргумента
-    NREQUIRED               in number := 0 -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-  ) return                  number         -- Значение аргумента
+    ARGUMENTS               in TARGUMENTS, -- РљРѕР»Р»РµРєС†РёСЏ Р°СЂРіСѓРјРµРЅС‚РѕРІ
+    SARGUMENT               in varchar2,   -- РљРѕРґ Р°СЂРіСѓРјРµРЅС‚Р°
+    NREQUIRED               in number := 0 -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+  ) return                  number         -- Р—РЅР°С‡РµРЅРёРµ Р°СЂРіСѓРјРµРЅС‚Р°
   is
   begin
-    /* Считаем и вернём значение */
+    /* РЎС‡РёС‚Р°РµРј Рё РІРµСЂРЅС‘Рј Р·РЅР°С‡РµРЅРёРµ */
     return TARGUMENTS_GET(ARGUMENTS => ARGUMENTS, SARGUMENT => SARGUMENT, NREQUIRED => NREQUIRED).NVALUE;
   end TARGUMENTS_NVAL_GET;
 
-  /* Считывание значения параметра из запроса (дата) */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ Р·РЅР°С‡РµРЅРёСЏ РїР°СЂР°РјРµС‚СЂР° РёР· Р·Р°РїСЂРѕСЃР° (РґР°С‚Р°) */
   function TARGUMENTS_DVAL_GET
   (
-    ARGUMENTS               in TARGUMENTS, -- Коллекция аргументов
-    SARGUMENT               in varchar2,   -- Код аргумента
-    NREQUIRED               in number := 0 -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-  ) return                  date           -- Значение аргумента
+    ARGUMENTS               in TARGUMENTS, -- РљРѕР»Р»РµРєС†РёСЏ Р°СЂРіСѓРјРµРЅС‚РѕРІ
+    SARGUMENT               in varchar2,   -- РљРѕРґ Р°СЂРіСѓРјРµРЅС‚Р°
+    NREQUIRED               in number := 0 -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+  ) return                  date           -- Р—РЅР°С‡РµРЅРёРµ Р°СЂРіСѓРјРµРЅС‚Р°
   is
   begin
-    /* Считаем и вернём значение */
+    /* РЎС‡РёС‚Р°РµРј Рё РІРµСЂРЅС‘Рј Р·РЅР°С‡РµРЅРёРµ */
     return TARGUMENTS_GET(ARGUMENTS => ARGUMENTS, SARGUMENT => SARGUMENT, NREQUIRED => NREQUIRED).DVALUE;
   end TARGUMENTS_DVAL_GET;
 
-  /* Считывание значения параметра из запроса (текст) */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ Р·РЅР°С‡РµРЅРёСЏ РїР°СЂР°РјРµС‚СЂР° РёР· Р·Р°РїСЂРѕСЃР° (С‚РµРєСЃС‚) */
   function TARGUMENTS_CVAL_GET
   (
-    ARGUMENTS               in TARGUMENTS, -- Коллекция аргументов
-    SARGUMENT               in varchar2,   -- Код аргумента
-    NREQUIRED               in number := 0 -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-  ) return                  clob           -- Значение аргумента
+    ARGUMENTS               in TARGUMENTS, -- РљРѕР»Р»РµРєС†РёСЏ Р°СЂРіСѓРјРµРЅС‚РѕРІ
+    SARGUMENT               in varchar2,   -- РљРѕРґ Р°СЂРіСѓРјРµРЅС‚Р°
+    NREQUIRED               in number := 0 -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+  ) return                  clob           -- Р—РЅР°С‡РµРЅРёРµ Р°СЂРіСѓРјРµРЅС‚Р°
   is
   begin
-    /* Считаем и вернём значение */
+    /* РЎС‡РёС‚Р°РµРј Рё РІРµСЂРЅС‘Рј Р·РЅР°С‡РµРЅРёРµ */
     return TARGUMENTS_GET(ARGUMENTS => ARGUMENTS, SARGUMENT => SARGUMENT, NREQUIRED => NREQUIRED).CVALUE;
   end TARGUMENTS_CVAL_GET;
 
-  /* Получение корневого элемента тела запроса */
+  /* РџРѕР»СѓС‡РµРЅРёРµ РєРѕСЂРЅРµРІРѕРіРѕ СЌР»РµРјРµРЅС‚Р° С‚РµР»Р° Р·Р°РїСЂРѕСЃР° */
   function RQ_ROOT_GET
   (
-    CRQ                     in clob         -- Запрос
-  ) return                  PKG_XPATH.TNODE -- Корневой элемент первой ветки тела документа
+    CRQ                     in clob         -- Р—Р°РїСЂРѕСЃ
+  ) return                  PKG_XPATH.TNODE -- РљРѕСЂРЅРµРІРѕР№ СЌР»РµРјРµРЅС‚ РїРµСЂРІРѕР№ РІРµС‚РєРё С‚РµР»Р° РґРѕРєСѓРјРµРЅС‚Р°
   is
   begin
-    /* Возвращаем корневой элемент документа */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј РєРѕСЂРЅРµРІРѕР№ СЌР»РµРјРµРЅС‚ РґРѕРєСѓРјРµРЅС‚Р° */
     return PKG_XPATH.ROOT_NODE(RDOCUMENT => PKG_XPATH.PARSE_FROM_CLOB(LCXML => CRQ));
   end RQ_ROOT_GET;
 
-  /* Получение пути к запросу */
+  /* РџРѕР»СѓС‡РµРЅРёРµ РїСѓС‚Рё Рє Р·Р°РїСЂРѕСЃСѓ */
   function RQ_PATH_GET
-  return                    varchar2    -- Путь к запросу
+  return                    varchar2    -- РџСѓС‚СЊ Рє Р·Р°РїСЂРѕСЃСѓ
   is
   begin
     return '/' || SRQ_TAG_XREQUEST;
   end RQ_PATH_GET;
 
-  /* Получение пути к элементу действия запроса */
+  /* РџРѕР»СѓС‡РµРЅРёРµ РїСѓС‚Рё Рє СЌР»РµРјРµРЅС‚Сѓ РґРµР№СЃС‚РІРёСЏ Р·Р°РїСЂРѕСЃР° */
   function RQ_ACTION_PATH_GET
-  return                    varchar2    -- Путь к элементу действия запроса
+  return                    varchar2    -- РџСѓС‚СЊ Рє СЌР»РµРјРµРЅС‚Сѓ РґРµР№СЃС‚РІРёСЏ Р·Р°РїСЂРѕСЃР°
   is
   begin
     return RQ_PATH_GET() || '/' || SRQ_TAG_SACTION;
   end RQ_ACTION_PATH_GET;
   
-  /* Получение кода действия запроса */
+  /* РџРѕР»СѓС‡РµРЅРёРµ РєРѕРґР° РґРµР№СЃС‚РІРёСЏ Р·Р°РїСЂРѕСЃР° */
   function RQ_ACTION_GET
   (
-    XRQ_ROOT                in PKG_XPATH.TNODE := null, -- Корневая ветка запроса
-    NREQUIRED               in number := 0              -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-  ) return                  varchar2                    -- Код действия запроса
+    XRQ_ROOT                in PKG_XPATH.TNODE := null, -- РљРѕСЂРЅРµРІР°СЏ РІРµС‚РєР° Р·Р°РїСЂРѕСЃР°
+    NREQUIRED               in number := 0              -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+  ) return                  varchar2                    -- РљРѕРґ РґРµР№СЃС‚РІРёСЏ Р·Р°РїСЂРѕСЃР°
   is
   begin
-    /* Вернем значение элемента тела с кодом действия */
+    /* Р’РµСЂРЅРµРј Р·РЅР°С‡РµРЅРёРµ СЌР»РµРјРµРЅС‚Р° С‚РµР»Р° СЃ РєРѕРґРѕРј РґРµР№СЃС‚РІРёСЏ */
     return NODE_SVAL_GET(XROOT           => XRQ_ROOT,
                          SPATH           => RQ_ACTION_PATH_GET(),
                          NREQUIRED       => NREQUIRED,
-                         SMESSAGE_OBJECT => 'Код действия');
+                         SMESSAGE_OBJECT => 'РљРѕРґ РґРµР№СЃС‚РІРёСЏ');
   end RQ_ACTION_GET;
 
-  /* Получение пути к параметрам запроса */
+  /* РџРѕР»СѓС‡РµРЅРёРµ РїСѓС‚Рё Рє РїР°СЂР°РјРµС‚СЂР°Рј Р·Р°РїСЂРѕСЃР° */
   function RQ_PAYLOAD_PATH_GET
-  return                    varchar2    -- Путь к параметрам запроса
+  return                    varchar2    -- РџСѓС‚СЊ Рє РїР°СЂР°РјРµС‚СЂР°Рј Р·Р°РїСЂРѕСЃР°
   is
   begin
-    /* Вернем значение */
+    /* Р’РµСЂРЅРµРј Р·РЅР°С‡РµРЅРёРµ */
     return RQ_PATH_GET() || '/' || SRQ_TAG_XPAYLOAD;
   end RQ_PAYLOAD_PATH_GET;
 
-  /* Получение пути к элкменту параметров запроса */
+  /* РџРѕР»СѓС‡РµРЅРёРµ РїСѓС‚Рё Рє СЌР»РєРјРµРЅС‚Сѓ РїР°СЂР°РјРµС‚СЂРѕРІ Р·Р°РїСЂРѕСЃР° */
   function RQ_PAYLOAD_ITEM_PATH_GET
   (
-    SITEM_TAG               in varchar2 -- Тэг элемента
+    SITEM_TAG               in varchar2 -- РўСЌРі СЌР»РµРјРµРЅС‚Р°
   )
-  return                    varchar2    -- Путь к элементу параметров запроса
+  return                    varchar2    -- РџСѓС‚СЊ Рє СЌР»РµРјРµРЅС‚Сѓ РїР°СЂР°РјРµС‚СЂРѕРІ Р·Р°РїСЂРѕСЃР°
   is
   begin
-    /* Вернем значение */
+    /* Р’РµСЂРЅРµРј Р·РЅР°С‡РµРЅРёРµ */
     return RQ_PAYLOAD_PATH_GET() || '/' || SITEM_TAG;
   end RQ_PAYLOAD_ITEM_PATH_GET;
 
-  /* Считывание наименования исполняемого хранимого объекта из запроса */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ РёСЃРїРѕР»РЅСЏРµРјРѕРіРѕ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РёР· Р·Р°РїСЂРѕСЃР° */
   function RQ_PAYLOAD_STORED_GET
   (
-    XRQ_ROOT                in PKG_XPATH.TNODE := null, -- Корневая ветка запроса
-    NREQUIRED               in number := 0              -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-  ) return                  varchar2                    -- Наименование исполняемого хранимого объекта из запроса
+    XRQ_ROOT                in PKG_XPATH.TNODE := null, -- РљРѕСЂРЅРµРІР°СЏ РІРµС‚РєР° Р·Р°РїСЂРѕСЃР°
+    NREQUIRED               in number := 0              -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+  ) return                  varchar2                    -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РёСЃРїРѕР»РЅСЏРµРјРѕРіРѕ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РёР· Р·Р°РїСЂРѕСЃР°
   is
   begin
-    /* Вернем значение элемента тела с наименованием хранимого объекта */
+    /* Р’РµСЂРЅРµРј Р·РЅР°С‡РµРЅРёРµ СЌР»РµРјРµРЅС‚Р° С‚РµР»Р° СЃ РЅР°РёРјРµРЅРѕРІР°РЅРёРµРј С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° */
     return NODE_SVAL_GET(XROOT           => XRQ_ROOT,
                          SPATH           => RQ_PAYLOAD_ITEM_PATH_GET(SITEM_TAG => SRQ_TAG_SSTORED),
                          NREQUIRED       => NREQUIRED,
-                         SMESSAGE_OBJECT => 'Наименование процедуры/функции');
+                         SMESSAGE_OBJECT => 'РќР°РёРјРµРЅРѕРІР°РЅРёРµ РїСЂРѕС†РµРґСѓСЂС‹/С„СѓРЅРєС†РёРё');
   end RQ_PAYLOAD_STORED_GET;
   
-  /* Проверка исполняемого хранимого объекта из запроса */
+  /* РџСЂРѕРІРµСЂРєР° РёСЃРїРѕР»РЅСЏРµРјРѕРіРѕ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РёР· Р·Р°РїСЂРѕСЃР° */
   procedure RQ_PAYLOAD_STORED_CHECK
   (
-    XRQ_ROOT                in PKG_XPATH.TNODE,       -- Корневая ветка запроса
-    SSTORED                 in varchar2 := null       -- Наименование проверяемого хранимого объекта (null - автоматическое считывание из запроса)
+    XRQ_ROOT                in PKG_XPATH.TNODE,       -- РљРѕСЂРЅРµРІР°СЏ РІРµС‚РєР° Р·Р°РїСЂРѕСЃР°
+    SSTORED                 in varchar2 := null       -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РїСЂРѕРІРµСЂСЏРµРјРѕРіРѕ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° (null - Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ СЃС‡РёС‚С‹РІР°РЅРёРµ РёР· Р·Р°РїСЂРѕСЃР°)
   )
   is
-    SSTORED_                PKG_STD.TSTRING;          -- Буфер для наименования проверяемого хранимого объекта
-    RSTORED                 PKG_OBJECT_DESC.TSTORED;  -- Описание хранимого объекта из БД
-    SPROCEDURE              PKG_STD.TSTRING;          -- Буфер для наименования хранимой процедуры
-    SPACKAGE                PKG_STD.TSTRING;          -- Буфер для наименования пакета, содержащего хранимый объект
-    RPACKAGE                PKG_OBJECT_DESC.TPACKAGE; -- Описание пакета, содержащего хранимый объект
+    SSTORED_                PKG_STD.TSTRING;          -- Р‘СѓС„РµСЂ РґР»СЏ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ РїСЂРѕРІРµСЂСЏРµРјРѕРіРѕ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р°
+    RSTORED                 PKG_OBJECT_DESC.TSTORED;  -- РћРїРёСЃР°РЅРёРµ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РёР· Р‘Р”
+    SPROCEDURE              PKG_STD.TSTRING;          -- Р‘СѓС„РµСЂ РґР»СЏ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ С…СЂР°РЅРёРјРѕР№ РїСЂРѕС†РµРґСѓСЂС‹
+    SPACKAGE                PKG_STD.TSTRING;          -- Р‘СѓС„РµСЂ РґР»СЏ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ РїР°РєРµС‚Р°, СЃРѕРґРµСЂР¶Р°С‰РµРіРѕ С…СЂР°РЅРёРјС‹Р№ РѕР±СЉРµРєС‚
+    RPACKAGE                PKG_OBJECT_DESC.TPACKAGE; -- РћРїРёСЃР°РЅРёРµ РїР°РєРµС‚Р°, СЃРѕРґРµСЂР¶Р°С‰РµРіРѕ С…СЂР°РЅРёРјС‹Р№ РѕР±СЉРµРєС‚
   begin
-    /* Считаем наименование объекта из запроса или используем переданное в параметрах */
+    /* РЎС‡РёС‚Р°РµРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ РѕР±СЉРµРєС‚Р° РёР· Р·Р°РїСЂРѕСЃР° РёР»Рё РёСЃРїРѕР»СЊР·СѓРµРј РїРµСЂРµРґР°РЅРЅРѕРµ РІ РїР°СЂР°РјРµС‚СЂР°С… */
     if (SSTORED is not null) then
       SSTORED_ := SSTORED;
     else
       SSTORED_ := RQ_PAYLOAD_STORED_GET(XRQ_ROOT => XRQ_ROOT, NREQUIRED => 1);
     end if;
-    /* Проверим, что это процедура или функция и она вообще существует */
+    /* РџСЂРѕРІРµСЂРёРј, С‡С‚Рѕ СЌС‚Рѕ РїСЂРѕС†РµРґСѓСЂР° РёР»Рё С„СѓРЅРєС†РёСЏ Рё РѕРЅР° РІРѕРѕР±С‰Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ */
     if (PKG_OBJECT_DESC.EXISTS_STORED(SSTORED_NAME => SSTORED_) = 0) then
       P_EXCEPTION(0,
-                  'Хранимая процедура/функция "' || SSTORED_ || '" не определена.');
+                  'РҐСЂР°РЅРёРјР°СЏ РїСЂРѕС†РµРґСѓСЂР°/С„СѓРЅРєС†РёСЏ "' || SSTORED_ || '" РЅРµ РѕРїСЂРµРґРµР»РµРЅР°.');
     else
-      /* Проверим, что в имени нет ссылки на пакет */
+      /* РџСЂРѕРІРµСЂРёРј, С‡С‚Рѕ РІ РёРјРµРЅРё РЅРµС‚ СЃСЃС‹Р»РєРё РЅР° РїР°РєРµС‚ */
       PKG_EXS.UTL_STORED_PARSE_LINK(SSTORED => SSTORED_, SPROCEDURE => SPROCEDURE, SPACKAGE => SPACKAGE);
-      /* Если в имени есть ссылка на пакет - сначала проверим его состояние */
+      /* Р•СЃР»Рё РІ РёРјРµРЅРё РµСЃС‚СЊ СЃСЃС‹Р»РєР° РЅР° РїР°РєРµС‚ - СЃРЅР°С‡Р°Р»Р° РїСЂРѕРІРµСЂРёРј РµРіРѕ СЃРѕСЃС‚РѕСЏРЅРёРµ */
       if (SPACKAGE is not null) then
         RPACKAGE := PKG_OBJECT_DESC.DESC_PACKAGE(SPACKAGE_NAME => SPACKAGE, BRAISE_ERROR => false);
       end if;
-      /* Если есть ссылка на пакет, или он не валиден - это ошибка */
+      /* Р•СЃР»Рё РµСЃС‚СЊ СЃСЃС‹Р»РєР° РЅР° РїР°РєРµС‚, РёР»Рё РѕРЅ РЅРµ РІР°Р»РёРґРµРЅ - СЌС‚Рѕ РѕС€РёР±РєР° */
       if ((SPACKAGE is not null) and (RPACKAGE.STATUS <> SDB_OBJECT_STATE_VALID)) then
         P_EXCEPTION(0,
-                    'Пакет "' || SPACKAGE ||
-                    '", содержащий хранимую процедуру/функцию, невалиден. Обращение к объекту невозможно.');
+                    'РџР°РєРµС‚ "' || SPACKAGE ||
+                    '", СЃРѕРґРµСЂР¶Р°С‰РёР№ С…СЂР°РЅРёРјСѓСЋ РїСЂРѕС†РµРґСѓСЂСѓ/С„СѓРЅРєС†РёСЋ, РЅРµРІР°Р»РёРґРµРЅ. РћР±СЂР°С‰РµРЅРёРµ Рє РѕР±СЉРµРєС‚Сѓ РЅРµРІРѕР·РјРѕР¶РЅРѕ.');
       else
-        /* Нет ссылки на пакет или он валиден - проверяем глубже, получим описание объекта из БД */
+        /* РќРµС‚ СЃСЃС‹Р»РєРё РЅР° РїР°РєРµС‚ РёР»Рё РѕРЅ РІР°Р»РёРґРµРЅ - РїСЂРѕРІРµСЂСЏРµРј РіР»СѓР±Р¶Рµ, РїРѕР»СѓС‡РёРј РѕРїРёСЃР°РЅРёРµ РѕР±СЉРµРєС‚Р° РёР· Р‘Р” */
         RSTORED := PKG_OBJECT_DESC.DESC_STORED(SSTORED_NAME => SSTORED_, BRAISE_ERROR => false);
-        /* Проверим, что валидна */
+        /* РџСЂРѕРІРµСЂРёРј, С‡С‚Рѕ РІР°Р»РёРґРЅР° */
         if (RSTORED.STATUS <> SDB_OBJECT_STATE_VALID) then
           P_EXCEPTION(0,
-                      'Хранимая процедура/функция "' || SSTORED_ || '" невалидна. Обращение к объекту невозможно.');
+                      'РҐСЂР°РЅРёРјР°СЏ РїСЂРѕС†РµРґСѓСЂР°/С„СѓРЅРєС†РёСЏ "' || SSTORED_ || '" РЅРµРІР°Р»РёРґРЅР°. РћР±СЂР°С‰РµРЅРёРµ Рє РѕР±СЉРµРєС‚Сѓ РЅРµРІРѕР·РјРѕР¶РЅРѕ.');
         else
-          /* Проверим, что это клиентский объект */
+          /* РџСЂРѕРІРµСЂРёРј, С‡С‚Рѕ СЌС‚Рѕ РєР»РёРµРЅС‚СЃРєРёР№ РѕР±СЉРµРєС‚ */
           if (PKG_OBJECT_DESC.EXISTS_PRIV_EXECUTE(SSTORED_NAME => COALESCE(RSTORED.PACKAGE_NAME, SSTORED_)) = 0) then
             P_EXCEPTION(0,
-                        'Хранимая процедура/функция "' || SSTORED_ ||
-                        '" не является клиентской. Обращение к объекту невозможно.');
+                        'РҐСЂР°РЅРёРјР°СЏ РїСЂРѕС†РµРґСѓСЂР°/С„СѓРЅРєС†РёСЏ "' || SSTORED_ ||
+                        '" РЅРµ СЏРІР»СЏРµС‚СЃСЏ РєР»РёРµРЅС‚СЃРєРѕР№. РћР±СЂР°С‰РµРЅРёРµ Рє РѕР±СЉРµРєС‚Сѓ РЅРµРІРѕР·РјРѕР¶РЅРѕ.');
           end if;
         end if;
       end if;
     end if;
   end RQ_PAYLOAD_STORED_CHECK;
 
-  /* Считывание списка аргументов из запроса */
+  /* РЎС‡РёС‚С‹РІР°РЅРёРµ СЃРїРёСЃРєР° Р°СЂРіСѓРјРµРЅС‚РѕРІ РёР· Р·Р°РїСЂРѕСЃР° */
   function RQ_PAYLOAD_ARGUMENTS_GET
   (
-    XRQ_ROOT                in PKG_XPATH.TNODE, -- Корневая ветка запроса
-    NREQUIRED               in number := 0      -- Флаг выдачи сообщения об ошибке в случае отсутствия значения (0 - не выдавать, 1 - выдавать)
-  ) return                  TARGUMENTS          -- Коллекция аргументов из запроса
+    XRQ_ROOT                in PKG_XPATH.TNODE, -- РљРѕСЂРЅРµРІР°СЏ РІРµС‚РєР° Р·Р°РїСЂРѕСЃР°
+    NREQUIRED               in number := 0      -- Р¤Р»Р°Рі РІС‹РґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РѕР± РѕС€РёР±РєРµ РІ СЃР»СѓС‡Р°Рµ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ Р·РЅР°С‡РµРЅРёСЏ (0 - РЅРµ РІС‹РґР°РІР°С‚СЊ, 1 - РІС‹РґР°РІР°С‚СЊ)
+  ) return                  TARGUMENTS          -- РљРѕР»Р»РµРєС†РёСЏ Р°СЂРіСѓРјРµРЅС‚РѕРІ РёР· Р·Р°РїСЂРѕСЃР°
   is
-    RES                     TARGUMENTS;         -- Результат работы
-    SRQ_ARGUMENTS_PATH      PKG_STD.TSTRING;    -- Полный путь до аргументов выборки в запросе
-    XRQ_ARGUMENTS           PKG_XPATH.TNODES;   -- Коллекция элементов документа запроса с аргументами
-    XRQ_ARGUMENT            PKG_XPATH.TNODE;    -- Элемент документа запроса с аргументов
+    RES                     TARGUMENTS;         -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
+    SRQ_ARGUMENTS_PATH      PKG_STD.TSTRING;    -- РџРѕР»РЅС‹Р№ РїСѓС‚СЊ РґРѕ Р°СЂРіСѓРјРµРЅС‚РѕРІ РІС‹Р±РѕСЂРєРё РІ Р·Р°РїСЂРѕСЃРµ
+    XRQ_ARGUMENTS           PKG_XPATH.TNODES;   -- РљРѕР»Р»РµРєС†РёСЏ СЌР»РµРјРµРЅС‚РѕРІ РґРѕРєСѓРјРµРЅС‚Р° Р·Р°РїСЂРѕСЃР° СЃ Р°СЂРіСѓРјРµРЅС‚Р°РјРё
+    XRQ_ARGUMENT            PKG_XPATH.TNODE;    -- Р­Р»РµРјРµРЅС‚ РґРѕРєСѓРјРµРЅС‚Р° Р·Р°РїСЂРѕСЃР° СЃ Р°СЂРіСѓРјРµРЅС‚РѕРІ
   begin
-    /* Инициализируем результат */
+    /* РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј СЂРµР·СѓР»СЊС‚Р°С‚ */
     RES := TARGUMENTS();
-    /* Сформируем полный путь до аргументов в выборке */
+    /* РЎС„РѕСЂРјРёСЂСѓРµРј РїРѕР»РЅС‹Р№ РїСѓС‚СЊ РґРѕ Р°СЂРіСѓРјРµРЅС‚РѕРІ РІ РІС‹Р±РѕСЂРєРµ */
     SRQ_ARGUMENTS_PATH := RQ_PAYLOAD_ITEM_PATH_GET(SITEM_TAG => SRQ_TAG_XARGUMENTS) || '/' || SRQ_TAG_XARGUMENT;
-    /* Считаем коллекцию аргументов из документа */
+    /* РЎС‡РёС‚Р°РµРј РєРѕР»Р»РµРєС†РёСЋ Р°СЂРіСѓРјРµРЅС‚РѕРІ РёР· РґРѕРєСѓРјРµРЅС‚Р° */
     XRQ_ARGUMENTS := PKG_XPATH.LIST_NODES(RPARENT_NODE => XRQ_ROOT, SPATTERN => SRQ_ARGUMENTS_PATH);
-    /* Обходим коллекцию аргументов из документа */
+    /* РћР±С…РѕРґРёРј РєРѕР»Р»РµРєС†РёСЋ Р°СЂРіСѓРјРµРЅС‚РѕРІ РёР· РґРѕРєСѓРјРµРЅС‚Р° */
     for I in 1 .. PKG_XPATH.COUNT_NODES(RNODES => XRQ_ARGUMENTS)
     loop
-      /* Берем очередной аргумент */
+      /* Р‘РµСЂРµРј РѕС‡РµСЂРµРґРЅРѕР№ Р°СЂРіСѓРјРµРЅС‚ */
       XRQ_ARGUMENT := PKG_XPATH.ITEM_NODE(RNODES => XRQ_ARGUMENTS, INUMBER => I);
-      /* Добавляем его в выходную коллекцию */
+      /* Р”РѕР±Р°РІР»СЏРµРј РµРіРѕ РІ РІС‹С…РѕРґРЅСѓСЋ РєРѕР»Р»РµРєС†РёСЋ */
       RES.EXTEND();
       RES(RES.LAST).SNAME := NODE_SVAL_GET(XROOT => XRQ_ARGUMENT, SPATH => SRQ_TAG_SNAME);
       RES(RES.LAST).SDATA_TYPE := NODE_SVAL_GET(XROOT => XRQ_ARGUMENT, SPATH => SRQ_TAG_SDATA_TYPE);
-      /* Проверим корректность данных - наименование */
+      /* РџСЂРѕРІРµСЂРёРј РєРѕСЂСЂРµРєС‚РЅРѕСЃС‚СЊ РґР°РЅРЅС‹С… - РЅР°РёРјРµРЅРѕРІР°РЅРёРµ */
       if (RES(RES.LAST).SNAME is null) then
         P_EXCEPTION(0,
-                    'Для аргумента не задано наименование (%s).',
+                    'Р”Р»СЏ Р°СЂРіСѓРјРµРЅС‚Р° РЅРµ Р·Р°РґР°РЅРѕ РЅР°РёРјРµРЅРѕРІР°РЅРёРµ (%s).',
                     SRQ_ARGUMENTS_PATH || '/' || SRQ_TAG_SNAME);
       end if;
-      /* Проверим корректность данных - тип данных */
+      /* РџСЂРѕРІРµСЂРёРј РєРѕСЂСЂРµРєС‚РЅРѕСЃС‚СЊ РґР°РЅРЅС‹С… - С‚РёРї РґР°РЅРЅС‹С… */
       if (RES(RES.LAST).SDATA_TYPE is null) then
         P_EXCEPTION(0,
-                    'Для аргумента "%s" не задан тип данных (%s).',
+                    'Р”Р»СЏ Р°СЂРіСѓРјРµРЅС‚Р° "%s" РЅРµ Р·Р°РґР°РЅ С‚РёРї РґР°РЅРЅС‹С… (%s).',
                     RES(RES.LAST).SNAME,
                     SRQ_ARGUMENTS_PATH || '/' || SRQ_TAG_SDATA_TYPE);
       end if;
-      /* Считаем значение в зависимости от типа данных */
+      /* РЎС‡РёС‚Р°РµРј Р·РЅР°С‡РµРЅРёРµ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ С‚РёРїР° РґР°РЅРЅС‹С… */
       case
-        /* Строка */
+        /* РЎС‚СЂРѕРєР° */
         when (RES(RES.LAST).SDATA_TYPE = SDATA_TYPE_STR) then
           RES(RES.LAST).SVALUE := NODE_SVAL_GET(XROOT => XRQ_ARGUMENT, SPATH => SRQ_TAG_VALUE);
-        /* Число */
+        /* Р§РёСЃР»Рѕ */
         when (RES(RES.LAST).SDATA_TYPE = SDATA_TYPE_NUMB) then
           RES(RES.LAST).NVALUE := NODE_NVAL_GET(XROOT => XRQ_ARGUMENT, SPATH => SRQ_TAG_VALUE);
-        /* Дата */
+        /* Р”Р°С‚Р° */
         when (RES(RES.LAST).SDATA_TYPE = SDATA_TYPE_DATE) then
           RES(RES.LAST).DVALUE := NODE_DVAL_GET(XROOT => XRQ_ARGUMENT, SPATH => SRQ_TAG_VALUE);
-        /* Текст */
+        /* РўРµРєСЃС‚ */
         when (RES(RES.LAST).SDATA_TYPE = SDATA_TYPE_CLOB) then
           RES(RES.LAST).CVALUE := NODE_CVAL_GET(XROOT => XRQ_ARGUMENT, SPATH => SRQ_TAG_VALUE);
-        /* Неподдерживаемый тип данных */
+        /* РќРµРїРѕРґРґРµСЂР¶РёРІР°РµРјС‹Р№ С‚РёРї РґР°РЅРЅС‹С… */
         else
           P_EXCEPTION(0,
-                      'Указанный для аргумента "%s" тип данных "%s" не поддерживается (%s).',
+                      'РЈРєР°Р·Р°РЅРЅС‹Р№ РґР»СЏ Р°СЂРіСѓРјРµРЅС‚Р° "%s" С‚РёРї РґР°РЅРЅС‹С… "%s" РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚СЃСЏ (%s).',
                       RES(RES.LAST).SNAME,
                       RES(RES.LAST).SDATA_TYPE,
                       SRQ_ARGUMENTS_PATH || '/' || SRQ_TAG_SDATA_TYPE);
       end case;
     end loop;
-    /* Проверка обязательности */
+    /* РџСЂРѕРІРµСЂРєР° РѕР±СЏР·Р°С‚РµР»СЊРЅРѕСЃС‚Рё */
     if ((RES.COUNT = 0) and (NREQUIRED = 1)) then
-      P_EXCEPTION(0, 'Не указаны аргументы (' || SRQ_ARGUMENTS_PATH || ').');
+      P_EXCEPTION(0, 'РќРµ СѓРєР°Р·Р°РЅС‹ Р°СЂРіСѓРјРµРЅС‚С‹ (' || SRQ_ARGUMENTS_PATH || ').');
     end if;
-    /* Возвращаем результат */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return RES;
   end RQ_PAYLOAD_ARGUMENTS_GET;
 
-  /* Исполнение хранимой процедуры */
+  /* РСЃРїРѕР»РЅРµРЅРёРµ С…СЂР°РЅРёРјРѕР№ РїСЂРѕС†РµРґСѓСЂС‹ */
   procedure EXEC_STORED
   (
-    XRQ_ROOT                in PKG_XPATH.TNODE,         -- Корневой элемент тела документа запроса
-    COUT                    out clob                    -- Ответ на запрос
+    XRQ_ROOT                in PKG_XPATH.TNODE,         -- РљРѕСЂРЅРµРІРѕР№ СЌР»РµРјРµРЅС‚ С‚РµР»Р° РґРѕРєСѓРјРµРЅС‚Р° Р·Р°РїСЂРѕСЃР°
+    COUT                    out clob                    -- РћС‚РІРµС‚ РЅР° Р·Р°РїСЂРѕСЃ
   )
   is
-    SRQ_STORED              PKG_STD.TSTRING;            -- Наименование исполняемого хранимого объекта из запроса
-    SRQ_RESP_ARG            PKG_STD.TSTRING;            -- Наименование выходного аргумента хранимого объекта из запроса для формирования тела ответа
-    RQ_ARGUMENTS            TARGUMENTS;                 -- Коллекция аргументов хранимого объекта из запроса
-    ARGS                    PKG_OBJECT_DESC.TARGUMENTS; -- Коллекция формальных параметров хранимого объекта
-    RARG                    PKG_OBJECT_DESC.TARGUMENT;  -- Формальный параметр хранимого объекта
-    ARGS_VALS               PKG_CONTPRMLOC.TCONTAINER;  -- Контейнер для фактических параметров хранимого объекта
-    RARG_VAL                PKG_CONTAINER.TPARAM;       -- Фактический параметр хранимого объекта
-    SARG_NAME               PKG_STD.TSTRING;            -- Наименование текущего обрабатываемого фактического параметра хранимого объекта
-    XRESP                   integer;                    -- Документ для ответа
-    XRESP_OUT_ARGUMENTS     PKG_XMAKE.TNODE;            -- Элемент для коллекции выходных параметров хранимого объекта
-    RRESP_ARGUMENT_VALUE    PKG_XMAKE.TVALUE;           -- Значение выходного параметра хранимого объекта
-    BRESP_ARG_FOUND         boolean := false;           -- Флаг присутствия в составе выходных аргументов аргумента с типом CLOB и именем, указанным в параметре запроса SRESP_ARG
+    SRQ_STORED              PKG_STD.TSTRING;            -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РёСЃРїРѕР»РЅСЏРµРјРѕРіРѕ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РёР· Р·Р°РїСЂРѕСЃР°
+    SRQ_RESP_ARG            PKG_STD.TSTRING;            -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РІС‹С…РѕРґРЅРѕРіРѕ Р°СЂРіСѓРјРµРЅС‚Р° С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РёР· Р·Р°РїСЂРѕСЃР° РґР»СЏ С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ С‚РµР»Р° РѕС‚РІРµС‚Р°
+    RQ_ARGUMENTS            TARGUMENTS;                 -- РљРѕР»Р»РµРєС†РёСЏ Р°СЂРіСѓРјРµРЅС‚РѕРІ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РёР· Р·Р°РїСЂРѕСЃР°
+    ARGS                    PKG_OBJECT_DESC.TARGUMENTS; -- РљРѕР»Р»РµРєС†РёСЏ С„РѕСЂРјР°Р»СЊРЅС‹С… РїР°СЂР°РјРµС‚СЂРѕРІ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р°
+    RARG                    PKG_OBJECT_DESC.TARGUMENT;  -- Р¤РѕСЂРјР°Р»СЊРЅС‹Р№ РїР°СЂР°РјРµС‚СЂ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р°
+    ARGS_VALS               PKG_CONTPRMLOC.TCONTAINER;  -- РљРѕРЅС‚РµР№РЅРµСЂ РґР»СЏ С„Р°РєС‚РёС‡РµСЃРєРёС… РїР°СЂР°РјРµС‚СЂРѕРІ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р°
+    RARG_VAL                PKG_CONTAINER.TPARAM;       -- Р¤Р°РєС‚РёС‡РµСЃРєРёР№ РїР°СЂР°РјРµС‚СЂ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р°
+    SARG_NAME               PKG_STD.TSTRING;            -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ С‚РµРєСѓС‰РµРіРѕ РѕР±СЂР°Р±Р°С‚С‹РІР°РµРјРѕРіРѕ С„Р°РєС‚РёС‡РµСЃРєРѕРіРѕ РїР°СЂР°РјРµС‚СЂР° С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р°
+    XRESP                   integer;                    -- Р”РѕРєСѓРјРµРЅС‚ РґР»СЏ РѕС‚РІРµС‚Р°
+    XRESP_OUT_ARGUMENTS     PKG_XMAKE.TNODE;            -- Р­Р»РµРјРµРЅС‚ РґР»СЏ РєРѕР»Р»РµРєС†РёРё РІС‹С…РѕРґРЅС‹С… РїР°СЂР°РјРµС‚СЂРѕРІ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р°
+    RRESP_ARGUMENT_VALUE    PKG_XMAKE.TVALUE;           -- Р—РЅР°С‡РµРЅРёРµ РІС‹С…РѕРґРЅРѕРіРѕ РїР°СЂР°РјРµС‚СЂР° С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р°
+    BRESP_ARG_FOUND         boolean := false;           -- Р¤Р»Р°Рі РїСЂРёСЃСѓС‚СЃС‚РІРёСЏ РІ СЃРѕСЃС‚Р°РІРµ РІС‹С…РѕРґРЅС‹С… Р°СЂРіСѓРјРµРЅС‚РѕРІ Р°СЂРіСѓРјРµРЅС‚Р° СЃ С‚РёРїРѕРј CLOB Рё РёРјРµРЅРµРј, СѓРєР°Р·Р°РЅРЅС‹Рј РІ РїР°СЂР°РјРµС‚СЂРµ Р·Р°РїСЂРѕСЃР° SRESP_ARG
   begin
-    /* Создаём документ для ответа */
+    /* РЎРѕР·РґР°С‘Рј РґРѕРєСѓРјРµРЅС‚ РґР»СЏ РѕС‚РІРµС‚Р° */
     XRESP := PKG_XMAKE.OPEN_CURSOR();
-    /* Проверим хранимый объект в запросе */
+    /* РџСЂРѕРІРµСЂРёРј С…СЂР°РЅРёРјС‹Р№ РѕР±СЉРµРєС‚ РІ Р·Р°РїСЂРѕСЃРµ */
     RQ_PAYLOAD_STORED_CHECK(XRQ_ROOT => XRQ_ROOT);
-    /* Считываем наименование хранимого объекта из запроса */
+    /* РЎС‡РёС‚С‹РІР°РµРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РёР· Р·Р°РїСЂРѕСЃР° */
     SRQ_STORED := RQ_PAYLOAD_STORED_GET(XRQ_ROOT => XRQ_ROOT, NREQUIRED => 1);
-    /* Считываем наименование выходного аргумента хранимого объекта из запроса для формирования тела ответа */
+    /* РЎС‡РёС‚С‹РІР°РµРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ РІС‹С…РѕРґРЅРѕРіРѕ Р°СЂРіСѓРјРµРЅС‚Р° С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° РёР· Р·Р°РїСЂРѕСЃР° РґР»СЏ С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ С‚РµР»Р° РѕС‚РІРµС‚Р° */
     SRQ_RESP_ARG := NODE_SVAL_GET(XROOT           => XRQ_ROOT,
                                   SPATH           => RQ_PAYLOAD_ITEM_PATH_GET(SITEM_TAG => SRQ_TAG_SRESP_ARG),
                                   NREQUIRED       => 0,
-                                  SMESSAGE_OBJECT => 'Наименование выходного аргумента для формирования тела ответа');
-    /* Считаем список аргументов из запроса */
+                                  SMESSAGE_OBJECT => 'РќР°РёРјРµРЅРѕРІР°РЅРёРµ РІС‹С…РѕРґРЅРѕРіРѕ Р°СЂРіСѓРјРµРЅС‚Р° РґР»СЏ С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ С‚РµР»Р° РѕС‚РІРµС‚Р°');
+    /* РЎС‡РёС‚Р°РµРј СЃРїРёСЃРѕРє Р°СЂРіСѓРјРµРЅС‚РѕРІ РёР· Р·Р°РїСЂРѕСЃР° */
     RQ_ARGUMENTS := RQ_PAYLOAD_ARGUMENTS_GET(XRQ_ROOT => XRQ_ROOT);
-    /* Считываем описание параметров хранимого объекта */
+    /* РЎС‡РёС‚С‹РІР°РµРј РѕРїРёСЃР°РЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ С…СЂР°РЅРёРјРѕРіРѕ РѕР±СЉРµРєС‚Р° */
     ARGS := PKG_OBJECT_DESC.DESC_ARGUMENTS(SSTORED_NAME => SRQ_STORED, BRAISE_ERROR => true);
-    /* Обходим входные параметры и формируем коллекцию значений */
+    /* РћР±С…РѕРґРёРј РІС…РѕРґРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹ Рё С„РѕСЂРјРёСЂСѓРµРј РєРѕР»Р»РµРєС†РёСЋ Р·РЅР°С‡РµРЅРёР№ */
     for I in 1 .. PKG_OBJECT_DESC.COUNT_ARGUMENTS(RARGUMENTS => ARGS)
     loop
-      /* Считываем очередной параметр */
+      /* РЎС‡РёС‚С‹РІР°РµРј РѕС‡РµСЂРµРґРЅРѕР№ РїР°СЂР°РјРµС‚СЂ */
       RARG := PKG_OBJECT_DESC.FETCH_ARGUMENT(RARGUMENTS => ARGS, IINDEX => I);
-      /* Если это входной параметр */
+      /* Р•СЃР»Рё СЌС‚Рѕ РІС…РѕРґРЅРѕР№ РїР°СЂР°РјРµС‚СЂ */
       if (RARG.IN_OUT in (PKG_STD.PARAM_TYPE_IN, PKG_STD.PARAM_TYPE_IN_OUT)) then
-        /* Добавим его значение в коллекцию фактических параметров */
+        /* Р”РѕР±Р°РІРёРј РµРіРѕ Р·РЅР°С‡РµРЅРёРµ РІ РєРѕР»Р»РµРєС†РёСЋ С„Р°РєС‚РёС‡РµСЃРєРёС… РїР°СЂР°РјРµС‚СЂРѕРІ */
         case RARG.DATA_TYPE
-          /* Строка */
+          /* РЎС‚СЂРѕРєР° */
           when PKG_STD.DATA_TYPE_STR then
             PKG_CONTPRMLOC.APPENDS(RCONTAINER => ARGS_VALS,
                                    SNAME      => RARG.ARGUMENT_NAME,
                                    SVALUE     => TARGUMENTS_SVAL_GET(ARGUMENTS => RQ_ARGUMENTS,
                                                                      SARGUMENT => RARG.ARGUMENT_NAME),
                                    NIN_OUT    => RARG.IN_OUT);
-          /* Число */
+          /* Р§РёСЃР»Рѕ */
           when PKG_STD.DATA_TYPE_NUM then
             PKG_CONTPRMLOC.APPENDN(RCONTAINER => ARGS_VALS,
                                    SNAME      => RARG.ARGUMENT_NAME,
                                    NVALUE     => TARGUMENTS_NVAL_GET(ARGUMENTS => RQ_ARGUMENTS,
                                                                      SARGUMENT => RARG.ARGUMENT_NAME),
                                    NIN_OUT    => RARG.IN_OUT);
-          /* Дата */
+          /* Р”Р°С‚Р° */
           when PKG_STD.DATA_TYPE_DATE then
             PKG_CONTPRMLOC.APPENDD(RCONTAINER => ARGS_VALS,
                                    SNAME      => RARG.ARGUMENT_NAME,
                                    DVALUE     => TARGUMENTS_DVAL_GET(ARGUMENTS => RQ_ARGUMENTS,
                                                                      SARGUMENT => RARG.ARGUMENT_NAME),
                                    NIN_OUT    => RARG.IN_OUT);
-          /* Текст */
+          /* РўРµРєСЃС‚ */
           when PKG_STD.DATA_TYPE_CLOB then
             PKG_CONTPRMLOC.APPENDLC(RCONTAINER => ARGS_VALS,
                                     SNAME      => RARG.ARGUMENT_NAME,
                                     LCVALUE    => TARGUMENTS_CVAL_GET(ARGUMENTS => RQ_ARGUMENTS,
                                                                       SARGUMENT => RARG.ARGUMENT_NAME),
                                     NIN_OUT    => RARG.IN_OUT);
-          /* Неизвестный тип данных */
+          /* РќРµРёР·РІРµСЃС‚РЅС‹Р№ С‚РёРї РґР°РЅРЅС‹С… */
           else
             P_EXCEPTION(0,
-                        'Тип данных (%s) входного параметра "%s" не поддерживается.',
+                        'РўРёРї РґР°РЅРЅС‹С… (%s) РІС…РѕРґРЅРѕРіРѕ РїР°СЂР°РјРµС‚СЂР° "%s" РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚СЃСЏ.',
                         RARG.DB_DATA_TYPE,
                         RARG.ARGUMENT_NAME);
         end case;
       end if;
     end loop;
-    /* Исполняем процедуру */
+    /* РСЃРїРѕР»РЅСЏРµРј РїСЂРѕС†РµРґСѓСЂСѓ */
     PKG_SQL_CALL.EXECUTE_STORED(SSTORED_NAME => SRQ_STORED, RPARAM_CONTAINER => ARGS_VALS);
-    /* Обходим выходные параметры и собираем их в ответ */
+    /* РћР±С…РѕРґРёРј РІС‹С…РѕРґРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹ Рё СЃРѕР±РёСЂР°РµРј РёС… РІ РѕС‚РІРµС‚ */
     SARG_NAME := PKG_CONTPRMLOC.FIRST_(RCONTAINER => ARGS_VALS);
     while (SARG_NAME is not null)
     loop
-      /* Считываем очередной параметр */
+      /* РЎС‡РёС‚С‹РІР°РµРј РѕС‡РµСЂРµРґРЅРѕР№ РїР°СЂР°РјРµС‚СЂ */
       RARG_VAL := PKG_CONTPRMLOC.GET(RCONTAINER => ARGS_VALS, SNAME => SARG_NAME);
-      /* Если это выходной параметр */
+      /* Р•СЃР»Рё СЌС‚Рѕ РІС‹С…РѕРґРЅРѕР№ РїР°СЂР°РјРµС‚СЂ */
       if (RARG_VAL.IN_OUT in (PKG_STD.PARAM_TYPE_IN_OUT, PKG_STD.PARAM_TYPE_OUT)) then
-        /* Сформируем для него значение в зависимости от его типа */
+        /* РЎС„РѕСЂРјРёСЂСѓРµРј РґР»СЏ РЅРµРіРѕ Р·РЅР°С‡РµРЅРёРµ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РµРіРѕ С‚РёРїР° */
         case RARG_VAL.DATA_TYPE
-          /* Строка */
+          /* РЎС‚СЂРѕРєР° */
           when PKG_STD.DATA_TYPE_STR then
             RRESP_ARGUMENT_VALUE := PKG_XMAKE.VALUE(ICURSOR => XRESP,
                                                     SVALUE  => PKG_CONTPRMLOC.GETS(RCONTAINER => ARGS_VALS,
                                                                                    SNAME      => RARG_VAL.NAME));
-          /* Число */
+          /* Р§РёСЃР»Рѕ */
           when PKG_STD.DATA_TYPE_NUM then
             RRESP_ARGUMENT_VALUE := PKG_XMAKE.VALUE(ICURSOR => XRESP,
                                                     NVALUE  => PKG_CONTPRMLOC.GETN(RCONTAINER => ARGS_VALS,
                                                                                    SNAME      => RARG_VAL.NAME));
-          /* Дата */
+          /* Р”Р°С‚Р° */
           when PKG_STD.DATA_TYPE_DATE then
             RRESP_ARGUMENT_VALUE := PKG_XMAKE.VALUE(ICURSOR => XRESP,
                                                     DVALUE  => PKG_CONTPRMLOC.GETD(RCONTAINER => ARGS_VALS,
                                                                                    SNAME      => RARG_VAL.NAME));
-          /* Текст */
+          /* РўРµРєСЃС‚ */
           when PKG_STD.DATA_TYPE_CLOB then
             RRESP_ARGUMENT_VALUE := PKG_XMAKE.VALUE(ICURSOR => XRESP,
                                                     LCVALUE => PKG_CONTPRMLOC.GETLC(RCONTAINER => ARGS_VALS,
@@ -729,14 +729,14 @@ create or replace package body PKG_P8PANELS_BASE as
               BRESP_ARG_FOUND := true;
               exit;
             end if;
-          /* Неизвестный тип данных */
+          /* РќРµРёР·РІРµСЃС‚РЅС‹Р№ С‚РёРї РґР°РЅРЅС‹С… */
           else
             P_EXCEPTION(0,
-                        'Тип данных (%s) выходного параметра "%s" не поддерживается.',
+                        'РўРёРї РґР°РЅРЅС‹С… (%s) РІС‹С…РѕРґРЅРѕРіРѕ РїР°СЂР°РјРµС‚СЂР° "%s" РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚СЃСЏ.',
                         RARG.DB_DATA_TYPE,
                         RARG.ARGUMENT_NAME);
         end case;
-        /* Добавим ветку выходного параметра в выходную коллекцию */
+        /* Р”РѕР±Р°РІРёРј РІРµС‚РєСѓ РІС‹С…РѕРґРЅРѕРіРѕ РїР°СЂР°РјРµС‚СЂР° РІ РІС‹С…РѕРґРЅСѓСЋ РєРѕР»Р»РµРєС†РёСЋ */
         XRESP_OUT_ARGUMENTS := PKG_XMAKE.CONCAT(ICURSOR => XRESP,
                                                 RNODE00 => XRESP_OUT_ARGUMENTS,
                                                 RNODE01 => PKG_XMAKE.ELEMENT(ICURSOR => XRESP,
@@ -753,17 +753,17 @@ create or replace package body PKG_P8PANELS_BASE as
                                                                                                           RVALUE00 => PKG_XMAKE.VALUE(ICURSOR => XRESP,
                                                                                                                                       SVALUE  => STD_DATA_TYPE_TO_STR(NSTD_DATA_TYPE => RARG_VAL.DATA_TYPE)))));
       end if;
-      /* Считываем наименование следующего параметра */
+      /* РЎС‡РёС‚С‹РІР°РµРј РЅР°РёРјРµРЅРѕРІР°РЅРёРµ СЃР»РµРґСѓСЋС‰РµРіРѕ РїР°СЂР°РјРµС‚СЂР° */
       SARG_NAME := PKG_CONTPRMLOC.NEXT_(RCONTAINER => ARGS_VALS, SNAME => SARG_NAME);
     end loop;
-    /* Проверим, что был найден опциональный аргумент для формирования полного ответа */
+    /* РџСЂРѕРІРµСЂРёРј, С‡С‚Рѕ Р±С‹Р» РЅР°Р№РґРµРЅ РѕРїС†РёРѕРЅР°Р»СЊРЅС‹Р№ Р°СЂРіСѓРјРµРЅС‚ РґР»СЏ С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РїРѕР»РЅРѕРіРѕ РѕС‚РІРµС‚Р° */
     if ((SRQ_RESP_ARG is not null) and (not BRESP_ARG_FOUND)) then
       P_EXCEPTION(0,
-                  'В составе выходных параметров "%s" отсуствует аргумент "%s" типа "CLOB".',
+                  'Р’ СЃРѕСЃС‚Р°РІРµ РІС‹С…РѕРґРЅС‹С… РїР°СЂР°РјРµС‚СЂРѕРІ "%s" РѕС‚СЃСѓСЃС‚РІСѓРµС‚ Р°СЂРіСѓРјРµРЅС‚ "%s" С‚РёРїР° "CLOB".',
                   SRQ_STORED,
                   SRQ_RESP_ARG);
     end if;
-    /* Собираем ответ (только если не формировали полный ответ через аргумент для формирования полного ответа) */
+    /* РЎРѕР±РёСЂР°РµРј РѕС‚РІРµС‚ (С‚РѕР»СЊРєРѕ РµСЃР»Рё РЅРµ С„РѕСЂРјРёСЂРѕРІР°Р»Рё РїРѕР»РЅС‹Р№ РѕС‚РІРµС‚ С‡РµСЂРµР· Р°СЂРіСѓРјРµРЅС‚ РґР»СЏ С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РїРѕР»РЅРѕРіРѕ РѕС‚РІРµС‚Р°) */
     if (not BRESP_ARG_FOUND) then
       COUT := PKG_XMAKE.SERIALIZE_TO_CLOB(ICURSOR => XRESP,
                                           ITYPE   => PKG_XMAKE.CONTENT_,
@@ -771,42 +771,42 @@ create or replace package body PKG_P8PANELS_BASE as
                                                                        SNAME   => SRESP_TAG_XPAYLOAD,
                                                                        RNODE00 => XRESP_OUT_ARGUMENTS));
     end if;
-    /* Очистим контейнер параметров */
+    /* РћС‡РёСЃС‚РёРј РєРѕРЅС‚РµР№РЅРµСЂ РїР°СЂР°РјРµС‚СЂРѕРІ */
     PKG_CONTPRMLOC.PURGE(RCONTAINER => ARGS_VALS);
-    /* Освобождаем документ результата */
+    /* РћСЃРІРѕР±РѕР¶РґР°РµРј РґРѕРєСѓРјРµРЅС‚ СЂРµР·СѓР»СЊС‚Р°С‚Р° */
     PKG_XMAKE.CLOSE_CURSOR(ICURSOR => XRESP);
   exception
     when others then
-      /* Закроем курсор и вернем ошибку */
+      /* Р—Р°РєСЂРѕРµРј РєСѓСЂСЃРѕСЂ Рё РІРµСЂРЅРµРј РѕС€РёР±РєСѓ */
       PKG_XMAKE.CLOSE_CURSOR(ICURSOR => XRESP);
-      /* Покажем ошибку */
+      /* РџРѕРєР°Р¶РµРј РѕС€РёР±РєСѓ */
       PKG_STATE.DIAGNOSTICS_STACKED();
       P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
   end EXEC_STORED;
   
-  /* Базовое исполнение действий */
+  /* Р‘Р°Р·РѕРІРѕРµ РёСЃРїРѕР»РЅРµРЅРёРµ РґРµР№СЃС‚РІРёР№ */
   procedure PROCESS
   (
-    CIN                     in clob,         -- Входные параметры
-    COUT                    out clob         -- Результат
+    CIN                     in clob,         -- Р’С…РѕРґРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹
+    COUT                    out clob         -- Р РµР·СѓР»СЊС‚Р°С‚
   )
   is
-    XRQ_ROOT                PKG_XPATH.TNODE; -- Корневой элемент тела документа запроса
-    SRQ_ACTION              PKG_STD.TSTRING; -- Код действия из запроса
+    XRQ_ROOT                PKG_XPATH.TNODE; -- РљРѕСЂРЅРµРІРѕР№ СЌР»РµРјРµРЅС‚ С‚РµР»Р° РґРѕРєСѓРјРµРЅС‚Р° Р·Р°РїСЂРѕСЃР°
+    SRQ_ACTION              PKG_STD.TSTRING; -- РљРѕРґ РґРµР№СЃС‚РІРёСЏ РёР· Р·Р°РїСЂРѕСЃР°
   begin
     PKG_TRACE.REGISTER(SDATA => 'P8PANELS', SDATA1 => CIN);
-    /* Разбираем запрос */
+    /* Р Р°Р·Р±РёСЂР°РµРј Р·Р°РїСЂРѕСЃ */
     XRQ_ROOT := RQ_ROOT_GET(CRQ => CIN);
-    /* Считываем код действия из запроса */
+    /* РЎС‡РёС‚С‹РІР°РµРј РєРѕРґ РґРµР№СЃС‚РІРёСЏ РёР· Р·Р°РїСЂРѕСЃР° */
     SRQ_ACTION := RQ_ACTION_GET(XRQ_ROOT => XRQ_ROOT, NREQUIRED => 1);
-    /* Вызываем обработчик в зависимости от кода действия */
+    /* Р’С‹Р·С‹РІР°РµРј РѕР±СЂР°Р±РѕС‚С‡РёРє РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РєРѕРґР° РґРµР№СЃС‚РІРёСЏ */
     case SRQ_ACTION
-    /* Исполнение хранимой процедуры */
+    /* РСЃРїРѕР»РЅРµРЅРёРµ С…СЂР°РЅРёРјРѕР№ РїСЂРѕС†РµРґСѓСЂС‹ */
       when SRQ_ACTION_EXEC_STORED then
         EXEC_STORED(XRQ_ROOT => XRQ_ROOT, COUT => COUT);
-        /* Неизвестное действие */
+        /* РќРµРёР·РІРµСЃС‚РЅРѕРµ РґРµР№СЃС‚РІРёРµ */
       else
-        P_EXCEPTION(0, 'Действие "%s" не поддерживается.', SRQ_ACTION);
+        P_EXCEPTION(0, 'Р”РµР№СЃС‚РІРёРµ "%s" РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚СЃСЏ.', SRQ_ACTION);
     end case;
   end PROCESS;
 

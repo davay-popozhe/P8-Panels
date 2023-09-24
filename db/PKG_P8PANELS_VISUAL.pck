@@ -1,302 +1,302 @@
 create or replace package PKG_P8PANELS_VISUAL as
 
-  /* Константы - типы данных */
-  SDATA_TYPE_STR            constant PKG_STD.TSTRING := 'STR';  -- Тип данных "строка"
-  SDATA_TYPE_NUMB           constant PKG_STD.TSTRING := 'NUMB'; -- Тип данных "число"
-  SDATA_TYPE_DATE           constant PKG_STD.TSTRING := 'DATE'; -- Тип данных "дата"
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - С‚РёРїС‹ РґР°РЅРЅС‹С… */
+  SDATA_TYPE_STR            constant PKG_STD.TSTRING := 'STR';  -- РўРёРї РґР°РЅРЅС‹С… "СЃС‚СЂРѕРєР°"
+  SDATA_TYPE_NUMB           constant PKG_STD.TSTRING := 'NUMB'; -- РўРёРї РґР°РЅРЅС‹С… "С‡РёСЃР»Рѕ"
+  SDATA_TYPE_DATE           constant PKG_STD.TSTRING := 'DATE'; -- РўРёРї РґР°РЅРЅС‹С… "РґР°С‚Р°"
   
-  /* Константы - направление сортировки */
-  SORDER_DIRECTION_ASC      constant PKG_STD.TSTRING := 'ASC';  -- По возрастанию
-  SORDER_DIRECTION_DESC     constant PKG_STD.TSTRING := 'DESC'; -- По убыванию
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - РЅР°РїСЂР°РІР»РµРЅРёРµ СЃРѕСЂС‚РёСЂРѕРІРєРё */
+  SORDER_DIRECTION_ASC      constant PKG_STD.TSTRING := 'ASC';  -- РџРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ
+  SORDER_DIRECTION_DESC     constant PKG_STD.TSTRING := 'DESC'; -- РџРѕ СѓР±С‹РІР°РЅРёСЋ
 
-  /* Типы данных - значение колонки таблицы данных */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - Р·РЅР°С‡РµРЅРёРµ РєРѕР»РѕРЅРєРё С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… */
   type TCOL_VAL is record
   (
-    SVALUE                  PKG_STD.TLSTRING, -- Значение (строка)
-    NVALUE                  PKG_STD.TNUMBER,  -- Значение (число)
-    DVALUE                  PKG_STD.TLDATE    -- Значение (дата)
+    SVALUE                  PKG_STD.TLSTRING, -- Р—РЅР°С‡РµРЅРёРµ (СЃС‚СЂРѕРєР°)
+    NVALUE                  PKG_STD.TNUMBER,  -- Р—РЅР°С‡РµРЅРёРµ (С‡РёСЃР»Рѕ)
+    DVALUE                  PKG_STD.TLDATE    -- Р—РЅР°С‡РµРЅРёРµ (РґР°С‚Р°)
   );
   
-  /* Типы данных - коллекция значений колонки таблицы данных */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - РєРѕР»Р»РµРєС†РёСЏ Р·РЅР°С‡РµРЅРёР№ РєРѕР»РѕРЅРєРё С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… */
   type TCOL_VALS is table of TCOL_VAL;
  
-  /* Типы данных - описатель колонки таблицы данных */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - РѕРїРёСЃР°С‚РµР»СЊ РєРѕР»РѕРЅРєРё С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… */
   type TCOL_DEF is record
   (
-    SNAME                   PKG_STD.TSTRING, -- Наименование
-    SCAPTION                PKG_STD.TSTRING, -- Заголовок
-    SDATA_TYPE              PKG_STD.TSTRING, -- Тип данных (см. константы SDATA_TYPE_*)
-    SCOND_FROM              PKG_STD.TSTRING, -- Наименование нижней границы условия отбора
-    SCOND_TO                PKG_STD.TSTRING, -- Наименование верхней границы условия отбора
-    BVISIBLE                boolean,         -- Разрешить отображение
-    BORDER                  boolean,         -- Разрешить сортировку
-    BFILTER                 boolean,         -- Разрешить отбор
-    RCOL_VALS               TCOL_VALS        -- Предопределённые значения
+    SNAME                   PKG_STD.TSTRING, -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+    SCAPTION                PKG_STD.TSTRING, -- Р—Р°РіРѕР»РѕРІРѕРє
+    SDATA_TYPE              PKG_STD.TSTRING, -- РўРёРї РґР°РЅРЅС‹С… (СЃРј. РєРѕРЅСЃС‚Р°РЅС‚С‹ SDATA_TYPE_*)
+    SCOND_FROM              PKG_STD.TSTRING, -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР°
+    SCOND_TO                PKG_STD.TSTRING, -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР°
+    BVISIBLE                boolean,         -- Р Р°Р·СЂРµС€РёС‚СЊ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ
+    BORDER                  boolean,         -- Р Р°Р·СЂРµС€РёС‚СЊ СЃРѕСЂС‚РёСЂРѕРІРєСѓ
+    BFILTER                 boolean,         -- Р Р°Р·СЂРµС€РёС‚СЊ РѕС‚Р±РѕСЂ
+    RCOL_VALS               TCOL_VALS        -- РџСЂРµРґРѕРїСЂРµРґРµР»С‘РЅРЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ
   );
   
-  /* Типы данных - коллекция описателей колонок таблицы данных */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - РєРѕР»Р»РµРєС†РёСЏ РѕРїРёСЃР°С‚РµР»РµР№ РєРѕР»РѕРЅРѕРє С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… */
   type TCOL_DEFS is table of TCOL_DEF;
   
-  /* Типы данных - колонка */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - РєРѕР»РѕРЅРєР° */
   type TCOL is record
   (
-    SNAME                   PKG_STD.TSTRING, -- Наименование
-    RCOL_VAL                TCOL_VAL         -- Значение
+    SNAME                   PKG_STD.TSTRING, -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+    RCOL_VAL                TCOL_VAL         -- Р—РЅР°С‡РµРЅРёРµ
   );
 
-  /* Типы данных - коллекция колонок */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - РєРѕР»Р»РµРєС†РёСЏ РєРѕР»РѕРЅРѕРє */
   type TCOLS is table of TCOL;
   
-  /* Типы данных - строка */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - СЃС‚СЂРѕРєР° */
   type TROW is record
   (
-    RCOLS                   TCOLS       -- Колонки
+    RCOLS                   TCOLS       -- РљРѕР»РѕРЅРєРё
   );
   
-  /* Типы данных - коллекция строк */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - РєРѕР»Р»РµРєС†РёСЏ СЃС‚СЂРѕРє */
   type TROWS is table of TROW;
   
-  /* Типы данных - таблица данных */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - С‚Р°Р±Р»РёС†Р° РґР°РЅРЅС‹С… */
   type TDATA_GRID is record
   (
-    RCOL_DEFS               TCOL_DEFS,  -- Описание колонок
-    RROWS                   TROWS       -- Данные строк
+    RCOL_DEFS               TCOL_DEFS,  -- РћРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРѕРє
+    RROWS                   TROWS       -- Р”Р°РЅРЅС‹Рµ СЃС‚СЂРѕРє
   );
   
-  /* Типы данных - фильтр */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - С„РёР»СЊС‚СЂ */
   type TFILTER is record
   (
-    SNAME                   PKG_STD.TSTRING, -- Наименование
-    SFROM                   PKG_STD.TSTRING, -- Значение "с"
-    STO                     PKG_STD.TSTRING  -- Значение "по"
+    SNAME                   PKG_STD.TSTRING, -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+    SFROM                   PKG_STD.TSTRING, -- Р—РЅР°С‡РµРЅРёРµ "СЃ"
+    STO                     PKG_STD.TSTRING  -- Р—РЅР°С‡РµРЅРёРµ "РїРѕ"
   );
   
-  /* Типы данных - коллекция фильтров */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - РєРѕР»Р»РµРєС†РёСЏ С„РёР»СЊС‚СЂРѕРІ */
   type TFILTERS is table of TFILTER;
   
-  /* Типы данных - сортировка */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - СЃРѕСЂС‚РёСЂРѕРІРєР° */
   type TORDER is record
   (
-    SNAME                   PKG_STD.TSTRING, -- Наименование
-    SDIRECTION              PKG_STD.TSTRING  -- Направление (см. константы SORDER_DIRECTION_*)
+    SNAME                   PKG_STD.TSTRING, -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+    SDIRECTION              PKG_STD.TSTRING  -- РќР°РїСЂР°РІР»РµРЅРёРµ (СЃРј. РєРѕРЅСЃС‚Р°РЅС‚С‹ SORDER_DIRECTION_*)
   );
   
-  /* Типы данных - коллекция сортировок */
+  /* РўРёРїС‹ РґР°РЅРЅС‹С… - РєРѕР»Р»РµРєС†РёСЏ СЃРѕСЂС‚РёСЂРѕРІРѕРє */
   type TORDERS is table of TORDER;
   
-  /* Расчет диапаона выдаваемых записей */
+  /* Р Р°СЃС‡РµС‚ РґРёР°РїР°РѕРЅР° РІС‹РґР°РІР°РµРјС‹С… Р·Р°РїРёСЃРµР№ */
   procedure UTL_ROWS_LIMITS_CALC
   (
-    NPAGE_NUMBER            in number,  -- Номер страницы (игнорируется при NPAGE_SIZE=0)
-    NPAGE_SIZE              in number,  -- Количество записей на странице (0 - все)
-    NROW_FROM               out number, -- Нижняя граница диапазона
-    NROW_TO                 out number  -- Верхняя граница диапазона
+    NPAGE_NUMBER            in number,  -- РќРѕРјРµСЂ СЃС‚СЂР°РЅРёС†С‹ (РёРіРЅРѕСЂРёСЂСѓРµС‚СЃСЏ РїСЂРё NPAGE_SIZE=0)
+    NPAGE_SIZE              in number,  -- РљРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РїРёСЃРµР№ РЅР° СЃС‚СЂР°РЅРёС†Рµ (0 - РІСЃРµ)
+    NROW_FROM               out number, -- РќРёР¶РЅСЏСЏ РіСЂР°РЅРёС†Р° РґРёР°РїР°Р·РѕРЅР°
+    NROW_TO                 out number  -- Р’РµСЂС…РЅСЏСЏ РіСЂР°РЅРёС†Р° РґРёР°РїР°Р·РѕРЅР°
   );
   
-  /* Формирование наименования условия отбора для нижней границы */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° РґР»СЏ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ */
   function UTL_COND_NAME_MAKE_FROM
   (
-    SNAME                   in varchar2 -- Наименование колонки
-  ) return                  varchar2;   -- Результат
+    SNAME                   in varchar2 -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+  ) return                  varchar2;   -- Р РµР·СѓР»СЊС‚Р°С‚
   
-  /* Формирование наименования условия отбора для верхней границы */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° РґР»СЏ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ */
   function UTL_COND_NAME_MAKE_TO
   (
-    SNAME                   in varchar2 -- Наименование колонки
-  ) return                  varchar2;   -- Результат
+    SNAME                   in varchar2 -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+  ) return                  varchar2;   -- Р РµР·СѓР»СЊС‚Р°С‚
   
-  /* Добавление значения в коллекцию */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ Р·РЅР°С‡РµРЅРёСЏ РІ РєРѕР»Р»РµРєС†РёСЋ */
   procedure TCOL_VALS_ADD
   (
-    RCOL_VALS               in out nocopy TCOL_VALS, -- Коллекция значений
-    SVALUE                  in varchar2 := null,     -- Значение (строка)
-    NVALUE                  in number := null,       -- Значение (число)
-    DVALUE                  in date := null,         -- Значение (дата)
-    BCLEAR                  in boolean := false      -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RCOL_VALS               in out nocopy TCOL_VALS, -- РљРѕР»Р»РµРєС†РёСЏ Р·РЅР°С‡РµРЅРёР№
+    SVALUE                  in varchar2 := null,     -- Р—РЅР°С‡РµРЅРёРµ (СЃС‚СЂРѕРєР°)
+    NVALUE                  in number := null,       -- Р—РЅР°С‡РµРЅРёРµ (С‡РёСЃР»Рѕ)
+    DVALUE                  in date := null,         -- Р—РЅР°С‡РµРЅРёРµ (РґР°С‚Р°)
+    BCLEAR                  in boolean := false      -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   );
   
-  /* Формирование строки */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СЃС‚СЂРѕРєРё */
   function TROW_MAKE
-  return                    TROW;       -- Результат работы
+  return                    TROW;       -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   
-  /* Добавление колонки к строке */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ РєРѕР»РѕРЅРєРё Рє СЃС‚СЂРѕРєРµ */
   procedure TROW_ADD_COL
   (
-    RROW                    in out nocopy TROW,  -- Строка
-    SNAME                   in varchar2,         -- Наименование колонки
-    SVALUE                  in varchar2 := null, -- Значение (строка)
-    NVALUE                  in number := null,   -- Значение (число)
-    DVALUE                  in date := null,     -- Значение (дата)
-    BCLEAR                  in boolean := false  -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RROW                    in out nocopy TROW,  -- РЎС‚СЂРѕРєР°
+    SNAME                   in varchar2,         -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    SVALUE                  in varchar2 := null, -- Р—РЅР°С‡РµРЅРёРµ (СЃС‚СЂРѕРєР°)
+    NVALUE                  in number := null,   -- Р—РЅР°С‡РµРЅРёРµ (С‡РёСЃР»Рѕ)
+    DVALUE                  in date := null,     -- Р—РЅР°С‡РµРЅРёРµ (РґР°С‚Р°)
+    BCLEAR                  in boolean := false  -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   );
   
-  /* Добавление строковой колонки к строке из курсора динамического запроса */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ СЃС‚СЂРѕРєРѕРІРѕР№ РєРѕР»РѕРЅРєРё Рє СЃС‚СЂРѕРєРµ РёР· РєСѓСЂСЃРѕСЂР° РґРёРЅР°РјРёС‡РµСЃРєРѕРіРѕ Р·Р°РїСЂРѕСЃР° */
   procedure TROW_ADD_CUR_COLS
   (
-    RROW                    in out nocopy TROW, -- Строка
-    SNAME                   in varchar2,        -- Наименование колонки
-    ICURSOR                 in integer,         -- Курсор
-    NPOSITION               in number,          -- Номер колонки в курсоре
-    BCLEAR                  in boolean := false -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RROW                    in out nocopy TROW, -- РЎС‚СЂРѕРєР°
+    SNAME                   in varchar2,        -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    ICURSOR                 in integer,         -- РљСѓСЂСЃРѕСЂ
+    NPOSITION               in number,          -- РќРѕРјРµСЂ РєРѕР»РѕРЅРєРё РІ РєСѓСЂСЃРѕСЂРµ
+    BCLEAR                  in boolean := false -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   );
   
-  /* Добавление числовой колонки к строке из курсора динамического запроса */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ С‡РёСЃР»РѕРІРѕР№ РєРѕР»РѕРЅРєРё Рє СЃС‚СЂРѕРєРµ РёР· РєСѓСЂСЃРѕСЂР° РґРёРЅР°РјРёС‡РµСЃРєРѕРіРѕ Р·Р°РїСЂРѕСЃР° */
   procedure TROW_ADD_CUR_COLN
   (
-    RROW                    in out nocopy TROW, -- Строка
-    SNAME                   in varchar2,        -- Наименование колонки
-    ICURSOR                 in integer,         -- Курсор
-    NPOSITION               in number,          -- Номер колонки в курсоре
-    BCLEAR                  in boolean := false -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RROW                    in out nocopy TROW, -- РЎС‚СЂРѕРєР°
+    SNAME                   in varchar2,        -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    ICURSOR                 in integer,         -- РљСѓСЂСЃРѕСЂ
+    NPOSITION               in number,          -- РќРѕРјРµСЂ РєРѕР»РѕРЅРєРё РІ РєСѓСЂСЃРѕСЂРµ
+    BCLEAR                  in boolean := false -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   );
 
-  /* Добавление колонки типа "дата" к строке из курсора динамического запроса */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ РєРѕР»РѕРЅРєРё С‚РёРїР° "РґР°С‚Р°" Рє СЃС‚СЂРѕРєРµ РёР· РєСѓСЂСЃРѕСЂР° РґРёРЅР°РјРёС‡РµСЃРєРѕРіРѕ Р·Р°РїСЂРѕСЃР° */
   procedure TROW_ADD_CUR_COLD
   (
-    RROW                    in out nocopy TROW, -- Строка
-    SNAME                   in varchar2,        -- Наименование колонки
-    ICURSOR                 in integer,         -- Курсор
-    NPOSITION               in number,          -- Номер колонки в курсоре
-    BCLEAR                  in boolean := false -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RROW                    in out nocopy TROW, -- РЎС‚СЂРѕРєР°
+    SNAME                   in varchar2,        -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    ICURSOR                 in integer,         -- РљСѓСЂСЃРѕСЂ
+    NPOSITION               in number,          -- РќРѕРјРµСЂ РєРѕР»РѕРЅРєРё РІ РєСѓСЂСЃРѕСЂРµ
+    BCLEAR                  in boolean := false -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   );
   
-  /* Формирование таблицы данныз */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹Р· */
   function TDATA_GRID_MAKE
-  return                    TDATA_GRID; -- Результат работы
+  return                    TDATA_GRID; -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   
-  /* Поиск описания колонки в таблице данных по наименованию */
+  /* РџРѕРёСЃРє РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРєРё РІ С‚Р°Р±Р»РёС†Рµ РґР°РЅРЅС‹С… РїРѕ РЅР°РёРјРµРЅРѕРІР°РЅРёСЋ */
   function TDATA_GRID_FIND_COL_DEF
   (
-    RDATA_GRID              in TDATA_GRID, -- Описание таблицы данных
-    SNAME                   in varchar2    -- Наименование колонки
-  ) return                  TCOL_DEF;      -- Найденное описание (null - если не нашли)
+    RDATA_GRID              in TDATA_GRID, -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    SNAME                   in varchar2    -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+  ) return                  TCOL_DEF;      -- РќР°Р№РґРµРЅРЅРѕРµ РѕРїРёСЃР°РЅРёРµ (null - РµСЃР»Рё РЅРµ РЅР°С€Р»Рё)
   
-  /* Добавление описания колонки к таблице данных */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРєРё Рє С‚Р°Р±Р»РёС†Рµ РґР°РЅРЅС‹С… */
   procedure TDATA_GRID_ADD_COL_DEF
   (
-    RDATA_GRID              in out nocopy TDATA_GRID,      -- Описание таблицы данных
-    SNAME                   in varchar2,                   -- Наименование колонки
-    SCAPTION                in varchar2,                   -- Заголовок колонки
-    SDATA_TYPE              in varchar2 := SDATA_TYPE_STR, -- Тип данных колонки (см. константы SDATA_TYPE_*)
-    SCOND_FROM              in varchar2 := null,           -- Наименование нижней границы условия отбора (null - используется UTL_COND_NAME_MAKE_FROM)
-    SCOND_TO                in varchar2 := null,           -- Наименование верхней границы условия отбора (null - используется UTL_COND_NAME_MAKE_TO)
-    BVISIBLE                in boolean := true,            -- Разрешить отображение
-    BORDER                  in boolean := false,           -- Разрешить сортировку по колонке
-    BFILTER                 in boolean := false,           -- Разрешить отбор по колонке
-    RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения колонки
-    BCLEAR                  in boolean := false            -- Флаг очистки коллекции описаний колонок таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
+    RDATA_GRID              in out nocopy TDATA_GRID,      -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    SNAME                   in varchar2,                   -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    SCAPTION                in varchar2,                   -- Р—Р°РіРѕР»РѕРІРѕРє РєРѕР»РѕРЅРєРё
+    SDATA_TYPE              in varchar2 := SDATA_TYPE_STR, -- РўРёРї РґР°РЅРЅС‹С… РєРѕР»РѕРЅРєРё (СЃРј. РєРѕРЅСЃС‚Р°РЅС‚С‹ SDATA_TYPE_*)
+    SCOND_FROM              in varchar2 := null,           -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° (null - РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ UTL_COND_NAME_MAKE_FROM)
+    SCOND_TO                in varchar2 := null,           -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° (null - РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ UTL_COND_NAME_MAKE_TO)
+    BVISIBLE                in boolean := true,            -- Р Р°Р·СЂРµС€РёС‚СЊ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ
+    BORDER                  in boolean := false,           -- Р Р°Р·СЂРµС€РёС‚СЊ СЃРѕСЂС‚РёСЂРѕРІРєСѓ РїРѕ РєРѕР»РѕРЅРєРµ
+    BFILTER                 in boolean := false,           -- Р Р°Р·СЂРµС€РёС‚СЊ РѕС‚Р±РѕСЂ РїРѕ РєРѕР»РѕРЅРєРµ
+    RCOL_VALS               in TCOL_VALS := null,          -- РџСЂРµРґРѕРїСЂРµРґРµР»С‘РЅРЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РєРѕР»РѕРЅРєРё
+    BCLEAR                  in boolean := false            -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё РѕРїРёСЃР°РЅРёР№ РєРѕР»РѕРЅРѕРє С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   );
   
-  /* Добавление описания колонки к таблице данных */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРєРё Рє С‚Р°Р±Р»РёС†Рµ РґР°РЅРЅС‹С… */
   procedure TDATA_GRID_ADD_ROW
   (
-    RDATA_GRID              in out nocopy TDATA_GRID, -- Описание таблицы данных
-    RROW                    in TROW,                  -- Строка
-    BCLEAR                  in boolean := false       -- Флаг очистки коллекции строк таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
+    RDATA_GRID              in out nocopy TDATA_GRID, -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    RROW                    in TROW,                  -- РЎС‚СЂРѕРєР°
+    BCLEAR                  in boolean := false       -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё СЃС‚СЂРѕРє С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   );
 
-  /* Сериализация таблицы данных */
+  /* РЎРµСЂРёР°Р»РёР·Р°С†РёСЏ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… */
   function TDATA_GRID_TO_XML
   (
-    RDATA_GRID              in TDATA_GRID, -- Описание таблицы данных
-    NINCLUDE_DEF            in number := 1 -- Включить описание колонок (0 - нет, 1 - да)
-  ) return                  clob;          -- XML-описание
+    RDATA_GRID              in TDATA_GRID, -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    NINCLUDE_DEF            in number := 1 -- Р’РєР»СЋС‡РёС‚СЊ РѕРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРѕРє (0 - РЅРµС‚, 1 - РґР°)
+  ) return                  clob;          -- XML-РѕРїРёСЃР°РЅРёРµ
 
   
-  /* Конвертация значений фильтра в число */
+  /* РљРѕРЅРІРµСЂС‚Р°С†РёСЏ Р·РЅР°С‡РµРЅРёР№ С„РёР»СЊС‚СЂР° РІ С‡РёСЃР»Рѕ */
   procedure TFILTER_TO_NUMBER
   (
-    RFILTER                 in TFILTER, -- Фильтр
-    NFROM                   out number, -- Значение нижней границы диапазона
-    NTO                     out number  -- Значение верхней границы диапазона
+    RFILTER                 in TFILTER, -- Р¤РёР»СЊС‚СЂ
+    NFROM                   out number, -- Р—РЅР°С‡РµРЅРёРµ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР°
+    NTO                     out number  -- Р—РЅР°С‡РµРЅРёРµ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР°
   );
 
-  /* Конвертация значений фильтра в дату */
+  /* РљРѕРЅРІРµСЂС‚Р°С†РёСЏ Р·РЅР°С‡РµРЅРёР№ С„РёР»СЊС‚СЂР° РІ РґР°С‚Сѓ */
   procedure TFILTER_TO_DATE
   (
-    RFILTER                 in TFILTER, -- Фильтр
-    DFROM                   out date,   -- Значение нижней границы диапазона
-    DTO                     out date    -- Значение верхней границы диапазона
+    RFILTER                 in TFILTER, -- Р¤РёР»СЊС‚СЂ
+    DFROM                   out date,   -- Р—РЅР°С‡РµРЅРёРµ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР°
+    DTO                     out date    -- Р—РЅР°С‡РµРЅРёРµ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР°
   );
   
-  /* Поиск фильтра в коллекции */
+  /* РџРѕРёСЃРє С„РёР»СЊС‚СЂР° РІ РєРѕР»Р»РµРєС†РёРё */
   function TFILTERS_FIND
   (
-    RFILTERS                in TFILTERS, -- Коллекция фильтров
-    SNAME                   in varchar2  -- Наименование
-  ) return                  TFILTER;     -- Найденный фильтр (null - если не нашли)
+    RFILTERS                in TFILTERS, -- РљРѕР»Р»РµРєС†РёСЏ С„РёР»СЊС‚СЂРѕРІ
+    SNAME                   in varchar2  -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+  ) return                  TFILTER;     -- РќР°Р№РґРµРЅРЅС‹Р№ С„РёР»СЊС‚СЂ (null - РµСЃР»Рё РЅРµ РЅР°С€Р»Рё)
   
-  /* Десериализация фильтров */
+  /* Р”РµСЃРµСЂРёР°Р»РёР·Р°С†РёСЏ С„РёР»СЊС‚СЂРѕРІ */
   function TFILTERS_FROM_XML
   (
-    CFILTERS                in clob     -- Сериализованное представление фильтров (BASE64(<filters><name>ИМЯ</name><from>ЗНАЧЕНИЕ</from><to>ЗНАЧЕНИЕ</to></filters>...))
-  ) return                  TFILTERS;   -- Результат работы
+    CFILTERS                in clob     -- РЎРµСЂРёР°Р»РёР·РѕРІР°РЅРЅРѕРµ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёРµ С„РёР»СЊС‚СЂРѕРІ (BASE64(<filters><name>РРњРЇ</name><from>Р—РќРђР§Р•РќРР•</from><to>Р—РќРђР§Р•РќРР•</to></filters>...))
+  ) return                  TFILTERS;   -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
 
-  /* Применение параметров фильтрации в запросе */
+  /* РџСЂРёРјРµРЅРµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ С„РёР»СЊС‚СЂР°С†РёРё РІ Р·Р°РїСЂРѕСЃРµ */
   procedure TFILTERS_SET_QUERY
   (
-    NIDENT                  in number,         -- Идентификатор отбора
-    NCOMPANY                in number,         -- Рег. номер организации
-    NPARENT                 in number := null, -- Рег. номер родителя
-    SUNIT                   in varchar2,       -- Код раздела
-    SPROCEDURE              in varchar2,       -- Наименование серверной процедуры отбора
-    RDATA_GRID              in TDATA_GRID,     -- Описание таблицы данных
-    RFILTERS                in TFILTERS        -- Коллекция фильтров
+    NIDENT                  in number,         -- РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РѕС‚Р±РѕСЂР°
+    NCOMPANY                in number,         -- Р РµРі. РЅРѕРјРµСЂ РѕСЂРіР°РЅРёР·Р°С†РёРё
+    NPARENT                 in number := null, -- Р РµРі. РЅРѕРјРµСЂ СЂРѕРґРёС‚РµР»СЏ
+    SUNIT                   in varchar2,       -- РљРѕРґ СЂР°Р·РґРµР»Р°
+    SPROCEDURE              in varchar2,       -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ СЃРµСЂРІРµСЂРЅРѕР№ РїСЂРѕС†РµРґСѓСЂС‹ РѕС‚Р±РѕСЂР°
+    RDATA_GRID              in TDATA_GRID,     -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    RFILTERS                in TFILTERS        -- РљРѕР»Р»РµРєС†РёСЏ С„РёР»СЊС‚СЂРѕРІ
   );
   
-  /* Десериализация сортировок */
+  /* Р”РµСЃРµСЂРёР°Р»РёР·Р°С†РёСЏ СЃРѕСЂС‚РёСЂРѕРІРѕРє */
   function TORDERS_FROM_XML
   (
-    CORDERS                 in clob     -- Сериализованное представление сотрировок (BASE64(<orders><name>ИМЯ</name><direction>ASC/DESC</direction></orders>...))
-  ) return                  TORDERS;    -- Результат работы
+    CORDERS                 in clob     -- РЎРµСЂРёР°Р»РёР·РѕРІР°РЅРЅРѕРµ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёРµ СЃРѕС‚СЂРёСЂРѕРІРѕРє (BASE64(<orders><name>РРњРЇ</name><direction>ASC/DESC</direction></orders>...))
+  ) return                  TORDERS;    -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
 
-  /* Применение параметров сортировки в запросе */
+  /* РџСЂРёРјРµРЅРµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ СЃРѕСЂС‚РёСЂРѕРІРєРё РІ Р·Р°РїСЂРѕСЃРµ */
   procedure TORDERS_SET_QUERY
   (
-    RDATA_GRID              in TDATA_GRID,     -- Описание таблицы
-    RORDERS                 in TORDERS,        -- Коллекция сортировок
-    SPATTERN                in varchar2,       -- Шаблон для подстановки условий отбора в запрос
-    CSQL                    in out nocopy clob -- Буфер запроса
+    RDATA_GRID              in TDATA_GRID,     -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹
+    RORDERS                 in TORDERS,        -- РљРѕР»Р»РµРєС†РёСЏ СЃРѕСЂС‚РёСЂРѕРІРѕРє
+    SPATTERN                in varchar2,       -- РЁР°Р±Р»РѕРЅ РґР»СЏ РїРѕРґСЃС‚Р°РЅРѕРІРєРё СѓСЃР»РѕРІРёР№ РѕС‚Р±РѕСЂР° РІ Р·Р°РїСЂРѕСЃ
+    CSQL                    in out nocopy clob -- Р‘СѓС„РµСЂ Р·Р°РїСЂРѕСЃР°
   );
 
 end PKG_P8PANELS_VISUAL;
 /
 create or replace package body PKG_P8PANELS_VISUAL as
 
-  /* Константы - тэги запросов */
-  SRQ_TAG_XROOT           constant PKG_STD.TSTRING := 'XROOT';     -- Тэг для корня данных запроса
-  SRQ_TAG_XFILTERS        constant PKG_STD.TSTRING := 'filters';   -- Тэг для строк данных
-  SRQ_TAG_XORDERS         constant PKG_STD.TSTRING := 'orders';    -- Тэг для описания колонок
-  SRQ_TAG_SNAME           constant PKG_STD.TSTRING := 'name';      -- Тэг для наименования
-  SRQ_TAG_SDIRECTION      constant PKG_STD.TSTRING := 'direction'; -- Тэг для направления
-  SRQ_TAG_SFROM           constant PKG_STD.TSTRING := 'from';      -- Тэг для значения "с"
-  SRQ_TAG_STO             constant PKG_STD.TSTRING := 'to';        -- Тэг для значения "по"
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - С‚СЌРіРё Р·Р°РїСЂРѕСЃРѕРІ */
+  SRQ_TAG_XROOT           constant PKG_STD.TSTRING := 'XROOT';     -- РўСЌРі РґР»СЏ РєРѕСЂРЅСЏ РґР°РЅРЅС‹С… Р·Р°РїСЂРѕСЃР°
+  SRQ_TAG_XFILTERS        constant PKG_STD.TSTRING := 'filters';   -- РўСЌРі РґР»СЏ СЃС‚СЂРѕРє РґР°РЅРЅС‹С…
+  SRQ_TAG_XORDERS         constant PKG_STD.TSTRING := 'orders';    -- РўСЌРі РґР»СЏ РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРѕРє
+  SRQ_TAG_SNAME           constant PKG_STD.TSTRING := 'name';      -- РўСЌРі РґР»СЏ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ
+  SRQ_TAG_SDIRECTION      constant PKG_STD.TSTRING := 'direction'; -- РўСЌРі РґР»СЏ РЅР°РїСЂР°РІР»РµРЅРёСЏ
+  SRQ_TAG_SFROM           constant PKG_STD.TSTRING := 'from';      -- РўСЌРі РґР»СЏ Р·РЅР°С‡РµРЅРёСЏ "СЃ"
+  SRQ_TAG_STO             constant PKG_STD.TSTRING := 'to';        -- РўСЌРі РґР»СЏ Р·РЅР°С‡РµРЅРёСЏ "РїРѕ"
 
-  /* Константы - тэги ответов */
-  SRESP_TAG_XDATA           constant PKG_STD.TSTRING := 'XDATA';        -- Тэг для корня описания данных
-  SRESP_TAG_XROWS           constant PKG_STD.TSTRING := 'XROWS';        -- Тэг для строк данных
-  SRESP_TAG_XCOLUMNS_DEF    constant PKG_STD.TSTRING := 'XCOLUMNS_DEF'; -- Тэг для описания колонок
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - С‚СЌРіРё РѕС‚РІРµС‚РѕРІ */
+  SRESP_TAG_XDATA           constant PKG_STD.TSTRING := 'XDATA';        -- РўСЌРі РґР»СЏ РєРѕСЂРЅСЏ РѕРїРёСЃР°РЅРёСЏ РґР°РЅРЅС‹С…
+  SRESP_TAG_XROWS           constant PKG_STD.TSTRING := 'XROWS';        -- РўСЌРі РґР»СЏ СЃС‚СЂРѕРє РґР°РЅРЅС‹С…
+  SRESP_TAG_XCOLUMNS_DEF    constant PKG_STD.TSTRING := 'XCOLUMNS_DEF'; -- РўСЌРі РґР»СЏ РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРѕРє
 
-  /* Константы - атрибуты ответов */
-  SRESP_ATTR_NAME           constant PKG_STD.TSTRING := 'name';     -- Атрибут для наименования
-  SRESP_ATTR_CAPTION        constant PKG_STD.TSTRING := 'caption';  -- Атрибут для подписи
-  SRESP_ATTR_DATA_TYPE      constant PKG_STD.TSTRING := 'dataType'; -- Атрибут для типа данных
-  SRESP_ATTR_VISIBLE        constant PKG_STD.TSTRING := 'visible';  -- Атрибут для флага видимости
-  SRESP_ATTR_ORDER          constant PKG_STD.TSTRING := 'order';    -- Атрибут для флага сортировки
-  SRESP_ATTR_FILTER         constant PKG_STD.TSTRING := 'filter';   -- Атрибут для флага отбора
-  SRESP_ATTR_VALUES         constant PKG_STD.TSTRING := 'values';   -- Атрибут для значений
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - Р°С‚СЂРёР±СѓС‚С‹ РѕС‚РІРµС‚РѕРІ */
+  SRESP_ATTR_NAME           constant PKG_STD.TSTRING := 'name';     -- РђС‚СЂРёР±СѓС‚ РґР»СЏ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ
+  SRESP_ATTR_CAPTION        constant PKG_STD.TSTRING := 'caption';  -- РђС‚СЂРёР±СѓС‚ РґР»СЏ РїРѕРґРїРёСЃРё
+  SRESP_ATTR_DATA_TYPE      constant PKG_STD.TSTRING := 'dataType'; -- РђС‚СЂРёР±СѓС‚ РґР»СЏ С‚РёРїР° РґР°РЅРЅС‹С…
+  SRESP_ATTR_VISIBLE        constant PKG_STD.TSTRING := 'visible';  -- РђС‚СЂРёР±СѓС‚ РґР»СЏ С„Р»Р°РіР° РІРёРґРёРјРѕСЃС‚Рё
+  SRESP_ATTR_ORDER          constant PKG_STD.TSTRING := 'order';    -- РђС‚СЂРёР±СѓС‚ РґР»СЏ С„Р»Р°РіР° СЃРѕСЂС‚РёСЂРѕРІРєРё
+  SRESP_ATTR_FILTER         constant PKG_STD.TSTRING := 'filter';   -- РђС‚СЂРёР±СѓС‚ РґР»СЏ С„Р»Р°РіР° РѕС‚Р±РѕСЂР°
+  SRESP_ATTR_VALUES         constant PKG_STD.TSTRING := 'values';   -- РђС‚СЂРёР±СѓС‚ РґР»СЏ Р·РЅР°С‡РµРЅРёР№
   
-  /* Константы - параметры условий отбора */
-  SCOND_FROM_POSTFIX        constant PKG_STD.TSTRING := 'From'; -- Постфикс наименования нижней границы условия отбора
-  SCOND_TO_POSTFIX          constant PKG_STD.TSTRING := 'To';   -- Постфикс наименования верхней границы условия отбора
+  /* РљРѕРЅСЃС‚Р°РЅС‚С‹ - РїР°СЂР°РјРµС‚СЂС‹ СѓСЃР»РѕРІРёР№ РѕС‚Р±РѕСЂР° */
+  SCOND_FROM_POSTFIX        constant PKG_STD.TSTRING := 'From'; -- РџРѕСЃС‚С„РёРєСЃ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР°
+  SCOND_TO_POSTFIX          constant PKG_STD.TSTRING := 'To';   -- РџРѕСЃС‚С„РёРєСЃ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР°
 
-  /* Расчет диапаона выдаваемых записей */
+  /* Р Р°СЃС‡РµС‚ РґРёР°РїР°РѕРЅР° РІС‹РґР°РІР°РµРјС‹С… Р·Р°РїРёСЃРµР№ */
   procedure UTL_ROWS_LIMITS_CALC
   (
-    NPAGE_NUMBER            in number,  -- Номер страницы (игнорируется при NPAGE_SIZE=0)
-    NPAGE_SIZE              in number,  -- Количество записей на странице (0 - все)
-    NROW_FROM               out number, -- Нижняя граница диапазона
-    NROW_TO                 out number  -- Верхняя граница диапазона
+    NPAGE_NUMBER            in number,  -- РќРѕРјРµСЂ СЃС‚СЂР°РЅРёС†С‹ (РёРіРЅРѕСЂРёСЂСѓРµС‚СЃСЏ РїСЂРё NPAGE_SIZE=0)
+    NPAGE_SIZE              in number,  -- РљРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РїРёСЃРµР№ РЅР° СЃС‚СЂР°РЅРёС†Рµ (0 - РІСЃРµ)
+    NROW_FROM               out number, -- РќРёР¶РЅСЏСЏ РіСЂР°РЅРёС†Р° РґРёР°РїР°Р·РѕРЅР°
+    NROW_TO                 out number  -- Р’РµСЂС…РЅСЏСЏ РіСЂР°РЅРёС†Р° РґРёР°РїР°Р·РѕРЅР°
   )
   is
   begin
@@ -310,81 +310,81 @@ create or replace package body PKG_P8PANELS_VISUAL as
     end if;
   end UTL_ROWS_LIMITS_CALC;
   
-  /* Формирование наименования условия отбора для нижней границы */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° РґР»СЏ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ */
   function UTL_COND_NAME_MAKE_FROM
   (
-    SNAME                   in varchar2 -- Наименование колонки
-  ) return                  varchar2    -- Результат
+    SNAME                   in varchar2 -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+  ) return                  varchar2    -- Р РµР·СѓР»СЊС‚Р°С‚
   is
   begin
     return SNAME || SCOND_FROM_POSTFIX;
   end UTL_COND_NAME_MAKE_FROM;
 
-  /* Формирование наименования условия отбора для верхней границы */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РЅР°РёРјРµРЅРѕРІР°РЅРёСЏ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° РґР»СЏ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ */
   function UTL_COND_NAME_MAKE_TO
   (
-    SNAME                   in varchar2 -- Наименование колонки
-  ) return                  varchar2    -- Результат
+    SNAME                   in varchar2 -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+  ) return                  varchar2    -- Р РµР·СѓР»СЊС‚Р°С‚
   is
   begin
     return SNAME || SCOND_TO_POSTFIX;
   end UTL_COND_NAME_MAKE_TO;
   
-  /* Формирование значения */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ Р·РЅР°С‡РµРЅРёСЏ */
   function TCOL_VAL_MAKE
   (
-    SVALUE                  in varchar2, -- Значение (строка)
-    NVALUE                  in number,   -- Значение (число)
-    DVALUE                  in date      -- Значение (дата)
-  ) return                  TCOL_VAL     -- Результат работы
+    SVALUE                  in varchar2, -- Р—РЅР°С‡РµРЅРёРµ (СЃС‚СЂРѕРєР°)
+    NVALUE                  in number,   -- Р—РЅР°С‡РµРЅРёРµ (С‡РёСЃР»Рѕ)
+    DVALUE                  in date      -- Р—РЅР°С‡РµРЅРёРµ (РґР°С‚Р°)
+  ) return                  TCOL_VAL     -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   is
-    RRES                    TCOL_VAL;    -- Буфер для результата
+    RRES                    TCOL_VAL;    -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р°
   begin
-    /* Формируем объект */
+    /* Р¤РѕСЂРјРёСЂСѓРµРј РѕР±СЉРµРєС‚ */
     RRES.SVALUE := SVALUE;
     RRES.NVALUE := NVALUE;
     RRES.DVALUE := DVALUE;
-    /* Возвращаем результат */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return RRES;
   end TCOL_VAL_MAKE;
 
-  /* Добавление значения в коллекцию */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ Р·РЅР°С‡РµРЅРёСЏ РІ РєРѕР»Р»РµРєС†РёСЋ */
   procedure TCOL_VALS_ADD
   (
-    RCOL_VALS               in out nocopy TCOL_VALS, -- Коллекция значений
-    SVALUE                  in varchar2 := null,     -- Значение (строка)
-    NVALUE                  in number := null,       -- Значение (число)
-    DVALUE                  in date := null,         -- Значение (дата)
-    BCLEAR                  in boolean := false      -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RCOL_VALS               in out nocopy TCOL_VALS, -- РљРѕР»Р»РµРєС†РёСЏ Р·РЅР°С‡РµРЅРёР№
+    SVALUE                  in varchar2 := null,     -- Р—РЅР°С‡РµРЅРёРµ (СЃС‚СЂРѕРєР°)
+    NVALUE                  in number := null,       -- Р—РЅР°С‡РµРЅРёРµ (С‡РёСЃР»Рѕ)
+    DVALUE                  in date := null,         -- Р—РЅР°С‡РµРЅРёРµ (РґР°С‚Р°)
+    BCLEAR                  in boolean := false      -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   )
   is
   begin
-    /* Инициализируем коллекцию если необходимо */
+    /* РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РєРѕР»Р»РµРєС†РёСЋ РµСЃР»Рё РЅРµРѕР±С…РѕРґРёРјРѕ */
     if ((RCOL_VALS is null) or (BCLEAR)) then
       RCOL_VALS := TCOL_VALS();
     end if;
-    /* Добавляем элемент */
+    /* Р”РѕР±Р°РІР»СЏРµРј СЌР»РµРјРµРЅС‚ */
     RCOL_VALS.EXTEND();
     RCOL_VALS(RCOL_VALS.LAST) := TCOL_VAL_MAKE(SVALUE => SVALUE, NVALUE => NVALUE, DVALUE => DVALUE);
   end TCOL_VALS_ADD;
   
-  /* Формирование описания колонки */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРєРё */
   function TCOL_DEF_MAKE
   (
-    SNAME                   in varchar2,                   -- Наименование
-    SCAPTION                in varchar2,                   -- Заголовок
-    SDATA_TYPE              in varchar2 := SDATA_TYPE_STR, -- Тип данных (см. константы SDATA_TYPE_*)
-    SCOND_FROM              in varchar2 := null,           -- Наименование нижней границы условия отбора (null - используется UTL_COND_NAME_MAKE_FROM)
-    SCOND_TO                in varchar2 := null,           -- Наименование верхней границы условия отбора (null - используется UTL_COND_NAME_MAKE_TO)
-    BVISIBLE                in boolean := true,            -- Разрешить отображение
-    BORDER                  in boolean := false,           -- Разрешить сортировку
-    BFILTER                 in boolean := false,           -- Разрешить отбор
-    RCOL_VALS               in TCOL_VALS := null           -- Предопределённые значения
-  ) return                  TCOL_DEF                       -- Результат работы
+    SNAME                   in varchar2,                   -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+    SCAPTION                in varchar2,                   -- Р—Р°РіРѕР»РѕРІРѕРє
+    SDATA_TYPE              in varchar2 := SDATA_TYPE_STR, -- РўРёРї РґР°РЅРЅС‹С… (СЃРј. РєРѕРЅСЃС‚Р°РЅС‚С‹ SDATA_TYPE_*)
+    SCOND_FROM              in varchar2 := null,           -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° (null - РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ UTL_COND_NAME_MAKE_FROM)
+    SCOND_TO                in varchar2 := null,           -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° (null - РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ UTL_COND_NAME_MAKE_TO)
+    BVISIBLE                in boolean := true,            -- Р Р°Р·СЂРµС€РёС‚СЊ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ
+    BORDER                  in boolean := false,           -- Р Р°Р·СЂРµС€РёС‚СЊ СЃРѕСЂС‚РёСЂРѕРІРєСѓ
+    BFILTER                 in boolean := false,           -- Р Р°Р·СЂРµС€РёС‚СЊ РѕС‚Р±РѕСЂ
+    RCOL_VALS               in TCOL_VALS := null           -- РџСЂРµРґРѕРїСЂРµРґРµР»С‘РЅРЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ
+  ) return                  TCOL_DEF                       -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   is
-    RRES                    TCOL_DEF;                      -- Буфер для результата
+    RRES                    TCOL_DEF;                      -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р°
   begin
-    /* Формируем объект */
+    /* Р¤РѕСЂРјРёСЂСѓРµРј РѕР±СЉРµРєС‚ */
     RRES.SNAME      := SNAME;
     RRES.SCAPTION   := SCAPTION;
     RRES.SDATA_TYPE := COALESCE(SDATA_TYPE, SDATA_TYPE_STR);
@@ -394,32 +394,32 @@ create or replace package body PKG_P8PANELS_VISUAL as
     RRES.BORDER     := COALESCE(BORDER, false);
     RRES.BFILTER    := COALESCE(BFILTER, false);
     RRES.RCOL_VALS  := COALESCE(RCOL_VALS, TCOL_VALS());
-    /* Возвращаем результат */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return RRES;
   end TCOL_DEF_MAKE;
   
-  /* Добавление описания колонки в коллекцию */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРєРё РІ РєРѕР»Р»РµРєС†РёСЋ */
   procedure TCOL_DEFS_ADD
   (
-    RCOL_DEFS               in out nocopy TCOL_DEFS,       -- Коллекция описаний колонок
-    SNAME                   in varchar2,                   -- Наименование
-    SCAPTION                in varchar2,                   -- Заголовок
-    SDATA_TYPE              in varchar2 := SDATA_TYPE_STR, -- Тип данных (см. константы SDATA_TYPE_*)
-    SCOND_FROM              in varchar2 := null,           -- Наименование нижней границы условия отбора (null - используется UTL_COND_NAME_MAKE_FROM)
-    SCOND_TO                in varchar2 := null,           -- Наименование верхней границы условия отбора (null - используется UTL_COND_NAME_MAKE_TO)
-    BVISIBLE                in boolean := true,            -- Разрешить отображение
-    BORDER                  in boolean := false,           -- Разрешить сортировку
-    BFILTER                 in boolean := false,           -- Разрешить отбор
-    RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения
-    BCLEAR                  in boolean := false            -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RCOL_DEFS               in out nocopy TCOL_DEFS,       -- РљРѕР»Р»РµРєС†РёСЏ РѕРїРёСЃР°РЅРёР№ РєРѕР»РѕРЅРѕРє
+    SNAME                   in varchar2,                   -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+    SCAPTION                in varchar2,                   -- Р—Р°РіРѕР»РѕРІРѕРє
+    SDATA_TYPE              in varchar2 := SDATA_TYPE_STR, -- РўРёРї РґР°РЅРЅС‹С… (СЃРј. РєРѕРЅСЃС‚Р°РЅС‚С‹ SDATA_TYPE_*)
+    SCOND_FROM              in varchar2 := null,           -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° (null - РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ UTL_COND_NAME_MAKE_FROM)
+    SCOND_TO                in varchar2 := null,           -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° (null - РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ UTL_COND_NAME_MAKE_TO)
+    BVISIBLE                in boolean := true,            -- Р Р°Р·СЂРµС€РёС‚СЊ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ
+    BORDER                  in boolean := false,           -- Р Р°Р·СЂРµС€РёС‚СЊ СЃРѕСЂС‚РёСЂРѕРІРєСѓ
+    BFILTER                 in boolean := false,           -- Р Р°Р·СЂРµС€РёС‚СЊ РѕС‚Р±РѕСЂ
+    RCOL_VALS               in TCOL_VALS := null,          -- РџСЂРµРґРѕРїСЂРµРґРµР»С‘РЅРЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ
+    BCLEAR                  in boolean := false            -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   )
   is
   begin
-    /* Инициализируем коллекцию если необходимо */
+    /* РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РєРѕР»Р»РµРєС†РёСЋ РµСЃР»Рё РЅРµРѕР±С…РѕРґРёРјРѕ */
     if ((RCOL_DEFS is null) or (BCLEAR)) then
       RCOL_DEFS := TCOL_DEFS();
     end if;
-    /* Добавляем элемент */
+    /* Р”РѕР±Р°РІР»СЏРµРј СЌР»РµРјРµРЅС‚ */
     RCOL_DEFS.EXTEND();
     RCOL_DEFS(RCOL_DEFS.LAST) := TCOL_DEF_MAKE(SNAME      => SNAME,
                                                SCAPTION   => SCAPTION,
@@ -432,15 +432,15 @@ create or replace package body PKG_P8PANELS_VISUAL as
                                                RCOL_VALS  => RCOL_VALS);
   end TCOL_DEFS_ADD;
   
-  /* Поиск описания колонки по наименованию */
+  /* РџРѕРёСЃРє РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРєРё РїРѕ РЅР°РёРјРµРЅРѕРІР°РЅРёСЋ */
   function TCOL_DEFS_FIND
   (
-    RCOL_DEFS               in TCOL_DEFS, -- Описание колонок таблицы данных
-    SNAME                   in varchar2   -- Наименование
-  ) return                  TCOL_DEF      -- Найденное описание (null - если не нашли)
+    RCOL_DEFS               in TCOL_DEFS, -- РћРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРѕРє С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    SNAME                   in varchar2   -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+  ) return                  TCOL_DEF      -- РќР°Р№РґРµРЅРЅРѕРµ РѕРїРёСЃР°РЅРёРµ (null - РµСЃР»Рё РЅРµ РЅР°С€Р»Рё)
   is
   begin
-    /* Обходим колонки из коллекции описаний */
+    /* РћР±С…РѕРґРёРј РєРѕР»РѕРЅРєРё РёР· РєРѕР»Р»РµРєС†РёРё РѕРїРёСЃР°РЅРёР№ */
     if ((RCOL_DEFS is not null) and (RCOL_DEFS.COUNT > 0)) then
       for I in RCOL_DEFS.FIRST .. RCOL_DEFS.LAST
       loop
@@ -449,37 +449,37 @@ create or replace package body PKG_P8PANELS_VISUAL as
         end if;
       end loop;
     end if;
-    /* Ничего не нашли */
+    /* РќРёС‡РµРіРѕ РЅРµ РЅР°С€Р»Рё */
     return null;
   end TCOL_DEFS_FIND;
   
-  /* Сериализация описания колонки таблицы данных */
+  /* РЎРµСЂРёР°Р»РёР·Р°С†РёСЏ РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРєРё С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… */
   procedure TCOL_DEFS_TO_XML
   (
-    RCOL_DEFS               in TCOL_DEFS -- Описание колонок таблицы данных
+    RCOL_DEFS               in TCOL_DEFS -- РћРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРѕРє С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
   )
   is    
   begin
-    /* Обходим колонки из коллекции */
+    /* РћР±С…РѕРґРёРј РєРѕР»РѕРЅРєРё РёР· РєРѕР»Р»РµРєС†РёРё */
     if ((RCOL_DEFS is not null) and (RCOL_DEFS.COUNT > 0)) then
       for I in RCOL_DEFS.FIRST .. RCOL_DEFS.LAST
       loop
-        /* Открываем описание колонки */
+        /* РћС‚РєСЂС‹РІР°РµРј РѕРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРєРё */
         PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XCOLUMNS_DEF);
-        /* Атрибуты колонки */
+        /* РђС‚СЂРёР±СѓС‚С‹ РєРѕР»РѕРЅРєРё */
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_NAME, SVALUE => RCOL_DEFS(I).SNAME);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_CAPTION, SVALUE => RCOL_DEFS(I).SCAPTION);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DATA_TYPE, SVALUE => RCOL_DEFS(I).SDATA_TYPE);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_VISIBLE, BVALUE => RCOL_DEFS(I).BVISIBLE);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_ORDER, BVALUE => RCOL_DEFS(I).BORDER);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_FILTER, BVALUE => RCOL_DEFS(I).BFILTER);
-        /* Предопределённые значения */
+        /* РџСЂРµРґРѕРїСЂРµРґРµР»С‘РЅРЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ */
         if (RCOL_DEFS(I).RCOL_VALS is not null) and (RCOL_DEFS(I).RCOL_VALS.COUNT > 0) then
           for V in RCOL_DEFS(I).RCOL_VALS.FIRST .. RCOL_DEFS(I).RCOL_VALS.LAST
           loop
-            /* Открываем описание предопределённого значения */
+            /* РћС‚РєСЂС‹РІР°РµРј РѕРїРёСЃР°РЅРёРµ РїСЂРµРґРѕРїСЂРµРґРµР»С‘РЅРЅРѕРіРѕ Р·РЅР°С‡РµРЅРёСЏ */
             PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_VALUES);
-            /* Значение */
+            /* Р—РЅР°С‡РµРЅРёРµ */
             case RCOL_DEFS(I).SDATA_TYPE
               when SDATA_TYPE_STR then
                 PKG_XFAST.VALUE(SVALUE => RCOL_DEFS(I).RCOL_VALS(V).SVALUE);
@@ -489,168 +489,168 @@ create or replace package body PKG_P8PANELS_VISUAL as
                 PKG_XFAST.VALUE(DVALUE => RCOL_DEFS(I).RCOL_VALS(V).DVALUE);
               else
                 P_EXCEPTION(0,
-                            'Описание колонки "%s" таблицы данных содержит неподдерживаемый тип данных ("%s").',
-                            COALESCE(RCOL_DEFS(I).SNAME, '<НЕ ОПРЕДЕЛЕНА>'),
-                            COALESCE(RCOL_DEFS(I).SDATA_TYPE, '<НЕ ОПРЕДЕЛЁН>'));
+                            'РћРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРєРё "%s" С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… СЃРѕРґРµСЂР¶РёС‚ РЅРµРїРѕРґРґРµСЂР¶РёРІР°РµРјС‹Р№ С‚РёРї РґР°РЅРЅС‹С… ("%s").',
+                            COALESCE(RCOL_DEFS(I).SNAME, '<РќР• РћРџР Р•Р”Р•Р›Р•РќРђ>'),
+                            COALESCE(RCOL_DEFS(I).SDATA_TYPE, '<РќР• РћРџР Р•Р”Р•Р›РЃРќ>'));
             end case;
-            /* Закрываем описание предопределённого значения */
+            /* Р—Р°РєСЂС‹РІР°РµРј РѕРїРёСЃР°РЅРёРµ РїСЂРµРґРѕРїСЂРµРґРµР»С‘РЅРЅРѕРіРѕ Р·РЅР°С‡РµРЅРёСЏ */
             PKG_XFAST.UP();          
           end loop;
         end if;
-        /* Закрываем описание колонки */
+        /* Р—Р°РєСЂС‹РІР°РµРј РѕРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРєРё */
         PKG_XFAST.UP();
       end loop;
     end if;
   end TCOL_DEFS_TO_XML;
   
-  /* Формирование колонки */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё */
   function TCOL_MAKE
   (
-    SNAME                   in varchar2,         -- Наименование колонки
-    SVALUE                  in varchar2 := null, -- Значение (строка)
-    NVALUE                  in number := null,   -- Значение (число)
-    DVALUE                  in date := null      -- Значение (дата)
-  ) return                  TCOL                 -- Результат работы
+    SNAME                   in varchar2,         -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    SVALUE                  in varchar2 := null, -- Р—РЅР°С‡РµРЅРёРµ (СЃС‚СЂРѕРєР°)
+    NVALUE                  in number := null,   -- Р—РЅР°С‡РµРЅРёРµ (С‡РёСЃР»Рѕ)
+    DVALUE                  in date := null      -- Р—РЅР°С‡РµРЅРёРµ (РґР°С‚Р°)
+  ) return                  TCOL                 -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   is
-    RRES                    TCOL;                -- Буфер для результата
+    RRES                    TCOL;                -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р°
   begin
-    /* Формируем объект */
+    /* Р¤РѕСЂРјРёСЂСѓРµРј РѕР±СЉРµРєС‚ */
     RRES.SNAME    := SNAME;
     RRES.RCOL_VAL := TCOL_VAL_MAKE(SVALUE => SVALUE, NVALUE => NVALUE, DVALUE => DVALUE);
-    /* Возвращаем результат */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return RRES;
   end TCOL_MAKE;
   
-  /* Добавление колонки в коллекцию */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ РєРѕР»РѕРЅРєРё РІ РєРѕР»Р»РµРєС†РёСЋ */
   procedure TCOLS_ADD
   (
-    RCOLS                   in out nocopy TCOLS, -- Коллекция колонок
-    SNAME                   in varchar2,         -- Наименование колонки
-    SVALUE                  in varchar2 := null, -- Значение (строка)
-    NVALUE                  in number := null,   -- Значение (число)
-    DVALUE                  in date := null,     -- Значение (дата)
-    BCLEAR                  in boolean := false  -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RCOLS                   in out nocopy TCOLS, -- РљРѕР»Р»РµРєС†РёСЏ РєРѕР»РѕРЅРѕРє
+    SNAME                   in varchar2,         -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    SVALUE                  in varchar2 := null, -- Р—РЅР°С‡РµРЅРёРµ (СЃС‚СЂРѕРєР°)
+    NVALUE                  in number := null,   -- Р—РЅР°С‡РµРЅРёРµ (С‡РёСЃР»Рѕ)
+    DVALUE                  in date := null,     -- Р—РЅР°С‡РµРЅРёРµ (РґР°С‚Р°)
+    BCLEAR                  in boolean := false  -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   )
   is
   begin
-    /* Инициализируем коллекцию если необходимо */
+    /* РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РєРѕР»Р»РµРєС†РёСЋ РµСЃР»Рё РЅРµРѕР±С…РѕРґРёРјРѕ */
     if ((RCOLS is null) or (BCLEAR)) then
       RCOLS := TCOLS();
     end if;
-    /* Добавляем элемент */
+    /* Р”РѕР±Р°РІР»СЏРµРј СЌР»РµРјРµРЅС‚ */
     RCOLS.EXTEND();
     RCOLS(RCOLS.LAST) := TCOL_MAKE(SNAME => SNAME, SVALUE => SVALUE, NVALUE => NVALUE, DVALUE => DVALUE);
   end TCOLS_ADD;
   
-  /* Формирование строки */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СЃС‚СЂРѕРєРё */
   function TROW_MAKE
-  return                    TROW        -- Результат работы
+  return                    TROW        -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   is
-    RRES                    TROW;       -- Буфер для результата
+    RRES                    TROW;       -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р°
   begin
-    /* Формируем объект */
+    /* Р¤РѕСЂРјРёСЂСѓРµРј РѕР±СЉРµРєС‚ */
     RRES.RCOLS := TCOLS();
-    /* Возвращаем результат */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return RRES;
   end TROW_MAKE;
   
-  /* Добавление колонки к строке */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ РєРѕР»РѕРЅРєРё Рє СЃС‚СЂРѕРєРµ */
   procedure TROW_ADD_COL
   (
-    RROW                    in out nocopy TROW,  -- Строка
-    SNAME                   in varchar2,         -- Наименование колонки
-    SVALUE                  in varchar2 := null, -- Значение (строка)
-    NVALUE                  in number := null,   -- Значение (число)
-    DVALUE                  in date := null,     -- Значение (дата)
-    BCLEAR                  in boolean := false  -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RROW                    in out nocopy TROW,  -- РЎС‚СЂРѕРєР°
+    SNAME                   in varchar2,         -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    SVALUE                  in varchar2 := null, -- Р—РЅР°С‡РµРЅРёРµ (СЃС‚СЂРѕРєР°)
+    NVALUE                  in number := null,   -- Р—РЅР°С‡РµРЅРёРµ (С‡РёСЃР»Рѕ)
+    DVALUE                  in date := null,     -- Р—РЅР°С‡РµРЅРёРµ (РґР°С‚Р°)
+    BCLEAR                  in boolean := false  -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   )
   is
   begin
-    /* Сформируем колонку и добавим её к коллекции колонок строки */
+    /* РЎС„РѕСЂРјРёСЂСѓРµРј РєРѕР»РѕРЅРєСѓ Рё РґРѕР±Р°РІРёРј РµС‘ Рє РєРѕР»Р»РµРєС†РёРё РєРѕР»РѕРЅРѕРє СЃС‚СЂРѕРєРё */
     TCOLS_ADD(RCOLS => RROW.RCOLS, SNAME => SNAME, SVALUE => SVALUE, NVALUE => NVALUE, DVALUE => DVALUE, BCLEAR => BCLEAR);
   end TROW_ADD_COL;
   
-  /* Добавление строковой колонки к строке из курсора динамического запроса */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ СЃС‚СЂРѕРєРѕРІРѕР№ РєРѕР»РѕРЅРєРё Рє СЃС‚СЂРѕРєРµ РёР· РєСѓСЂСЃРѕСЂР° РґРёРЅР°РјРёС‡РµСЃРєРѕРіРѕ Р·Р°РїСЂРѕСЃР° */
   procedure TROW_ADD_CUR_COLS
   (
-    RROW                    in out nocopy TROW, -- Строка
-    SNAME                   in varchar2,        -- Наименование колонки
-    ICURSOR                 in integer,         -- Курсор
-    NPOSITION               in number,          -- Номер колонки в курсоре
-    BCLEAR                  in boolean := false -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RROW                    in out nocopy TROW, -- РЎС‚СЂРѕРєР°
+    SNAME                   in varchar2,        -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    ICURSOR                 in integer,         -- РљСѓСЂСЃРѕСЂ
+    NPOSITION               in number,          -- РќРѕРјРµСЂ РєРѕР»РѕРЅРєРё РІ РєСѓСЂСЃРѕСЂРµ
+    BCLEAR                  in boolean := false -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   )
   is
-    SVALUE                  PKG_STD.TLSTRING;   -- Буфер для значения курсора
+    SVALUE                  PKG_STD.TLSTRING;   -- Р‘СѓС„РµСЂ РґР»СЏ Р·РЅР°С‡РµРЅРёСЏ РєСѓСЂСЃРѕСЂР°
   begin
-    /* Читаем данные из курсора */
+    /* Р§РёС‚Р°РµРј РґР°РЅРЅС‹Рµ РёР· РєСѓСЂСЃРѕСЂР° */
     PKG_SQL_DML.COLUMN_VALUE_STR(ICURSOR => ICURSOR, IPOSITION => NPOSITION, SVALUE => SVALUE);
-    /* Сформируем колонку и добавим её к коллекции колонок строки */
+    /* РЎС„РѕСЂРјРёСЂСѓРµРј РєРѕР»РѕРЅРєСѓ Рё РґРѕР±Р°РІРёРј РµС‘ Рє РєРѕР»Р»РµРєС†РёРё РєРѕР»РѕРЅРѕРє СЃС‚СЂРѕРєРё */
     TCOLS_ADD(RCOLS => RROW.RCOLS, SNAME => SNAME, SVALUE => SVALUE, NVALUE => null, DVALUE => null, BCLEAR => BCLEAR);
   end TROW_ADD_CUR_COLS;
 
-  /* Добавление числовой колонки к строке из курсора динамического запроса */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ С‡РёСЃР»РѕРІРѕР№ РєРѕР»РѕРЅРєРё Рє СЃС‚СЂРѕРєРµ РёР· РєСѓСЂСЃРѕСЂР° РґРёРЅР°РјРёС‡РµСЃРєРѕРіРѕ Р·Р°РїСЂРѕСЃР° */
   procedure TROW_ADD_CUR_COLN
   (
-    RROW                    in out nocopy TROW, -- Строка
-    SNAME                   in varchar2,        -- Наименование колонки
-    ICURSOR                 in integer,         -- Курсор
-    NPOSITION               in number,          -- Номер колонки в курсоре
-    BCLEAR                  in boolean := false -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RROW                    in out nocopy TROW, -- РЎС‚СЂРѕРєР°
+    SNAME                   in varchar2,        -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    ICURSOR                 in integer,         -- РљСѓСЂСЃРѕСЂ
+    NPOSITION               in number,          -- РќРѕРјРµСЂ РєРѕР»РѕРЅРєРё РІ РєСѓСЂСЃРѕСЂРµ
+    BCLEAR                  in boolean := false -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   )
   is
-    NVALUE                  PKG_STD.TNUMBER;    -- Буфер для значения курсора
+    NVALUE                  PKG_STD.TNUMBER;    -- Р‘СѓС„РµСЂ РґР»СЏ Р·РЅР°С‡РµРЅРёСЏ РєСѓСЂСЃРѕСЂР°
   begin
-    /* Читаем данные из курсора */
+    /* Р§РёС‚Р°РµРј РґР°РЅРЅС‹Рµ РёР· РєСѓСЂСЃРѕСЂР° */
     PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => NPOSITION, NVALUE => NVALUE);
-    /* Сформируем колонку и добавим её к коллекции колонок строки */
+    /* РЎС„РѕСЂРјРёСЂСѓРµРј РєРѕР»РѕРЅРєСѓ Рё РґРѕР±Р°РІРёРј РµС‘ Рє РєРѕР»Р»РµРєС†РёРё РєРѕР»РѕРЅРѕРє СЃС‚СЂРѕРєРё */
     TCOLS_ADD(RCOLS => RROW.RCOLS, SNAME => SNAME, SVALUE => null, NVALUE => NVALUE, DVALUE => null, BCLEAR => BCLEAR);
   end TROW_ADD_CUR_COLN;
   
-  /* Добавление колонки типа "дата" к строке из курсора динамического запроса */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ РєРѕР»РѕРЅРєРё С‚РёРїР° "РґР°С‚Р°" Рє СЃС‚СЂРѕРєРµ РёР· РєСѓСЂСЃРѕСЂР° РґРёРЅР°РјРёС‡РµСЃРєРѕРіРѕ Р·Р°РїСЂРѕСЃР° */
   procedure TROW_ADD_CUR_COLD
   (
-    RROW                    in out nocopy TROW, -- Строка
-    SNAME                   in varchar2,        -- Наименование колонки
-    ICURSOR                 in integer,         -- Курсор
-    NPOSITION               in number,          -- Номер колонки в курсоре
-    BCLEAR                  in boolean := false -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+    RROW                    in out nocopy TROW, -- РЎС‚СЂРѕРєР°
+    SNAME                   in varchar2,        -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    ICURSOR                 in integer,         -- РљСѓСЂСЃРѕСЂ
+    NPOSITION               in number,          -- РќРѕРјРµСЂ РєРѕР»РѕРЅРєРё РІ РєСѓСЂСЃРѕСЂРµ
+    BCLEAR                  in boolean := false -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   )
   is
-    DVALUE                  PKG_STD.TLDATE;     -- Буфер для значения курсора
+    DVALUE                  PKG_STD.TLDATE;     -- Р‘СѓС„РµСЂ РґР»СЏ Р·РЅР°С‡РµРЅРёСЏ РєСѓСЂСЃРѕСЂР°
   begin
-    /* Читаем данные из курсора */
+    /* Р§РёС‚Р°РµРј РґР°РЅРЅС‹Рµ РёР· РєСѓСЂСЃРѕСЂР° */
     PKG_SQL_DML.COLUMN_VALUE_DATE(ICURSOR => ICURSOR, IPOSITION => NPOSITION, DVALUE => DVALUE);
-    /* Сформируем колонку и добавим её к коллекции колонок строки */
+    /* РЎС„РѕСЂРјРёСЂСѓРµРј РєРѕР»РѕРЅРєСѓ Рё РґРѕР±Р°РІРёРј РµС‘ Рє РєРѕР»Р»РµРєС†РёРё РєРѕР»РѕРЅРѕРє СЃС‚СЂРѕРєРё */
     TCOLS_ADD(RCOLS => RROW.RCOLS, SNAME => SNAME, SVALUE => null, NVALUE => null, DVALUE => DVALUE, BCLEAR => BCLEAR);
   end TROW_ADD_CUR_COLD;
   
-  /* Сериализация строки данных таблицы данных */
+  /* РЎРµСЂРёР°Р»РёР·Р°С†РёСЏ СЃС‚СЂРѕРєРё РґР°РЅРЅС‹С… С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… */
   procedure TROWS_TO_XML
   (
-    RCOL_DEFS               in TCOL_DEFS, -- Описание колонок таблицы данных
-    RROWS                   in TROWS      -- Строки таблицы данных
+    RCOL_DEFS               in TCOL_DEFS, -- РћРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРѕРє С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    RROWS                   in TROWS      -- РЎС‚СЂРѕРєРё С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
   )
   is  
-    RCOL_DEF                TCOL_DEF;     -- Описание текущей сериализуемой колонки
+    RCOL_DEF                TCOL_DEF;     -- РћРїРёСЃР°РЅРёРµ С‚РµРєСѓС‰РµР№ СЃРµСЂРёР°Р»РёР·СѓРµРјРѕР№ РєРѕР»РѕРЅРєРё
   begin
-    /* Обходим строки из коллекции */
+    /* РћР±С…РѕРґРёРј СЃС‚СЂРѕРєРё РёР· РєРѕР»Р»РµРєС†РёРё */
     if ((RROWS is not null) and (RROWS.COUNT > 0)) then
       for I in RROWS.FIRST .. RROWS.LAST
       loop
-        /* Открываем строку */
+        /* РћС‚РєСЂС‹РІР°РµРј СЃС‚СЂРѕРєСѓ */
         PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XROWS);
-        /* Обходим колонки строки */
+        /* РћР±С…РѕРґРёРј РєРѕР»РѕРЅРєРё СЃС‚СЂРѕРєРё */
         if ((RROWS(I).RCOLS is not null) and (RROWS(I).RCOLS.COUNT > 0)) then
           for J in RROWS(I).RCOLS.FIRST .. RROWS(I).RCOLS.LAST
           loop
-            /* Найдём описание колонки */
+            /* РќР°Р№РґС‘Рј РѕРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРєРё */
             RCOL_DEF := TCOL_DEFS_FIND(RCOL_DEFS => RCOL_DEFS, SNAME => RROWS(I).RCOLS(J).SNAME);
             if (RCOL_DEF.SNAME is null) then
               P_EXCEPTION(0,
-                          'Описание колонки "%s" таблицы данных не определено.',
+                          'РћРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРєРё "%s" С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… РЅРµ РѕРїСЂРµРґРµР»РµРЅРѕ.',
                           RROWS(I).RCOLS(J).SNAME);
             end if;
-            /* Добавлением значение колонки как атрибут строки */
+            /* Р”РѕР±Р°РІР»РµРЅРёРµРј Р·РЅР°С‡РµРЅРёРµ РєРѕР»РѕРЅРєРё РєР°Рє Р°С‚СЂРёР±СѓС‚ СЃС‚СЂРѕРєРё */
             case RCOL_DEF.SDATA_TYPE
               when SDATA_TYPE_STR then
                 PKG_XFAST.ATTR(SNAME => RROWS(I).RCOLS(J).SNAME, SVALUE => RROWS(I).RCOLS(J).RCOL_VAL.SVALUE);
@@ -660,60 +660,60 @@ create or replace package body PKG_P8PANELS_VISUAL as
                 PKG_XFAST.ATTR(SNAME => RROWS(I).RCOLS(J).SNAME, DVALUE => RROWS(I).RCOLS(J).RCOL_VAL.DVALUE);
               else
                 P_EXCEPTION(0,
-                            'Описание колонки "%s" таблицы данных содержит неподдерживаемый тип данных ("%s").',
+                            'РћРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРєРё "%s" С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… СЃРѕРґРµСЂР¶РёС‚ РЅРµРїРѕРґРґРµСЂР¶РёРІР°РµРјС‹Р№ С‚РёРї РґР°РЅРЅС‹С… ("%s").',
                             RCOL_DEFS(I).SNAME,
-                            COALESCE(RCOL_DEFS(I).SDATA_TYPE, '<НЕ ОПРЕДЕЛЁН>'));
+                            COALESCE(RCOL_DEFS(I).SDATA_TYPE, '<РќР• РћРџР Р•Р”Р•Р›РЃРќ>'));
             end case;
           end loop;
         end if;
-        /* Закрываем строку */
+        /* Р—Р°РєСЂС‹РІР°РµРј СЃС‚СЂРѕРєСѓ */
         PKG_XFAST.UP();
       end loop;
     end if;
   end TROWS_TO_XML;
   
-  /* Формирование таблицы данныз */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹Р· */
   function TDATA_GRID_MAKE
-  return                    TDATA_GRID  -- Результат работы
+  return                    TDATA_GRID  -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   is
-    RRES                    TDATA_GRID; -- Буфер для результата
+    RRES                    TDATA_GRID; -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р°
   begin
-    /* Формируем объект */
+    /* Р¤РѕСЂРјРёСЂСѓРµРј РѕР±СЉРµРєС‚ */
     RRES.RCOL_DEFS := TCOL_DEFS();
     RRES.RROWS     := TROWS();
-    /* Возвращаем результат */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return RRES;
   end TDATA_GRID_MAKE;
   
-  /* Поиск описания колонки в таблице данных по наименованию */
+  /* РџРѕРёСЃРє РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРєРё РІ С‚Р°Р±Р»РёС†Рµ РґР°РЅРЅС‹С… РїРѕ РЅР°РёРјРµРЅРѕРІР°РЅРёСЋ */
   function TDATA_GRID_FIND_COL_DEF
   (
-    RDATA_GRID              in TDATA_GRID, -- Описание таблицы данных
-    SNAME                   in varchar2    -- Наименование колонки
-  ) return                  TCOL_DEF       -- Найденное описание (null - если не нашли)
+    RDATA_GRID              in TDATA_GRID, -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    SNAME                   in varchar2    -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+  ) return                  TCOL_DEF       -- РќР°Р№РґРµРЅРЅРѕРµ РѕРїРёСЃР°РЅРёРµ (null - РµСЃР»Рё РЅРµ РЅР°С€Р»Рё)
   is
   begin
     return TCOL_DEFS_FIND(RCOL_DEFS => RDATA_GRID.RCOL_DEFS, SNAME => SNAME);
   end TDATA_GRID_FIND_COL_DEF;
   
-  /* Добавление описания колонки к таблице данных */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРєРё Рє С‚Р°Р±Р»РёС†Рµ РґР°РЅРЅС‹С… */
   procedure TDATA_GRID_ADD_COL_DEF
   (
-    RDATA_GRID              in out nocopy TDATA_GRID,      -- Описание таблицы данных
-    SNAME                   in varchar2,                   -- Наименование колонки
-    SCAPTION                in varchar2,                   -- Заголовок колонки
-    SDATA_TYPE              in varchar2 := SDATA_TYPE_STR, -- Тип данных колонки (см. константы SDATA_TYPE_*)
-    SCOND_FROM              in varchar2 := null,           -- Наименование нижней границы условия отбора (null - используется UTL_COND_NAME_MAKE_FROM)
-    SCOND_TO                in varchar2 := null,           -- Наименование верхней границы условия отбора (null - используется UTL_COND_NAME_MAKE_TO)
-    BVISIBLE                in boolean := true,            -- Разрешить отображение
-    BORDER                  in boolean := false,           -- Разрешить сортировку по колонке
-    BFILTER                 in boolean := false,           -- Разрешить отбор по колонке
-    RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения колонки
-    BCLEAR                  in boolean := false            -- Флаг очистки коллекции описаний колонок таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
+    RDATA_GRID              in out nocopy TDATA_GRID,      -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    SNAME                   in varchar2,                   -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РєРѕР»РѕРЅРєРё
+    SCAPTION                in varchar2,                   -- Р—Р°РіРѕР»РѕРІРѕРє РєРѕР»РѕРЅРєРё
+    SDATA_TYPE              in varchar2 := SDATA_TYPE_STR, -- РўРёРї РґР°РЅРЅС‹С… РєРѕР»РѕРЅРєРё (СЃРј. РєРѕРЅСЃС‚Р°РЅС‚С‹ SDATA_TYPE_*)
+    SCOND_FROM              in varchar2 := null,           -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° (null - РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ UTL_COND_NAME_MAKE_FROM)
+    SCOND_TO                in varchar2 := null,           -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° (null - РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ UTL_COND_NAME_MAKE_TO)
+    BVISIBLE                in boolean := true,            -- Р Р°Р·СЂРµС€РёС‚СЊ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ
+    BORDER                  in boolean := false,           -- Р Р°Р·СЂРµС€РёС‚СЊ СЃРѕСЂС‚РёСЂРѕРІРєСѓ РїРѕ РєРѕР»РѕРЅРєРµ
+    BFILTER                 in boolean := false,           -- Р Р°Р·СЂРµС€РёС‚СЊ РѕС‚Р±РѕСЂ РїРѕ РєРѕР»РѕРЅРєРµ
+    RCOL_VALS               in TCOL_VALS := null,          -- РџСЂРµРґРѕРїСЂРµРґРµР»С‘РЅРЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ РєРѕР»РѕРЅРєРё
+    BCLEAR                  in boolean := false            -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё РѕРїРёСЃР°РЅРёР№ РєРѕР»РѕРЅРѕРє С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   )
   is
   begin
-    /* Формируем описание и добавляем в коллекцию таблицы данных */
+    /* Р¤РѕСЂРјРёСЂСѓРµРј РѕРїРёСЃР°РЅРёРµ Рё РґРѕР±Р°РІР»СЏРµРј РІ РєРѕР»Р»РµРєС†РёСЋ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… */
     TCOL_DEFS_ADD(RCOL_DEFS  => RDATA_GRID.RCOL_DEFS,
                   SNAME      => SNAME,
                   SCAPTION   => SCAPTION,
@@ -727,153 +727,153 @@ create or replace package body PKG_P8PANELS_VISUAL as
                   BCLEAR     => BCLEAR);
   end TDATA_GRID_ADD_COL_DEF;
   
-  /* Добавление описания колонки к таблице данных */
+  /* Р”РѕР±Р°РІР»РµРЅРёРµ РѕРїРёСЃР°РЅРёСЏ РєРѕР»РѕРЅРєРё Рє С‚Р°Р±Р»РёС†Рµ РґР°РЅРЅС‹С… */
   procedure TDATA_GRID_ADD_ROW
   (
-    RDATA_GRID              in out nocopy TDATA_GRID, -- Описание таблицы данных
-    RROW                    in TROW,                  -- Строка
-    BCLEAR                  in boolean := false       -- Флаг очистки коллекции строк таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
+    RDATA_GRID              in out nocopy TDATA_GRID, -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    RROW                    in TROW,                  -- РЎС‚СЂРѕРєР°
+    BCLEAR                  in boolean := false       -- Р¤Р»Р°Рі РѕС‡РёСЃС‚РєРё РєРѕР»Р»РµРєС†РёРё СЃС‚СЂРѕРє С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… (false - РЅРµ РѕС‡РёС‰Р°С‚СЊ, true - РѕС‡РёСЃС‚РёС‚СЊ РєРѕР»Р»РµРєС†РёСЋ РїРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј)
   )
   is
   begin
-    /* Инициализируем коллекцию если необходимо */
+    /* РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РєРѕР»Р»РµРєС†РёСЋ РµСЃР»Рё РЅРµРѕР±С…РѕРґРёРјРѕ */
     if ((RDATA_GRID.RROWS is null) or (BCLEAR)) then
       RDATA_GRID.RROWS := TROWS();
     end if;
-    /* Добавляем элемент */
+    /* Р”РѕР±Р°РІР»СЏРµРј СЌР»РµРјРµРЅС‚ */
     RDATA_GRID.RROWS.EXTEND();
     RDATA_GRID.RROWS(RDATA_GRID.RROWS.LAST) := RROW;
   end TDATA_GRID_ADD_ROW;
   
-  /* Сериализация таблицы данных */
+  /* РЎРµСЂРёР°Р»РёР·Р°С†РёСЏ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… */
   function TDATA_GRID_TO_XML
   (
-    RDATA_GRID              in TDATA_GRID, -- Описание таблицы данных
-    NINCLUDE_DEF            in number := 1 -- Включить описание колонок (0 - нет, 1 - да)
-  ) return                  clob           -- XML-описание
+    RDATA_GRID              in TDATA_GRID, -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    NINCLUDE_DEF            in number := 1 -- Р’РєР»СЋС‡РёС‚СЊ РѕРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРѕРє (0 - РЅРµС‚, 1 - РґР°)
+  ) return                  clob           -- XML-РѕРїРёСЃР°РЅРёРµ
   is
-    CRES                    clob;          -- Буфер для результата
+    CRES                    clob;          -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р°
   begin
-    /* Начинаем формирование XML */
+    /* РќР°С‡РёРЅР°РµРј С„РѕСЂРјРёСЂРѕРІР°РЅРёРµ XML */
     PKG_XFAST.PROLOGUE(ITYPE => PKG_XFAST.CONTENT_);
-    /* Открываем корень */
+    /* РћС‚РєСЂС‹РІР°РµРј РєРѕСЂРµРЅСЊ */
     PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XDATA);
-    /* Если необходимо включить описание колонок */
+    /* Р•СЃР»Рё РЅРµРѕР±С…РѕРґРёРјРѕ РІРєР»СЋС‡РёС‚СЊ РѕРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРѕРє */
     if (NINCLUDE_DEF = 1) then
       TCOL_DEFS_TO_XML(RCOL_DEFS => RDATA_GRID.RCOL_DEFS);
     end if;
-    /* Формируем описание строк */
+    /* Р¤РѕСЂРјРёСЂСѓРµРј РѕРїРёСЃР°РЅРёРµ СЃС‚СЂРѕРє */
     TROWS_TO_XML(RCOL_DEFS => RDATA_GRID.RCOL_DEFS,RROWS => RDATA_GRID.RROWS);
-    /* Закрываем корень */
+    /* Р—Р°РєСЂС‹РІР°РµРј РєРѕСЂРµРЅСЊ */
     PKG_XFAST.UP();
-    /* Сериализуем */
+    /* РЎРµСЂРёР°Р»РёР·СѓРµРј */
     CRES := PKG_XFAST.SERIALIZE_TO_CLOB();
-    /* Завершаем формирование XML */
+    /* Р—Р°РІРµСЂС€Р°РµРј С„РѕСЂРјРёСЂРѕРІР°РЅРёРµ XML */
     PKG_XFAST.EPILOGUE();
-    /* Возвращаем полученное */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј РїРѕР»СѓС‡РµРЅРЅРѕРµ */
     return CRES;
   exception
     when others then
-      /* Завершаем формирование XML */
+      /* Р—Р°РІРµСЂС€Р°РµРј С„РѕСЂРјРёСЂРѕРІР°РЅРёРµ XML */
       PKG_XFAST.EPILOGUE();
-      /* Вернем ошибку */
+      /* Р’РµСЂРЅРµРј РѕС€РёР±РєСѓ */
       PKG_STATE.DIAGNOSTICS_STACKED();
       P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
   end TDATA_GRID_TO_XML;
   
-  /* Конвертация значений фильтра в число */
+  /* РљРѕРЅРІРµСЂС‚Р°С†РёСЏ Р·РЅР°С‡РµРЅРёР№ С„РёР»СЊС‚СЂР° РІ С‡РёСЃР»Рѕ */
   procedure TFILTER_TO_NUMBER
   (
-    RFILTER                 in TFILTER, -- Фильтр
-    NFROM                   out number, -- Значение нижней границы диапазона
-    NTO                     out number  -- Значение верхней границы диапазона
+    RFILTER                 in TFILTER, -- Р¤РёР»СЊС‚СЂ
+    NFROM                   out number, -- Р—РЅР°С‡РµРЅРёРµ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР°
+    NTO                     out number  -- Р—РЅР°С‡РµРЅРёРµ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР°
   )
   is
   begin
-    /* Нижняя граница диапазона */
+    /* РќРёР¶РЅСЏСЏ РіСЂР°РЅРёС†Р° РґРёР°РїР°Р·РѕРЅР° */
     if (RFILTER.SFROM is not null) then
       begin
         NFROM := PKG_P8PANELS_BASE.UTL_S2N(SVALUE => RFILTER.SFROM);
       exception
         when others then
           P_EXCEPTION(0,
-                      'Неверный формат числа (%s) в указанной нижней границе диапазона фильтра.',
+                      'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ С‡РёСЃР»Р° (%s) РІ СѓРєР°Р·Р°РЅРЅРѕР№ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†Рµ РґРёР°РїР°Р·РѕРЅР° С„РёР»СЊС‚СЂР°.',
                       RFILTER.SFROM);
       end;
     end if;
-    /* Верхняя граница диапазона */    
+    /* Р’РµСЂС…РЅСЏСЏ РіСЂР°РЅРёС†Р° РґРёР°РїР°Р·РѕРЅР° */    
     if (RFILTER.STO is not null) then
       begin
         NTO := PKG_P8PANELS_BASE.UTL_S2N(SVALUE => RFILTER.STO);
       exception
         when others then
           P_EXCEPTION(0,
-                      'Неверный формат числа (%s) в указанной верхней границе диапазона фильтра.',
+                      'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ С‡РёСЃР»Р° (%s) РІ СѓРєР°Р·Р°РЅРЅРѕР№ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†Рµ РґРёР°РїР°Р·РѕРЅР° С„РёР»СЊС‚СЂР°.',
                       RFILTER.STO);
       end;
     end if;
   end TFILTER_TO_NUMBER;
   
-  /* Конвертация значений фильтра в дату */
+  /* РљРѕРЅРІРµСЂС‚Р°С†РёСЏ Р·РЅР°С‡РµРЅРёР№ С„РёР»СЊС‚СЂР° РІ РґР°С‚Сѓ */
   procedure TFILTER_TO_DATE
   (
-    RFILTER                 in TFILTER, -- Фильтр
-    DFROM                   out date,   -- Значение нижней границы диапазона
-    DTO                     out date    -- Значение верхней границы диапазона
+    RFILTER                 in TFILTER, -- Р¤РёР»СЊС‚СЂ
+    DFROM                   out date,   -- Р—РЅР°С‡РµРЅРёРµ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР°
+    DTO                     out date    -- Р—РЅР°С‡РµРЅРёРµ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР°
   )
   is
   begin
-    /* Нижняя граница диапазона */
+    /* РќРёР¶РЅСЏСЏ РіСЂР°РЅРёС†Р° РґРёР°РїР°Р·РѕРЅР° */
     if (RFILTER.SFROM is not null) then
       begin
         DFROM := PKG_P8PANELS_BASE.UTL_S2D(SVALUE => RFILTER.SFROM);
       exception
         when others then
           P_EXCEPTION(0,
-                      'Неверный формат даты (%s) в указанной нижней границе диапазона фильтра.',
+                      'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РґР°С‚С‹ (%s) РІ СѓРєР°Р·Р°РЅРЅРѕР№ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†Рµ РґРёР°РїР°Р·РѕРЅР° С„РёР»СЊС‚СЂР°.',
                       RFILTER.SFROM);
       end;
     end if;
-    /* Верхняя граница диапазона */
+    /* Р’РµСЂС…РЅСЏСЏ РіСЂР°РЅРёС†Р° РґРёР°РїР°Р·РѕРЅР° */
     if (RFILTER.STO is not null) then
       begin
         DTO := PKG_P8PANELS_BASE.UTL_S2D(SVALUE => RFILTER.STO);
       exception
         when others then
           P_EXCEPTION(0,
-                      'Неверный формат даты (%s) в указанной верхней границе диапазона фильтра.',
+                      'РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РґР°С‚С‹ (%s) РІ СѓРєР°Р·Р°РЅРЅРѕР№ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†Рµ РґРёР°РїР°Р·РѕРЅР° С„РёР»СЊС‚СЂР°.',
                       RFILTER.STO);
       end;
     end if;
   end TFILTER_TO_DATE;
 
-  /* Формирование фильтра */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ С„РёР»СЊС‚СЂР° */
   function TFILTER_MAKE
   (
-    SNAME                   in varchar2, -- Наименование
-    SFROM                   in varchar2, -- Значение "с"
-    STO                     in varchar2  -- Значение "по"
-  ) return                  TFILTER      -- Результат работы
+    SNAME                   in varchar2, -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+    SFROM                   in varchar2, -- Р—РЅР°С‡РµРЅРёРµ "СЃ"
+    STO                     in varchar2  -- Р—РЅР°С‡РµРЅРёРµ "РїРѕ"
+  ) return                  TFILTER      -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   is
-    RRES                    TFILTER;    -- Буфер для результата
+    RRES                    TFILTER;    -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р°
   begin
-    /* Формируем объект */
+    /* Р¤РѕСЂРјРёСЂСѓРµРј РѕР±СЉРµРєС‚ */
     RRES.SNAME := SNAME;
     RRES.SFROM := SFROM;
     RRES.STO   := STO;
-    /* Возвращаем результат */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return RRES;
   end TFILTER_MAKE;
   
-  /* Поиск фильтра в коллекции */
+  /* РџРѕРёСЃРє С„РёР»СЊС‚СЂР° РІ РєРѕР»Р»РµРєС†РёРё */
   function TFILTERS_FIND
   (
-    RFILTERS                in TFILTERS, -- Коллекция фильтров
-    SNAME                   in varchar2  -- Наименование
-  ) return                  TFILTER      -- Найденный фильтр (null - если не нашли)
+    RFILTERS                in TFILTERS, -- РљРѕР»Р»РµРєС†РёСЏ С„РёР»СЊС‚СЂРѕРІ
+    SNAME                   in varchar2  -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+  ) return                  TFILTER      -- РќР°Р№РґРµРЅРЅС‹Р№ С„РёР»СЊС‚СЂ (null - РµСЃР»Рё РЅРµ РЅР°С€Р»Рё)
   is
   begin
-    /* Обходим фильтры из коллекции */
+    /* РћР±С…РѕРґРёРј С„РёР»СЊС‚СЂС‹ РёР· РєРѕР»Р»РµРєС†РёРё */
     if ((RFILTERS is not null) and (RFILTERS.COUNT > 0)) then
       for I in RFILTERS.FIRST .. RFILTERS.LAST
       loop
@@ -882,102 +882,102 @@ create or replace package body PKG_P8PANELS_VISUAL as
         end if;
       end loop;
     end if;
-    /* Ничего не нашли */
+    /* РќРёС‡РµРіРѕ РЅРµ РЅР°С€Р»Рё */
     return null;
   end TFILTERS_FIND;
   
-  /* Десериализация фильтров */
+  /* Р”РµСЃРµСЂРёР°Р»РёР·Р°С†РёСЏ С„РёР»СЊС‚СЂРѕРІ */
   function TFILTERS_FROM_XML
   (
-    CFILTERS                in clob              -- Сериализованное представление фильтров (BASE64(<filters><name>ИМЯ</name><from>ЗНАЧЕНИЕ</from><to>ЗНАЧЕНИЕ</to></filters>...))
-  ) return                  TFILTERS             -- Результат работы
+    CFILTERS                in clob              -- РЎРµСЂРёР°Р»РёР·РѕРІР°РЅРЅРѕРµ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёРµ С„РёР»СЊС‚СЂРѕРІ (BASE64(<filters><name>РРњРЇ</name><from>Р—РќРђР§Р•РќРР•</from><to>Р—РќРђР§Р•РќРР•</to></filters>...))
+  ) return                  TFILTERS             -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   is
-    RFILTERS                TFILTERS;            -- Буфер для результата работы
-    XDOC                    PKG_XPATH.TDOCUMENT; -- Документ XML
-    XROOT                   PKG_XPATH.TNODE;     -- Корень документа XML
-    XNODE                   PKG_XPATH.TNODE;     -- Буфер узла документа
-    XNODES                  PKG_XPATH.TNODES;    -- Буфер коллекции узлов документа
+    RFILTERS                TFILTERS;            -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р° СЂР°Р±РѕС‚С‹
+    XDOC                    PKG_XPATH.TDOCUMENT; -- Р”РѕРєСѓРјРµРЅС‚ XML
+    XROOT                   PKG_XPATH.TNODE;     -- РљРѕСЂРµРЅСЊ РґРѕРєСѓРјРµРЅС‚Р° XML
+    XNODE                   PKG_XPATH.TNODE;     -- Р‘СѓС„РµСЂ СѓР·Р»Р° РґРѕРєСѓРјРµРЅС‚Р°
+    XNODES                  PKG_XPATH.TNODES;    -- Р‘СѓС„РµСЂ РєРѕР»Р»РµРєС†РёРё СѓР·Р»РѕРІ РґРѕРєСѓРјРµРЅС‚Р°
   begin
-    /* Вернём выходную коллекцию */
+    /* Р’РµСЂРЅС‘Рј РІС‹С…РѕРґРЅСѓСЋ РєРѕР»Р»РµРєС†РёСЋ */
     RFILTERS := TFILTERS();
-    /* Разбираем XML */
+    /* Р Р°Р·Р±РёСЂР°РµРј XML */
     XDOC := PKG_XPATH.PARSE_FROM_CLOB(LCXML => '<' || SRQ_TAG_XROOT || '>' ||
                                                BLOB2CLOB(LBDATA   => BASE64_DECODE(LCSRCE => CFILTERS),
                                                          SCHARSET => PKG_CHARSET.CHARSET_UTF_()) || '</' ||
                                                SRQ_TAG_XROOT || '>');
-    /* Считываем корневой узел */
+    /* РЎС‡РёС‚С‹РІР°РµРј РєРѕСЂРЅРµРІРѕР№ СѓР·РµР» */
     XROOT := PKG_XPATH.ROOT_NODE(RDOCUMENT => XDOC);
-    /* Считывание списка записей */
+    /* РЎС‡РёС‚С‹РІР°РЅРёРµ СЃРїРёСЃРєР° Р·Р°РїРёСЃРµР№ */
     XNODES := PKG_XPATH.LIST_NODES(RPARENT_NODE => XROOT, SPATTERN => '/' || SRQ_TAG_XROOT || '/' || SRQ_TAG_XFILTERS);
-    /* Цикл по списку записией */
+    /* Р¦РёРєР» РїРѕ СЃРїРёСЃРєСѓ Р·Р°РїРёСЃРёРµР№ */
     for I in 1 .. PKG_XPATH.COUNT_NODES(RNODES => XNODES)
     loop
-      /* Считаем элемент по его номеру */
+      /* РЎС‡РёС‚Р°РµРј СЌР»РµРјРµРЅС‚ РїРѕ РµРіРѕ РЅРѕРјРµСЂСѓ */
       XNODE := PKG_XPATH.ITEM_NODE(RNODES => XNODES, INUMBER => I);
-      /* Добавим его в коллекцию */
+      /* Р”РѕР±Р°РІРёРј РµРіРѕ РІ РєРѕР»Р»РµРєС†РёСЋ */
       RFILTERS.EXTEND();
       RFILTERS(RFILTERS.LAST) := TFILTER_MAKE(SNAME => PKG_XPATH.VALUE(RNODE => XNODE, SPATTERN => SRQ_TAG_SNAME),
                                               SFROM => PKG_XPATH.VALUE(RNODE => XNODE, SPATTERN => SRQ_TAG_SFROM),
                                               STO   => PKG_XPATH.VALUE(RNODE => XNODE, SPATTERN => SRQ_TAG_STO));
     end loop;
-    /* Освободим документ */
+    /* РћСЃРІРѕР±РѕРґРёРј РґРѕРєСѓРјРµРЅС‚ */
     PKG_XPATH.FREE(RDOCUMENT => XDOC);
-    /* Вернём результат */
+    /* Р’РµСЂРЅС‘Рј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return RFILTERS;
   exception
     when others then
-      /* Освободим документ */
+      /* РћСЃРІРѕР±РѕРґРёРј РґРѕРєСѓРјРµРЅС‚ */
       PKG_XPATH.FREE(RDOCUMENT => XDOC);
-      /* Вернем ошибку */
+      /* Р’РµСЂРЅРµРј РѕС€РёР±РєСѓ */
       PKG_STATE.DIAGNOSTICS_STACKED();
       P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
   end TFILTERS_FROM_XML;
   
-  /* Применение параметров фильтрации в запросе */
+  /* РџСЂРёРјРµРЅРµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ С„РёР»СЊС‚СЂР°С†РёРё РІ Р·Р°РїСЂРѕСЃРµ */
   procedure TFILTERS_SET_QUERY
   (
-    NIDENT                  in number,         -- Идентификатор отбора
-    NCOMPANY                in number,         -- Рег. номер организации
-    NPARENT                 in number := null, -- Рег. номер родителя
-    SUNIT                   in varchar2,       -- Код раздела
-    SPROCEDURE              in varchar2,       -- Наименование серверной процедуры отбора
-    RDATA_GRID              in TDATA_GRID,     -- Описание таблицы данных
-    RFILTERS                in TFILTERS        -- Коллекция фильтров
+    NIDENT                  in number,         -- РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РѕС‚Р±РѕСЂР°
+    NCOMPANY                in number,         -- Р РµРі. РЅРѕРјРµСЂ РѕСЂРіР°РЅРёР·Р°С†РёРё
+    NPARENT                 in number := null, -- Р РµРі. РЅРѕРјРµСЂ СЂРѕРґРёС‚РµР»СЏ
+    SUNIT                   in varchar2,       -- РљРѕРґ СЂР°Р·РґРµР»Р°
+    SPROCEDURE              in varchar2,       -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ СЃРµСЂРІРµСЂРЅРѕР№ РїСЂРѕС†РµРґСѓСЂС‹ РѕС‚Р±РѕСЂР°
+    RDATA_GRID              in TDATA_GRID,     -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С…
+    RFILTERS                in TFILTERS        -- РљРѕР»Р»РµРєС†РёСЏ С„РёР»СЊС‚СЂРѕРІ
   )
   is
-    RCOL_DEF                TCOL_DEF;          -- Описание текущей фильтруемой колонки
-    BENUM                   boolean;           -- Флаг начиличия перечисляемых значений
-    NFROM                   PKG_STD.TNUMBER;   -- Буфер для верхней границы диапазона отбора чисел
-    NTO                     PKG_STD.TNUMBER;   -- Буфер для нижней границы диапазона отбора чисел
-    DFROM                   PKG_STD.TLDATE;    -- Буфер для верхней границы диапазона отбора дат
-    DTO                     PKG_STD.TLDATE;    -- Буфер для нижней границы диапазона отбора дат
+    RCOL_DEF                TCOL_DEF;          -- РћРїРёСЃР°РЅРёРµ С‚РµРєСѓС‰РµР№ С„РёР»СЊС‚СЂСѓРµРјРѕР№ РєРѕР»РѕРЅРєРё
+    BENUM                   boolean;           -- Р¤Р»Р°Рі РЅР°С‡РёР»РёС‡РёСЏ РїРµСЂРµС‡РёСЃР»СЏРµРјС‹С… Р·РЅР°С‡РµРЅРёР№
+    NFROM                   PKG_STD.TNUMBER;   -- Р‘СѓС„РµСЂ РґР»СЏ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР° РѕС‚Р±РѕСЂР° С‡РёСЃРµР»
+    NTO                     PKG_STD.TNUMBER;   -- Р‘СѓС„РµСЂ РґР»СЏ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР° РѕС‚Р±РѕСЂР° С‡РёСЃРµР»
+    DFROM                   PKG_STD.TLDATE;    -- Р‘СѓС„РµСЂ РґР»СЏ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР° РѕС‚Р±РѕСЂР° РґР°С‚
+    DTO                     PKG_STD.TLDATE;    -- Р‘СѓС„РµСЂ РґР»СЏ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹ РґРёР°РїР°Р·РѕРЅР° РѕС‚Р±РѕСЂР° РґР°С‚
   begin
-    /* Формирование условий отбора - Пролог */
+    /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СѓСЃР»РѕРІРёР№ РѕС‚Р±РѕСЂР° - РџСЂРѕР»РѕРі */
     PKG_COND_BROKER.PROLOGUE(IMODE => PKG_COND_BROKER.MODE_SMART_, NIDENT => NIDENT);
-    /* Формирование условий отбора - Установка процедуры серверного отбора */
+    /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СѓСЃР»РѕРІРёР№ РѕС‚Р±РѕСЂР° - РЈСЃС‚Р°РЅРѕРІРєР° РїСЂРѕС†РµРґСѓСЂС‹ СЃРµСЂРІРµСЂРЅРѕРіРѕ РѕС‚Р±РѕСЂР° */
     PKG_COND_BROKER.SET_PROCEDURE(SPROCEDURE_NAME => SPROCEDURE);
-    /* Формирование условий отбора - Установка раздела */
+    /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СѓСЃР»РѕРІРёР№ РѕС‚Р±РѕСЂР° - РЈСЃС‚Р°РЅРѕРІРєР° СЂР°Р·РґРµР»Р° */
     PKG_COND_BROKER.SET_UNIT(SUNITCODE => SUNIT);
-    /* Формирование условий отбора - Установка организации */
+    /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СѓСЃР»РѕРІРёР№ РѕС‚Р±РѕСЂР° - РЈСЃС‚Р°РЅРѕРІРєР° РѕСЂРіР°РЅРёР·Р°С†РёРё */
     PKG_COND_BROKER.SET_COMPANY(NCOMPANY => NCOMPANY);
-    /* Формирование условий отбора - Установка родителя */
+    /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СѓСЃР»РѕРІРёР№ РѕС‚Р±РѕСЂР° - РЈСЃС‚Р°РЅРѕРІРєР° СЂРѕРґРёС‚РµР»СЏ */
     if (NPARENT is not null) then
       PKG_COND_BROKER.SET_PARENT(NPARENT => NPARENT);
     end if;
-    /* Обходим фильтр, если задан */
+    /* РћР±С…РѕРґРёРј С„РёР»СЊС‚СЂ, РµСЃР»Рё Р·Р°РґР°РЅ */
     if ((RFILTERS is not null) and (RFILTERS.COUNT > 0)) then
       for I in RFILTERS.FIRST .. RFILTERS.LAST
       loop
-        /* Найдем фильтруемую колонку в описании */
+        /* РќР°Р№РґРµРј С„РёР»СЊС‚СЂСѓРµРјСѓСЋ РєРѕР»РѕРЅРєСѓ РІ РѕРїРёСЃР°РЅРёРё */
         RCOL_DEF := TCOL_DEFS_FIND(RCOL_DEFS => RDATA_GRID.RCOL_DEFS, SNAME => RFILTERS(I).SNAME);
         if (RCOL_DEF.SNAME is not null) then
-          /* Определимся с наличием перечисляемых значений */
+          /* РћРїСЂРµРґРµР»РёРјСЃСЏ СЃ РЅР°Р»РёС‡РёРµРј РїРµСЂРµС‡РёСЃР»СЏРµРјС‹С… Р·РЅР°С‡РµРЅРёР№ */
           if ((RCOL_DEF.RCOL_VALS is not null) and (RCOL_DEF.RCOL_VALS.COUNT > 0)) then
             BENUM := true;
           else
             BENUM := false;
           end if;
-          /* Установим для неё условие отобра согласно типу данных */
+          /* РЈСЃС‚Р°РЅРѕРІРёРј РґР»СЏ РЅРµС‘ СѓСЃР»РѕРІРёРµ РѕС‚РѕР±СЂР° СЃРѕРіР»Р°СЃРЅРѕ С‚РёРїСѓ РґР°РЅРЅС‹С… */
           case RCOL_DEF.SDATA_TYPE
             when SDATA_TYPE_STR then
               begin
@@ -1025,96 +1025,96 @@ create or replace package body PKG_P8PANELS_VISUAL as
               end;
             else
               P_EXCEPTION(0,
-                          'Описание колонки "%s" таблицы данных содержит неподдерживаемый тип данных ("%s").',
+                          'РћРїРёСЃР°РЅРёРµ РєРѕР»РѕРЅРєРё "%s" С‚Р°Р±Р»РёС†С‹ РґР°РЅРЅС‹С… СЃРѕРґРµСЂР¶РёС‚ РЅРµРїРѕРґРґРµСЂР¶РёРІР°РµРјС‹Р№ С‚РёРї РґР°РЅРЅС‹С… ("%s").',
                           RCOL_DEF.SNAME,
-                          COALESCE(RCOL_DEF.SDATA_TYPE, '<НЕ ОПРЕДЕЛЁН>'));
+                          COALESCE(RCOL_DEF.SDATA_TYPE, '<РќР• РћРџР Р•Р”Р•Р›РЃРќ>'));
           end case;
         end if;
       end loop;
     end if;
-    /* Формирование условий отбора - Эпилог */
+    /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СѓСЃР»РѕРІРёР№ РѕС‚Р±РѕСЂР° - Р­РїРёР»РѕРі */
     PKG_COND_BROKER.EPILOGUE();
   end TFILTERS_SET_QUERY;
   
-  /* Формирование сортировки */
+  /* Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СЃРѕСЂС‚РёСЂРѕРІРєРё */
   function TORDER_MAKE
   (
-    SNAME                   in varchar2, -- Наименование
-    SDIRECTION              in varchar2  -- Направление (см. константы SORDER_DIRECTION_*)
-  ) return                  TORDER       -- Результат работы
+    SNAME                   in varchar2, -- РќР°РёРјРµРЅРѕРІР°РЅРёРµ
+    SDIRECTION              in varchar2  -- РќР°РїСЂР°РІР»РµРЅРёРµ (СЃРј. РєРѕРЅСЃС‚Р°РЅС‚С‹ SORDER_DIRECTION_*)
+  ) return                  TORDER       -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   is
-    RRES                    TORDER;      -- Буфер для результата
+    RRES                    TORDER;      -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р°
   begin
-    /* Формируем объект */
+    /* Р¤РѕСЂРјРёСЂСѓРµРј РѕР±СЉРµРєС‚ */
     RRES.SNAME      := SNAME;
     RRES.SDIRECTION := SDIRECTION;
-    /* Возвращаем результат */
+    /* Р’РѕР·РІСЂР°С‰Р°РµРј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return RRES;
   end TORDER_MAKE;
   
-  /* Десериализация сортировок */
+  /* Р”РµСЃРµСЂРёР°Р»РёР·Р°С†РёСЏ СЃРѕСЂС‚РёСЂРѕРІРѕРє */
   function TORDERS_FROM_XML
   (
-    CORDERS                 in clob              -- Сериализованное представление сотрировок (BASE64(<orders><name>ИМЯ</name><direction>ASC/DESC</direction></orders>...))
-  ) return                  TORDERS              -- Результат работы
+    CORDERS                 in clob              -- РЎРµСЂРёР°Р»РёР·РѕРІР°РЅРЅРѕРµ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёРµ СЃРѕС‚СЂРёСЂРѕРІРѕРє (BASE64(<orders><name>РРњРЇ</name><direction>ASC/DESC</direction></orders>...))
+  ) return                  TORDERS              -- Р РµР·СѓР»СЊС‚Р°С‚ СЂР°Р±РѕС‚С‹
   is
-    RORDERS                 TORDERS;             -- Буфер для результата работы
-    XDOC                    PKG_XPATH.TDOCUMENT; -- Документ XML
-    XROOT                   PKG_XPATH.TNODE;     -- Корень документа XML
-    XNODE                   PKG_XPATH.TNODE;     -- Буфер узла документа
-    XNODES                  PKG_XPATH.TNODES;    -- Буфер коллекции узлов документа
+    RORDERS                 TORDERS;             -- Р‘СѓС„РµСЂ РґР»СЏ СЂРµР·СѓР»СЊС‚Р°С‚Р° СЂР°Р±РѕС‚С‹
+    XDOC                    PKG_XPATH.TDOCUMENT; -- Р”РѕРєСѓРјРµРЅС‚ XML
+    XROOT                   PKG_XPATH.TNODE;     -- РљРѕСЂРµРЅСЊ РґРѕРєСѓРјРµРЅС‚Р° XML
+    XNODE                   PKG_XPATH.TNODE;     -- Р‘СѓС„РµСЂ СѓР·Р»Р° РґРѕРєСѓРјРµРЅС‚Р°
+    XNODES                  PKG_XPATH.TNODES;    -- Р‘СѓС„РµСЂ РєРѕР»Р»РµРєС†РёРё СѓР·Р»РѕРІ РґРѕРєСѓРјРµРЅС‚Р°
   begin
-    /* Инициализируем выходную коллекцию */
+    /* РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РІС‹С…РѕРґРЅСѓСЋ РєРѕР»Р»РµРєС†РёСЋ */
     RORDERS := TORDERS();
-    /* Разбираем XML */
+    /* Р Р°Р·Р±РёСЂР°РµРј XML */
     XDOC := PKG_XPATH.PARSE_FROM_CLOB(LCXML => '<' || SRQ_TAG_XROOT || '>' ||
                                                BLOB2CLOB(LBDATA   => BASE64_DECODE(LCSRCE => CORDERS),
                                                          SCHARSET => PKG_CHARSET.CHARSET_UTF_()) || '</' ||
                                                SRQ_TAG_XROOT || '>');
-    /* Считываем корневой узел */
+    /* РЎС‡РёС‚С‹РІР°РµРј РєРѕСЂРЅРµРІРѕР№ СѓР·РµР» */
     XROOT := PKG_XPATH.ROOT_NODE(RDOCUMENT => XDOC);
-    /* Считывание списка записей */
+    /* РЎС‡РёС‚С‹РІР°РЅРёРµ СЃРїРёСЃРєР° Р·Р°РїРёСЃРµР№ */
     XNODES := PKG_XPATH.LIST_NODES(RPARENT_NODE => XROOT, SPATTERN => '/' || SRQ_TAG_XROOT || '/' || SRQ_TAG_XORDERS);
-    /* Цикл по списку записией */
+    /* Р¦РёРєР» РїРѕ СЃРїРёСЃРєСѓ Р·Р°РїРёСЃРёРµР№ */
     for I in 1 .. PKG_XPATH.COUNT_NODES(RNODES => XNODES)
     loop
-      /* Считаем элемент по его номеру */
+      /* РЎС‡РёС‚Р°РµРј СЌР»РµРјРµРЅС‚ РїРѕ РµРіРѕ РЅРѕРјРµСЂСѓ */
       XNODE := PKG_XPATH.ITEM_NODE(RNODES => XNODES, INUMBER => I);
-      /* Добавим его в коллекцию */
+      /* Р”РѕР±Р°РІРёРј РµРіРѕ РІ РєРѕР»Р»РµРєС†РёСЋ */
       RORDERS.EXTEND();
       RORDERS(RORDERS.LAST) := TORDER_MAKE(SNAME      => PKG_XPATH.VALUE(RNODE => XNODE, SPATTERN => SRQ_TAG_SNAME),
                                            SDIRECTION => PKG_XPATH.VALUE(RNODE => XNODE, SPATTERN => SRQ_TAG_SDIRECTION));
     end loop;
-    /* Освободим документ */
+    /* РћСЃРІРѕР±РѕРґРёРј РґРѕРєСѓРјРµРЅС‚ */
     PKG_XPATH.FREE(RDOCUMENT => XDOC);
-    /* Вернём результат */
+    /* Р’РµСЂРЅС‘Рј СЂРµР·СѓР»СЊС‚Р°С‚ */
     return RORDERS;
   exception
     when others then
-      /* Освободим документ */
+      /* РћСЃРІРѕР±РѕРґРёРј РґРѕРєСѓРјРµРЅС‚ */
       PKG_XPATH.FREE(RDOCUMENT => XDOC);
-      /* Вернем ошибку */
+      /* Р’РµСЂРЅРµРј РѕС€РёР±РєСѓ */
       PKG_STATE.DIAGNOSTICS_STACKED();
       P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
   end TORDERS_FROM_XML;
   
-  /* Применение параметров сортировки в запросе */
+  /* РџСЂРёРјРµРЅРµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ СЃРѕСЂС‚РёСЂРѕРІРєРё РІ Р·Р°РїСЂРѕСЃРµ */
   procedure TORDERS_SET_QUERY
   (
-    RDATA_GRID              in TDATA_GRID,      -- Описание таблицы
-    RORDERS                 in TORDERS,         -- Коллекция сортировок
-    SPATTERN                in varchar2,        -- Шаблон для подстановки условий отбора в запрос    
-    CSQL                    in out nocopy clob  -- Буфер запроса
+    RDATA_GRID              in TDATA_GRID,      -- РћРїРёСЃР°РЅРёРµ С‚Р°Р±Р»РёС†С‹
+    RORDERS                 in TORDERS,         -- РљРѕР»Р»РµРєС†РёСЏ СЃРѕСЂС‚РёСЂРѕРІРѕРє
+    SPATTERN                in varchar2,        -- РЁР°Р±Р»РѕРЅ РґР»СЏ РїРѕРґСЃС‚Р°РЅРѕРІРєРё СѓСЃР»РѕРІРёР№ РѕС‚Р±РѕСЂР° РІ Р·Р°РїСЂРѕСЃ    
+    CSQL                    in out nocopy clob  -- Р‘СѓС„РµСЂ Р·Р°РїСЂРѕСЃР°
   )
   is
-    CSQL_ORDERS             clob;               -- Буфер для условий сортировки в запросе
+    CSQL_ORDERS             clob;               -- Р‘СѓС„РµСЂ РґР»СЏ СѓСЃР»РѕРІРёР№ СЃРѕСЂС‚РёСЂРѕРІРєРё РІ Р·Р°РїСЂРѕСЃРµ
   begin
-    /* Если сортировка задана */
+    /* Р•СЃР»Рё СЃРѕСЂС‚РёСЂРѕРІРєР° Р·Р°РґР°РЅР° */
     if ((RORDERS is not null) and (RORDERS.COUNT > 0)) then
       CSQL_ORDERS := ' order by ';
       for I in RORDERS.FIRST .. RORDERS.LAST
       loop
-        /* Перед добавлением в запрос - обязательная проверка, чтобы избежать SQL-инъекций */
+        /* РџРµСЂРµРґ РґРѕР±Р°РІР»РµРЅРёРµРј РІ Р·Р°РїСЂРѕСЃ - РѕР±СЏР·Р°С‚РµР»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР°, С‡С‚РѕР±С‹ РёР·Р±РµР¶Р°С‚СЊ SQL-РёРЅСЉРµРєС†РёР№ */
         if ((TCOL_DEFS_FIND(RCOL_DEFS => RDATA_GRID.RCOL_DEFS, SNAME => RORDERS(I).SNAME).SNAME is not null) and
            (RORDERS(I).SDIRECTION in (SORDER_DIRECTION_ASC, SORDER_DIRECTION_DESC))) then
           CSQL_ORDERS := CSQL_ORDERS || RORDERS(I).SNAME || ' ' || RORDERS(I).SDIRECTION;
