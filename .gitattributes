@@ -3,5 +3,5 @@
 *.prc working-tree-encoding=cp1251 eol=crlf
 
 *.sql linguist-language=sql
-*.pck linguist-language=plsql
-*.prc linguist-language=plsql
+*.pck linguist-language=sql
+*.prc linguist-language=sql
