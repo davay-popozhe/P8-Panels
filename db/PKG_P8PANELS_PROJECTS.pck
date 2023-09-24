@@ -2216,112 +2216,87 @@ text="ПРАВА ДОСТУПА!!!!"
     RSTAGE_ARTS             out TSTAGE_ARTS       -- Список статей этапа проекта
   )
   is
-    RPRJ                    PROJECT%rowtype;      -- Запись проекта
     RSTG                    PROJECTSTAGE%rowtype; -- Запись этапа проекта
     NCTL_COST_DP            PKG_STD.TREF;         -- Рег. номер доп. свойства, определяющего необходимость контроля затрат по статье
     NCTL_CONTR_DP           PKG_STD.TREF;         -- Рег. номер доп. свойства, определяющего необходимость контроля контрактации по статье
-    NCT                     PKG_STD.TREF;         -- Рег. номер расчётной таблицы
-    RCURSOR                 PRSG_CALCTAB.TCURSOR; -- Курсор для обхода строк расчётной таблицы
     I                       PKG_STD.TNUMBER;      -- Счётчик статей в результирующей коллекции
   begin
-    /* Читаем проект и этап */
+    /* Читаем этап */
     RSTG := STAGES_GET(NRN => NSTAGE);
-    RPRJ := GET(NRN => RSTG.PRN);
     /* Определим дополнительные свойства - контроль затрат */
     if (NINC_COST = 1) then
-      FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1, NCOMPANY => RPRJ.COMPANY, SCODE => 'ПУП.CTL_COST', NRN => NCTL_COST_DP);
+      FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1, NCOMPANY => RSTG.COMPANY, SCODE => 'ПУП.CTL_COST', NRN => NCTL_COST_DP);
     end if;
-    /* Определим дополнительные свойства - контроль затрат */
+    /* Определим дополнительные свойства - контроль контрактации */
     if (NINC_CONTR = 1) then
       FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1,
-                           NCOMPANY    => RPRJ.COMPANY,
+                           NCOMPANY    => RSTG.COMPANY,
                            SCODE       => 'ПУП.CTL_CONTR',
                            NRN         => NCTL_CONTR_DP);
     end if;
     /* Инициализируем коллекцию */
     RSTAGE_ARTS := TSTAGE_ARTS();
-    /* Подбираем расчётную таблицу */
-    for C in (select CT.RN
-                from CALCTABCPYS CT
-               where CT.COMPANY = RPRJ.COMPANY
-                 and exists (select null
-                        from V_CALCTABCPYPRMS P
-                       where P.SPARAMETER_NAME = SSTAGES_CT_CALC_PRM_PRJ
-                         and P.SSTR_VALUE = RPRJ.CODE
-                         and P.NPRN = CT.RN)
-                 and exists (select null
-                        from V_CALCTABCPYPRMS P
-                       where P.SPARAMETER_NAME = SSTAGES_CT_CALC_PRM_STG
-                         and trim(P.SSTR_VALUE) = trim(RSTG.NUMB)
-                         and P.NPRN = CT.RN)
-               order by CT.DOC_DATE desc)
+    /* Подбираем активную структуру цены этапа проекта и её обходим статьи */
+    for C in (select CSPA.NUMB     SNUMB,
+                     A.RN          NARTICLE,
+                     A.NAME        SARTICLE,
+                     CSPA.COST_SUM NCOST_SUM
+                from PROJECTSTAGE  PS,
+                     STAGES        CS,
+                     CONTRPRSTRUCT CSP,
+                     CONTRPRCLC    CSPA,
+                     FPDARTCL      A
+               where PS.RN = RSTG.RN
+                 and PS.FACEACCCUST = CS.FACEACC
+                 and CSP.PRN = CS.RN
+                 and CSP.SIGN_ACT = 1
+                 and CSPA.PRN = CSP.RN
+                 and CSPA.COST_ARTICLE = A.RN
+               order by CSPA.NUMB)
     loop
-      /* Берём первую найденную и выходим */
-      NCT := C.RN;
-      exit;
+      /* Добавим строку в коллекцию */
+      RSTAGE_ARTS.EXTEND();
+      I := RSTAGE_ARTS.LAST;
+      /* Наполним её значениями из хранилища */
+      RSTAGE_ARTS(I).NRN := C.NARTICLE;
+      RSTAGE_ARTS(I).SCODE := C.SNUMB;
+      RSTAGE_ARTS(I).SNAME := C.SARTICLE;
+      RSTAGE_ARTS(I).NPLAN := C.NCOST_SUM;
+      /* Если просили включить сведения о затратах и статья поддерживает это  */
+      if ((NINC_COST = 1) and
+         (UPPER(F_DOCS_PROPS_GET_STR_VALUE(NPROPERTY => NCTL_COST_DP,
+                                            SUNITCODE => 'FinPlanArticles',
+                                            NDOCUMENT => RSTAGE_ARTS(I).NRN)) = UPPER(SYES)) and
+         (RSTAGE_ARTS(I).NPLAN is not null)) then
+        /* Фактические затраты по статье */
+        RSTAGE_ARTS(I).NCOST_FACT := STAGE_ARTS_GET_COST_FACT(NSTAGE => NSTAGE, NFPDARTCL => RSTAGE_ARTS(I).NRN);
+        /* Отклонение затрат (план-факт) */
+        RSTAGE_ARTS(I).NCOST_DIFF := RSTAGE_ARTS(I).NPLAN - RSTAGE_ARTS(I).NCOST_FACT;
+        /* Контроль затрат */
+        if (RSTAGE_ARTS(I).NCOST_DIFF >= 0) then
+          RSTAGE_ARTS(I).NCTRL_COST := 0;
+        else
+          RSTAGE_ARTS(I).NCTRL_COST := 1;
+        end if;
+      end if;
+      /* Если просили включить сведения о контрактах и статья поддерживает это */
+      if ((NINC_CONTR = 1) and
+         (UPPER(F_DOCS_PROPS_GET_STR_VALUE(NPROPERTY => NCTL_CONTR_DP,
+                                            SUNITCODE => 'FinPlanArticles',
+                                            NDOCUMENT => RSTAGE_ARTS(I).NRN)) = UPPER(SYES)) and
+         (RSTAGE_ARTS(I).NPLAN is not null)) then
+        /* Законтрактовано */
+        RSTAGE_ARTS(I).NCONTR := STAGE_ARTS_GET_CONTR(NSTAGE => NSTAGE, NFPDARTCL => RSTAGE_ARTS(I).NRN);
+        /* Осталось законтрактовать */
+        RSTAGE_ARTS(I).NCONTR_LEFT := RSTAGE_ARTS(I).NPLAN - RSTAGE_ARTS(I).NCONTR;
+        /* Контроль контрактации */
+        if (RSTAGE_ARTS(I).NCONTR_LEFT >= 0) then
+          RSTAGE_ARTS(I).NCTRL_CONTR := 0;
+        else
+          RSTAGE_ARTS(I).NCTRL_CONTR := 1;
+        end if;
+      end if;
     end loop;
-    /* Обходим строки расчётной таблицы если нашли */
-    if (NCT is not null) then
-      /* Попытаемся установить таблицу из хранилища */
-      PRSG_CALCTAB_STORE.SELECT_TABLE(NDOCUMENT   => NCT,
-                                      SSHEET_NAME => SSTAGES_CT_CALC_SH_CACL,
-                                      STABLE_NAME => SSTAGES_CT_CALC_TBL_CLARTS);
-      /* Встаём на первую строку */
-      PRSG_CALCTAB_STORE.FIRST_ROW(SROW_NAME => SSTAGES_CT_CALC_LN_ARTS, RCURSOR => RCURSOR);
-      loop
-        /* Добавим строку в коллекцию */
-        RSTAGE_ARTS.EXTEND();
-        I := RSTAGE_ARTS.LAST;
-        /* Наполним её значениями из хранилища */
-        RSTAGE_ARTS(I).NRN := RCURSOR.ROW_SOURCE;
-        PRSG_CALCTAB_STORE.READ_ROW_STR(RCURSOR      => RCURSOR,
-                                        SCOLUMN_NAME => SSTAGES_CT_CALC_CL_NUMB,
-                                        SVALUE       => RSTAGE_ARTS(I).SCODE);
-        PRSG_CALCTAB_STORE.READ_ROW_STR(RCURSOR      => RCURSOR,
-                                        SCOLUMN_NAME => SSTAGES_CT_CALC_CL_NAME,
-                                        SVALUE       => RSTAGE_ARTS(I).SNAME);
-        PRSG_CALCTAB_STORE.READ_ROW_NUM(RCURSOR      => RCURSOR,
-                                        SCOLUMN_NAME => SSTAGES_CT_CALC_CL_SUMM_PL,
-                                        NVALUE       => RSTAGE_ARTS(I).NPLAN);
-        /* Если просили включить сведения о затратах и статья поддерживает это  */
-        if ((NINC_COST = 1) and
-           (UPPER(F_DOCS_PROPS_GET_STR_VALUE(NPROPERTY => NCTL_COST_DP,
-                                              SUNITCODE => 'FinPlanArticles',
-                                              NDOCUMENT => RSTAGE_ARTS(I).NRN)) = UPPER(SYES)) and RSTAGE_ARTS(I)
-           .NPLAN is not null) then
-          /* Фактические затраты по статье */
-          RSTAGE_ARTS(I).NCOST_FACT := STAGE_ARTS_GET_COST_FACT(NSTAGE => NSTAGE, NFPDARTCL => RSTAGE_ARTS(I).NRN);
-          /* Отклонение затрат (план-факт) */
-          RSTAGE_ARTS(I).NCOST_DIFF := RSTAGE_ARTS(I).NPLAN - RSTAGE_ARTS(I).NCOST_FACT;
-          /* Контроль затрат */
-          if (RSTAGE_ARTS(I).NCOST_DIFF >= 0) then
-            RSTAGE_ARTS(I).NCTRL_COST := 0;
-          else
-            RSTAGE_ARTS(I).NCTRL_COST := 1;
-          end if;
-        end if;
-        /* Если просили включить сведения о контрактах и статья поддерживает это */
-        if (NINC_CONTR = 1) and (UPPER(F_DOCS_PROPS_GET_STR_VALUE(NPROPERTY => NCTL_CONTR_DP,
-                                                                  SUNITCODE => 'FinPlanArticles',
-                                                                  NDOCUMENT => RSTAGE_ARTS(I).NRN)) =
-           UPPER(SYES) and RSTAGE_ARTS(I).NPLAN is not null) then
-          /* Законтрактовано */
-          RSTAGE_ARTS(I).NCONTR := STAGE_ARTS_GET_CONTR(NSTAGE => NSTAGE, NFPDARTCL => RSTAGE_ARTS(I).NRN);
-          /* Осталось законтрактовать */
-          RSTAGE_ARTS(I).NCONTR_LEFT := RSTAGE_ARTS(I).NPLAN - RSTAGE_ARTS(I).NCONTR;
-          /* Контроль контрактации */
-          if (RSTAGE_ARTS(I).NCONTR_LEFT >= 0) then
-            RSTAGE_ARTS(I).NCTRL_CONTR := 0;
-          else
-            RSTAGE_ARTS(I).NCTRL_CONTR := 1;
-          end if;
-        end if;
-        /* Переход на следующую строку */
-        if (not PRSG_CALCTAB_STORE.NEXT_ROW(RCURSOR => RCURSOR)) then
-          exit;
-        end if;
-      end loop;
-    end if;
   end STAGE_ARTS_GET;
   
   /* Список статей калькуляции этапа проекта */
