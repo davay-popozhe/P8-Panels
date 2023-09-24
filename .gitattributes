@@ -1,7 +1,3 @@
-*.sql working-tree-encoding=cp1251 eol=crlf
-*.pck working-tree-encoding=cp1251 eol=crlf
-*.prc working-tree-encoding=cp1251 eol=crlf
-
-*.sql linguist-language=sql
-*.pck linguist-language=sql
-*.prc linguist-language=sql
+*.sql working-tree-encoding=cp1251 eol=crlf linguist-language=sql
+*.pck working-tree-encoding=cp1251 eol=crlf linguist-language=sql
+*.prc working-tree-encoding=cp1251 eol=crlf linguist-language=sql
