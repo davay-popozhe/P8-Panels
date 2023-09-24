@@ -264,26 +264,6 @@ text="ПРАВА ДОСТУПА!!!!"
   NDAYS_LEFT_LIMIT            constant PKG_STD.TNUMBER := 30;                -- Лимит отстатка дней для контроля сроков
   SFPDARTCL_REALIZ            constant PKG_STD.TSTRING := '14 Цена без НДС'; -- Мнемокод статьи калькуляции для учёта реализации
 
-  /* Константы - листы расчётной таблицы "PM0010" - "Калькуляция этапа проекта" */
-  SSTAGES_CT_CALC_SH_CACL     constant PKG_STD.TSTRING := 'Калькуляция'; -- Лист "Калькуляция"
-
-  /* Константы - таблицы расчётной таблицы "PM0010" - "Калькуляция этапа проекта" */
-  SSTAGES_CT_CALC_TBL_CLARTS  constant PKG_STD.TSTRING := 'СтатьиКалькуляции'; -- Таблица "Статьи калькуляции"
-
-  /* Константы - строки расчётной таблицы "PM0010" - "Калькуляция этапа проекта" */
-  SSTAGES_CT_CALC_LN_ARTS     constant PKG_STD.TSTRING := 'Статьи'; -- Строка "Статьи"
-
-  /* Константы - колонки расчётной таблицы "PM0010" - "Калькуляция этапа проекта" */
-  SSTAGES_CT_CALC_CL_NUMB     constant PKG_STD.TSTRING := 'Номер';         -- Колонка "Номер"
-  SSTAGES_CT_CALC_CL_NAME     constant PKG_STD.TSTRING := 'Наименование';  -- Колонка "Наименование статьи"
-  SSTAGES_CT_CALC_CL_SUMM_PL  constant PKG_STD.TSTRING := 'ПлановаяСумма'; -- Колонка "Плановая сумма"
-
-  /* Константы - параметры расчётной таблицы "PM0010" - "Калькуляция этапа проекта" */
-  SSTAGES_CT_CALC_PRM_COMP    constant PKG_STD.TSTRING := 'PM0010_Организация';       -- Параметр "Организация"
-  SSTAGES_CT_CALC_PRM_PRJ     constant PKG_STD.TSTRING := 'PM0010_КодПроекта';        -- Параметр "Код проекта"
-  SSTAGES_CT_CALC_PRM_STG     constant PKG_STD.TSTRING := 'PM0010_НомерЭтапаПроекта'; -- Параметр "Номер этапа проекта"
-  SSTAGES_CT_CALC_PRM_ARTSCAT constant PKG_STD.TSTRING := 'PM0010_КатСтатКальк';      -- Параметр "Каталог статей калькуляции"
-  
   /* Считывание записи проекта */
   function GET
   (
