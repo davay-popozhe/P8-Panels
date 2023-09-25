@@ -35,7 +35,7 @@ export const ApplicationСtx = createContext();
 //Провайдер контекста приложения
 export const ApplicationContext = ({ errors, displaySizeGetter, guidGenerator, children }) => {
     //Подключим редьюсер состояния
-    const [state, dispatch] = useReducer(applicationReducer, INITIAL_STATE);
+    const [state, dispatch] = useReducer(applicationReducer, INITIAL_STATE(displaySizeGetter));
 
     //Подключение к контексту взаимодействия с сервером
     const { getConfig, getRespPayload } = useContext(BackEndСtx);

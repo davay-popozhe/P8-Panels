@@ -10,7 +10,7 @@
 import React, { useState, useCallback, useEffect, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Grid, Icon, Stack, Link, Button, Table, TableBody, TableRow, TableCell, Typography, Box, Paper, IconButton } from "@mui/material"; //Интерфейсные компоненты
-import { hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
+import { deepCopyObject, hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { BUTTONS, TEXTS, INPUTS } from "../../../app.text"; //Тектовые ресурсы и константы
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
@@ -163,8 +163,8 @@ const rowExpandRender = ({ columnsDef, row }, pOnlineShowDocument, showProjectPa
                                 {cardColumns.map((cardColumn, i) => (
                                     <TableRow key={i}>
                                         <TableCell sx={{ width: "1px", whiteSpace: "nowrap" }}>
-                                            <Typography variant="h6" color="primary">
-                                                <nowrap>{cardColumn.caption}:</nowrap>
+                                            <Typography variant="h6" color="primary" noWrap>
+                                                {cardColumn.caption}:
                                             </Typography>
                                         </TableCell>
                                         <TableCell sx={{ paddingLeft: 0 }}>
@@ -321,6 +321,7 @@ const Projects = ({ onStagesOpen }) => {
                     onOrderChanged={handleOrderChanged}
                     onFilterChanged={handleFilterChanged}
                     onPagesCountChanged={handlePagesCountChanged}
+                    objectsCopier={deepCopyObject}
                 />
             ) : null}
         </>

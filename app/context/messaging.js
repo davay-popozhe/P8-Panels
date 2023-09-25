@@ -12,7 +12,29 @@ import PropTypes from "prop-types"; //Контроль свойств компо
 import { P8PAppProgress } from "../components/p8p_app_progress"; //Индикатор процесса
 import { P8PAppMessage } from "../components/p8p_app_message"; //Диалог сообщения
 import { MSG_AT, MSG_DLGT, INITIAL_STATE, messagingReducer } from "./messaging_reducer"; //Редьюсер состояния
-import { TITLES, TEXTS, BUTTONS } from "../../app.text"; //Текстовые ресурсы и константы
+
+//---------
+//Константы
+//---------
+
+//Структура объекта с описанием типовых заголовков
+const MESSAGING_CONTEXT_TITLES_SHAPE = PropTypes.shape({
+    ERR: PropTypes.string.isRequired,
+    WARN: PropTypes.string.isRequired,
+    INFO: PropTypes.string.isRequired
+});
+
+//Структура объекта с описанием типовых текстов
+const MESSAGING_CONTEXT_TEXTS_SHAPE = PropTypes.shape({
+    LOADING: PropTypes.string.isRequired
+});
+
+//Структура объекта с описанием типовых кнопок
+const MESSAGING_CONTEXT_BUTTONS_SHAPE = PropTypes.shape({
+    CLOSE: PropTypes.string.isRequired,
+    OK: PropTypes.string.isRequired,
+    CANCEL: PropTypes.string.isRequired
+});
 
 //----------------
 //Интерфейс модуля
@@ -22,7 +44,7 @@ import { TITLES, TEXTS, BUTTONS } from "../../app.text"; //Текстовые р
 export const MessagingСtx = createContext();
 
 //Провайдер контекста сообщений
-export const MessagingContext = ({ children }) => {
+export const MessagingContext = ({ titles, texts, buttons, children }) => {
     //Подключим редьюсер состояния
     const [state, dispatch] = useReducer(messagingReducer, INITIAL_STATE);
 
@@ -82,20 +104,20 @@ export const MessagingContext = ({ children }) => {
                 msgState: state
             }}
         >
-            {state.loading ? <P8PAppProgress open={true} text={state.loadingMessage || TEXTS.LOADING} /> : null}
+            {state.loading ? <P8PAppProgress open={true} text={state.loadingMessage || texts.LOADING} /> : null}
             {state.msg ? (
                 <P8PAppMessage
                     open={true}
                     variant={state.msgType}
                     text={state.msgText}
                     title
-                    titleText={state.msgType == MSG_DLGT.ERR ? TITLES.ERR : state.msgType == MSG_DLGT.WARN ? TITLES.WARN : TITLES.INFO}
+                    titleText={state.msgType == MSG_DLGT.ERR ? titles.ERR : state.msgType == MSG_DLGT.WARN ? titles.WARN : titles.INFO}
                     okBtn={true}
                     onOk={handleMessageOkClick}
-                    okBtnCaption={[MSG_DLGT.ERR, MSG_DLGT.INFO].includes(state.msgType) ? BUTTONS.CLOSE : BUTTONS.OK}
+                    okBtnCaption={[MSG_DLGT.ERR, MSG_DLGT.INFO].includes(state.msgType) ? buttons.CLOSE : buttons.OK}
                     cancelBtn={state.msgType == MSG_DLGT.WARN}
                     onCancel={handleMessageCancelClick}
-                    cancelBtnCaption={BUTTONS.CANCEL}
+                    cancelBtnCaption={buttons.CANCEL}
                 />
             ) : null}
             {children}
@@ -105,5 +127,8 @@ export const MessagingContext = ({ children }) => {
 
 //Контроль свойств - Провайдер контекста сообщений
 MessagingContext.propTypes = {
+    titles: MESSAGING_CONTEXT_TITLES_SHAPE,
+    texts: MESSAGING_CONTEXT_TEXTS_SHAPE,
+    buttons: MESSAGING_CONTEXT_BUTTONS_SHAPE,
     children: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.node), PropTypes.node])
 };

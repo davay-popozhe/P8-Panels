@@ -3,12 +3,6 @@
     Контекст: Приложение - редьюсер состояния
 */
 
-//---------------------
-//Подключение библиотек
-//---------------------
-
-import { getDisplaySize } from "../core/utils"; //Вспомогательные функции
-
 //---------
 //Константы
 //---------
@@ -21,12 +15,12 @@ const APP_AT = {
 };
 
 //Состояние приложения по умолчанию
-const INITIAL_STATE = {
-    displaySize: getDisplaySize(),
+const INITIAL_STATE = displaySizeGetter => ({
+    displaySize: displaySizeGetter(),
     panels: [],
     panelsLoaded: false,
     initialized: false
-};
+});
 
 //-----------
 //Тело модуля

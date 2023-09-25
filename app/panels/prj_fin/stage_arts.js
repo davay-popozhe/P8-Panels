@@ -10,7 +10,7 @@
 import React, { useState, useCallback, useEffect, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Box, Icon, Stack, Link } from "@mui/material"; //Интерфейсные компоненты
-import { hasValue, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
+import { deepCopyObject, hasValue, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { BUTTONS, TEXTS, INPUTS } from "../../../app.text"; //Тектовые ресурсы и константы
 import { P8PDataGrid, P8P_DATA_GRID_SIZE, P8P_DATA_GRID_FILTER_SHAPE } from "../../components/p8p_data_grid"; //Таблица данных
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
@@ -182,6 +182,7 @@ const StageArts = ({ stage, filters }) => {
                     dataCellRender={prms => dataCellRender(prms, showStageArtCostNotes, showStageArtContracts)}
                     valueFormatter={valueFormatter}
                     onFilterChanged={handleFilterChanged}
+                    objectsCopier={deepCopyObject}
                 />
             ) : null}
         </Box>

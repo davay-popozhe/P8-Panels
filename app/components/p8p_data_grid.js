@@ -9,7 +9,6 @@
 
 import React, { useState } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { deepCopyObject } from "../core/utils"; //Вспомогательные процедуры и функции
 import { P8PTable, P8P_TABLE_SIZE, P8P_TABLE_DATA_TYPE, P8P_TABLE_FILTER_SHAPE } from "./p8p_table"; //Таблица
 
 //---------
@@ -55,7 +54,8 @@ const P8PDataGrid = ({
     valueFormatter,
     onOrderChanged,
     onFilterChanged,
-    onPagesCountChanged
+    onPagesCountChanged,
+    objectsCopier
 }) => {
     //Собственное состояние - сортировки
     const [orders, setOrders] = useState([]);
@@ -65,7 +65,7 @@ const P8PDataGrid = ({
 
     //При изменении состояния сортировки
     const handleOrderChanged = ({ columnName, direction }) => {
-        let newOrders = deepCopyObject(orders);
+        let newOrders = objectsCopier(orders);
         const curOrder = newOrders.find(o => o.name == columnName);
         if (direction == null && curOrder) newOrders.splice(newOrders.indexOf(curOrder), 1);
         if (direction != null && !curOrder) newOrders.push({ name: columnName, direction });
@@ -76,7 +76,7 @@ const P8PDataGrid = ({
 
     //При изменении состояния фильтра
     const handleFilterChanged = ({ columnName, from, to }) => {
-        let newFilters = deepCopyObject(filters);
+        let newFilters = objectsCopier(filters);
         let curFilter = newFilters.find(f => f.name == columnName);
         if (from == null && to == null && curFilter) newFilters.splice(newFilters.indexOf(curFilter), 1);
         if ((from != null || to != null) && !curFilter) newFilters.push({ name: columnName, from, to });
@@ -152,7 +152,8 @@ P8PDataGrid.propTypes = {
     valueFormatter: PropTypes.func,
     onOrderChanged: PropTypes.func,
     onFilterChanged: PropTypes.func,
-    onPagesCountChanged: PropTypes.func
+    onPagesCountChanged: PropTypes.func,
+    objectsCopier: PropTypes.func.isRequired
 };
 
 //----------------

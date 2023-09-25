@@ -10,7 +10,7 @@
 import React, { useState, useCallback, useEffect, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Box, Stack, Grid, Paper, Table, TableBody, TableRow, TableCell, Typography, Button, Link } from "@mui/material"; //Интерфейсные компоненты
-import { hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
+import { deepCopyObject, hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { BUTTONS, TEXTS, INPUTS } from "../../../app.text"; //Тектовые ресурсы и константы
 import { P8PDataGrid, P8P_DATA_GRID_SIZE, P8P_DATA_GRID_FILTER_SHAPE } from "../../components/p8p_data_grid"; //Таблица данных
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
@@ -93,8 +93,8 @@ const rowExpandRender = ({ columnsDef, row }, pOnlineShowDocument) => {
                                 {cardColumns.map((cardColumn, i) => (
                                     <TableRow key={i}>
                                         <TableCell sx={{ width: "1px", whiteSpace: "nowrap" }}>
-                                            <Typography variant="h6" color="primary">
-                                                {cardColumn.caption}:&nbsp;
+                                            <Typography variant="h6" color="primary" noWrap>
+                                                {cardColumn.caption}:
                                             </Typography>
                                         </TableCell>
                                         <TableCell sx={{ paddingLeft: 0 }}>
@@ -237,6 +237,7 @@ const StageContracts = ({ stage, filters }) => {
                     onOrderChanged={handleOrderChanged}
                     onFilterChanged={handleFilterChanged}
                     onPagesCountChanged={handlePagesCountChanged}
+                    objectsCopier={deepCopyObject}
                 />
             ) : null}
         </Box>
