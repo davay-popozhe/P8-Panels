@@ -15,7 +15,7 @@ import { NavigationContext, NavigationCtx, getRootLocation } from "./context/nav
 import { P8PAppErrorPage } from "./components/p8p_app_error_page"; //Страница с ошибкой
 import { P8PAppWorkspace } from "./components/p8p_app_workspace"; //Рабочее пространство панели
 import { P8PPanelsMenuGrid, PANEL_SHAPE } from "./components/p8p_panels_menu"; //Меню панелей
-import { TITLES, BUTTONS, ERROR, ERROR_HTTP } from "../app.text"; //Текстовые ресурсы и константы
+import { TITLES, BUTTONS, ERRORS, ERRORS_HTTP } from "../app.text"; //Текстовые ресурсы и константы
 
 //--------------------------
 //Вспомогательные компоненты
@@ -35,7 +35,7 @@ const RouterError = ({ homePath }) => {
     //Генерация содержимого
     return (
         <P8PAppErrorPage
-            errorMessage={ERROR_HTTP[routeError.status] ? ERROR_HTTP[routeError.status] : ERROR.DEFAULT}
+            errorMessage={ERRORS_HTTP[routeError.status] ? ERRORS_HTTP[routeError.status] : ERRORS.DEFAULT}
             onNavigate={handleNavigate}
             navigateCaption={BUTTONS.NAVIGATE_HOME}
         />

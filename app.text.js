@@ -45,13 +45,13 @@ export const INPUTS = {
 };
 
 //Типовые сообщения об ошибках
-export const ERROR = {
+export const ERRORS = {
     UNDER_CONSTRUCTION: "Панель в разработке",
     P8O_API_UNAVAILABLE: '"ПАРУС 8 Онлайн" недоступен',
     DEFAULT: "Неожиданная ошибка"
 };
 
 //Типовые сообщения для ошибок HTTP
-export const ERROR_HTTP = {
+export const ERRORS_HTTP = {
     404: "Адрес не найден"
 };

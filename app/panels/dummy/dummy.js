@@ -10,7 +10,7 @@
 import React, { useContext } from "react"; //Классы React
 import { NavigationCtx } from "../../context/navigation"; //Контекст навигации
 import { P8PAppErrorPage } from "../../components/p8p_app_error_page"; //Страница с ошибкой
-import { BUTTONS, ERROR } from "../../../app.text"; //Текстовые ресурсы и константы
+import { BUTTONS, ERRORS } from "../../../app.text"; //Текстовые ресурсы и константы
 
 //-----------
 //Тело модуля
@@ -22,7 +22,7 @@ const Dummy = () => {
     const { navigateBack } = useContext(NavigationCtx);
 
     //Генерация содержимого
-    return <P8PAppErrorPage errorMessage={ERROR.UNDER_CONSTRUCTION} onNavigate={() => navigateBack()} navigateCaption={BUTTONS.NAVIGATE_BACK} />;
+    return <P8PAppErrorPage errorMessage={ERRORS.UNDER_CONSTRUCTION} onNavigate={() => navigateBack()} navigateCaption={BUTTONS.NAVIGATE_BACK} />;
 };
 
 //----------------
