@@ -9,8 +9,24 @@
 
 import React, { createContext, useContext, useCallback } from "react"; //ReactJS
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import client from "../core/client"; //Клиент для взаимодействия с сервером
 import { MessagingСtx } from "./messaging"; //Контекст сообщений
+
+//---------
+//Константы
+//---------
+
+//Структура объекта клиента
+const P8P_CLIENT_SHAPE = PropTypes.shape({
+    SERV_DATA_TYPE_STR: PropTypes.string.isRequired,
+    SERV_DATA_TYPE_NUMB: PropTypes.string.isRequired,
+    SERV_DATA_TYPE_DATE: PropTypes.string.isRequired,
+    SERV_DATA_TYPE_CLOB: PropTypes.string.isRequired,
+    isRespErr: PropTypes.func.isRequired,
+    getRespErrMessage: PropTypes.func.isRequired,
+    getRespPayload: PropTypes.func.isRequired,
+    executeStored: PropTypes.func.isRequired,
+    getConfig: PropTypes.func.isRequired
+});
 
 //----------------
 //Интерфейс модуля
@@ -20,18 +36,18 @@ import { MessagingСtx } from "./messaging"; //Контекст сообщени
 export const BackEndСtx = createContext();
 
 //Провайдер контекста взаимодействия с серверным API
-export const BackEndContext = ({ children }) => {
+export const BackEndContext = ({ client, children }) => {
     //Подключение к контексту сообщений
     const { showLoader, hideLoader, showMsgErr } = useContext(MessagingСtx);
 
     //Проверка ответа на наличие ошибки
-    const isRespErr = useCallback(resp => client.isRespErr(resp), []);
+    const isRespErr = useCallback(resp => client.isRespErr(resp), [client]);
 
     //Извлечение ошибки из ответа
-    const getRespErrMessage = useCallback(resp => client.getRespErrMessage(resp), []);
+    const getRespErrMessage = useCallback(resp => client.getRespErrMessage(resp), [client]);
 
     //Извлечение полезного содержимого из ответа
-    const getRespPayload = useCallback(resp => client.getRespPayload(resp), []);
+    const getRespPayload = useCallback(resp => client.getRespPayload(resp), [client]);
 
     //Запуск хранимой процедуры
     const executeStored = useCallback(
@@ -58,7 +74,7 @@ export const BackEndContext = ({ children }) => {
                 if (loader !== false) hideLoader();
             }
         },
-        [showLoader, hideLoader, isRespErr, showMsgErr]
+        [showLoader, hideLoader, isRespErr, showMsgErr, client]
     );
 
     //Загрузка настроек панелей
@@ -75,7 +91,7 @@ export const BackEndContext = ({ children }) => {
                 if (loader !== false) hideLoader();
             }
         },
-        [showLoader, hideLoader, showMsgErr]
+        [showLoader, hideLoader, showMsgErr, client]
     );
 
     //Вернём компонент провайдера
@@ -100,5 +116,6 @@ export const BackEndContext = ({ children }) => {
 
 //Контроль свойств - Провайдер контекста взаимодействия с серверным API
 BackEndContext.propTypes = {
+    client: P8P_CLIENT_SHAPE.isRequired,
     children: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.node), PropTypes.node])
 };

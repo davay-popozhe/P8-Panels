@@ -13,6 +13,7 @@ import { BackEndContext } from "./context/backend"; //Контекст взаи�
 import { ApplicationContext } from "./context/application"; //Контекст приложения
 import { App } from "./app"; //Приложение
 import { genGUID } from "./core/utils"; //Вспомогательные функции
+import client from "./core/client"; //Клиент для взаимодействия с сервером
 
 //-----------
 //Тело модуля
@@ -22,7 +23,7 @@ import { genGUID } from "./core/utils"; //Вспомогательные фун�
 const Root = () => {
     return (
         <MessagingContext>
-            <BackEndContext>
+            <BackEndContext client={client}>
                 <ApplicationContext guidGenerator={genGUID}>
                     <App />
                 </ApplicationContext>
