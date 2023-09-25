@@ -14,7 +14,7 @@ import { ApplicationСtx } from "./context/application"; //Контекст пр
 import { NavigationContext, NavigationCtx, getRootLocation } from "./context/navigation"; //Контекст навигации
 import { P8PAppErrorPage } from "./components/p8p_app_error_page"; //Страница с ошибкой
 import { P8PAppWorkspace } from "./components/p8p_app_workspace"; //Рабочее пространство панели
-import { P8PPanelsMenuGrid, PANEL_SHAPE } from "./components/p8p_panels_menu"; //Меню панелей
+import { P8PPanelsMenuGrid, P8P_PANELS_MENU_PANEL_SHAPE } from "./components/p8p_panels_menu"; //Меню панелей
 import { TITLES, BUTTONS, ERRORS, ERRORS_HTTP } from "../app.text"; //Текстовые ресурсы и константы
 
 //--------------------------
@@ -69,7 +69,7 @@ const MainMenu = ({ panels = [] } = {}) => {
 
 //Контроль свойств - главное меню приложения
 MainMenu.propTypes = {
-    panels: PropTypes.arrayOf(PANEL_SHAPE).isRequired
+    panels: PropTypes.arrayOf(P8P_PANELS_MENU_PANEL_SHAPE).isRequired
 };
 
 //Рабочее пространство панели
@@ -100,8 +100,8 @@ const Workspace = ({ panels = [], selectedPanel, children } = {}) => {
 
 //Контроль свойств - главное меню приложения
 Workspace.propTypes = {
-    panels: PropTypes.arrayOf(PANEL_SHAPE).isRequired,
-    selectedPanel: PANEL_SHAPE,
+    panels: PropTypes.arrayOf(P8P_PANELS_MENU_PANEL_SHAPE).isRequired,
+    selectedPanel: P8P_PANELS_MENU_PANEL_SHAPE,
     children: PropTypes.element
 };
 

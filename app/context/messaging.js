@@ -71,6 +71,7 @@ export const MessagingContext = ({ children }) => {
     return (
         <MessagingСtx.Provider
             value={{
+                MSG_DLGT,
                 showLoader,
                 hideLoader,
                 showMsg,
@@ -78,7 +79,6 @@ export const MessagingContext = ({ children }) => {
                 showMsgInfo,
                 showMsgWarn,
                 hideMsg,
-                MSG_DLGT,
                 msgState: state
             }}
         >

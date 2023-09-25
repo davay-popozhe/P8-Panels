@@ -33,10 +33,23 @@ import {
 //---------
 
 //Типы меню
-const VARIANT = {
+const P8P_PANELS_MENU_VARIANT = {
     DRAWER: "DRAWER",
     GRID: "GRID"
 };
+
+//Структура элемента описания панели
+const P8P_PANELS_MENU_PANEL_SHAPE = PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    caption: PropTypes.string.isRequired,
+    desc: PropTypes.string.isRequired,
+    group: PropTypes.string,
+    icon: PropTypes.string.isRequired,
+    path: PropTypes.string.isRequired,
+    preview: PropTypes.string.isRequired,
+    showInPanelsList: PropTypes.bool.isRequired,
+    url: PropTypes.string.isRequired
+});
 
 //Стили
 const STYLES = {
@@ -77,19 +90,6 @@ const STYLES = {
     }
 };
 
-//Структура элемента описания панели
-const PANEL_SHAPE = PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    caption: PropTypes.string.isRequired,
-    desc: PropTypes.string.isRequired,
-    group: PropTypes.string,
-    icon: PropTypes.string.isRequired,
-    path: PropTypes.string.isRequired,
-    preview: PropTypes.string.isRequired,
-    showInPanelsList: PropTypes.bool.isRequired,
-    url: PropTypes.string.isRequired
-});
-
 //--------------------------------
 //Вспомогательные классы и функции
 //--------------------------------
@@ -117,7 +117,7 @@ const getPanelsLinks = ({ variant, panels, selectedPanel, defaultGroupTytle, nav
     for (const grp of grps) {
         if (!(grps.length == 1 && grps[0] == null))
             panelsLinks.push(
-                variant === VARIANT.GRID ? (
+                variant === P8P_PANELS_MENU_VARIANT.GRID ? (
                     <Grid item xs={12} sm={12} md={12} lg={12} xl={12} key={grp}>
                         <Typography variant="h5" color="secondary">
                             {grp ? grp : defaultGroupTytle}
@@ -130,7 +130,7 @@ const getPanelsLinks = ({ variant, panels, selectedPanel, defaultGroupTytle, nav
         for (const panel of panels) {
             if (panel.showInPanelsList == true && ((grp && panel.group === grp) || (!grp && !panel.group)))
                 panelsLinks.push(
-                    variant === VARIANT.GRID ? (
+                    variant === P8P_PANELS_MENU_VARIANT.GRID ? (
                         <Grid item xs={12} sm={6} md={4} lg={4} xl={4} key={panel.name}>
                             <Card sx={STYLES.PANEL_CARD}>
                                 {panel.preview ? (
@@ -180,7 +180,7 @@ const getPanelsLinks = ({ variant, panels, selectedPanel, defaultGroupTytle, nav
 //Меню панелей - сдвигающееся боковое меню
 const P8PPanelsMenuDrawer = ({ onItemNavigate, panels = [], selectedPanel } = {}) => {
     //Формируем ссылки на панели
-    const panelsLinks = getPanelsLinks({ variant: VARIANT.DRAWER, panels, selectedPanel, onItemNavigate });
+    const panelsLinks = getPanelsLinks({ variant: P8P_PANELS_MENU_VARIANT.DRAWER, panels, selectedPanel, onItemNavigate });
 
     //Генерация содержимого
     return <List sx={{ paddingTop: 0 }}>{panelsLinks}</List>;
@@ -189,14 +189,14 @@ const P8PPanelsMenuDrawer = ({ onItemNavigate, panels = [], selectedPanel } = {}
 //Контроль свойств - Меню панелей - сдвигающееся боковое меню
 P8PPanelsMenuDrawer.propTypes = {
     onItemNavigate: PropTypes.func,
-    panels: PropTypes.arrayOf(PANEL_SHAPE).isRequired,
-    selectedPanel: PANEL_SHAPE
+    panels: PropTypes.arrayOf(P8P_PANELS_MENU_PANEL_SHAPE).isRequired,
+    selectedPanel: P8P_PANELS_MENU_PANEL_SHAPE
 };
 
 //Меню панелей - грид
 const P8PPanelsMenuGrid = ({ title, onItemNavigate, navigateCaption, panels = [], defaultGroupTytle } = {}) => {
     //Формируем ссылки на панели
-    const panelsLinks = getPanelsLinks({ variant: VARIANT.GRID, panels, defaultGroupTytle, navigateCaption, onItemNavigate });
+    const panelsLinks = getPanelsLinks({ variant: P8P_PANELS_MENU_VARIANT.GRID, panels, defaultGroupTytle, navigateCaption, onItemNavigate });
 
     //Генерация содержимого
     return (
@@ -220,7 +220,7 @@ P8PPanelsMenuGrid.propTypes = {
     title: PropTypes.string,
     onItemNavigate: PropTypes.func,
     navigateCaption: PropTypes.string.isRequired,
-    panels: PropTypes.arrayOf(PANEL_SHAPE).isRequired,
+    panels: PropTypes.arrayOf(P8P_PANELS_MENU_PANEL_SHAPE).isRequired,
     defaultGroupTytle: PropTypes.string.isRequired
 };
 
@@ -228,4 +228,4 @@ P8PPanelsMenuGrid.propTypes = {
 //Интерфейс модуля
 //----------------
 
-export { PANEL_SHAPE, P8PPanelsMenuDrawer, P8PPanelsMenuGrid };
+export { P8P_PANELS_MENU_PANEL_SHAPE, P8PPanelsMenuDrawer, P8PPanelsMenuGrid };

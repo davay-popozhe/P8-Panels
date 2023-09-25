@@ -16,7 +16,7 @@ import { MessagingСtx } from "./messaging"; //Контекст сообщени
 //---------
 
 //Структура объекта клиента
-const P8P_CLIENT_SHAPE = PropTypes.shape({
+const BACKEND_CONTEXT_CLIENT_SHAPE = PropTypes.shape({
     SERV_DATA_TYPE_STR: PropTypes.string.isRequired,
     SERV_DATA_TYPE_NUMB: PropTypes.string.isRequired,
     SERV_DATA_TYPE_DATE: PropTypes.string.isRequired,
@@ -116,6 +116,6 @@ export const BackEndContext = ({ client, children }) => {
 
 //Контроль свойств - Провайдер контекста взаимодействия с серверным API
 BackEndContext.propTypes = {
-    client: P8P_CLIENT_SHAPE.isRequired,
+    client: BACKEND_CONTEXT_CLIENT_SHAPE.isRequired,
     children: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.node), PropTypes.node])
 };

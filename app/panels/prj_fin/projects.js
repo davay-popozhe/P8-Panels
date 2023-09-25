@@ -12,7 +12,7 @@ import PropTypes from "prop-types"; //Контроль свойств компо
 import { Grid, Icon, Stack, Link, Button, Table, TableBody, TableRow, TableCell, Typography, Box, Paper, IconButton } from "@mui/material"; //Интерфейсные компоненты
 import { hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { BUTTONS, TEXTS, INPUTS } from "../../../app.text"; //Тектовые ресурсы и константы
-import { P8PDataGrid, P8PDATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
+import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
@@ -299,7 +299,7 @@ const Projects = ({ onStagesOpen }) => {
                 <P8PDataGrid
                     columnsDef={projectsDataGrid.columnsDef}
                     rows={projectsDataGrid.rows}
-                    size={P8PDATA_GRID_SIZE.SMALL}
+                    size={P8P_DATA_GRID_SIZE.SMALL}
                     morePages={projectsDataGrid.morePages}
                     reloading={projectsDataGrid.reload}
                     expandable={true}

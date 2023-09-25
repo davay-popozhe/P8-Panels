@@ -10,20 +10,20 @@
 import React, { useState } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { deepCopyObject } from "../core/utils"; //Вспомогательные процедуры и функции
-import { P8PTable, P8P_TABLE_SIZE, P8P_TABLE_DATA_TYPE, P8P_FILTER_SHAPE } from "./p8p_table"; //Таблица
+import { P8PTable, P8P_TABLE_SIZE, P8P_TABLE_DATA_TYPE, P8P_TABLE_FILTER_SHAPE } from "./p8p_table"; //Таблица
 
 //---------
 //Константы
 //---------
 
 //Размеры отступов
-const P8PDATA_GRID_SIZE = P8P_TABLE_SIZE;
+const P8P_DATA_GRID_SIZE = P8P_TABLE_SIZE;
 
 //Типы данных
-const P8PDATA_GRID_DATA_TYPE = P8P_TABLE_DATA_TYPE;
+const P8P_DATA_GRID_DATA_TYPE = P8P_TABLE_DATA_TYPE;
 
 //Формат фильтра
-const P8PDATA_GRID_FILTER_SHAPE = P8P_FILTER_SHAPE;
+const P8P_DATA_GRID_FILTER_SHAPE = P8P_TABLE_FILTER_SHAPE;
 
 //-----------
 //Тело модуля
@@ -100,7 +100,7 @@ const P8PDataGrid = ({
             rows={rows}
             orders={orders}
             filters={filters}
-            size={size || P8PDATA_GRID_SIZE.MEDIUM}
+            size={size || P8P_DATA_GRID_SIZE.MEDIUM}
             morePages={morePages}
             reloading={reloading}
             expandable={expandable}
@@ -129,7 +129,7 @@ const P8PDataGrid = ({
 //Контроль свойств - Таблица данных
 P8PDataGrid.propTypes = {
     columnsDef: PropTypes.array.isRequired,
-    filtersInitial: PropTypes.arrayOf(P8PDATA_GRID_FILTER_SHAPE),
+    filtersInitial: PropTypes.arrayOf(P8P_DATA_GRID_FILTER_SHAPE),
     rows: PropTypes.array.isRequired,
     size: PropTypes.string,
     morePages: PropTypes.bool.isRequired,
@@ -159,4 +159,4 @@ P8PDataGrid.propTypes = {
 //Интерфейс модуля
 //----------------
 
-export { P8PDataGrid, P8PDATA_GRID_SIZE, P8PDATA_GRID_DATA_TYPE, P8PDATA_GRID_FILTER_SHAPE };
+export { P8P_DATA_GRID_SIZE, P8P_DATA_GRID_DATA_TYPE, P8P_DATA_GRID_FILTER_SHAPE, P8PDataGrid };

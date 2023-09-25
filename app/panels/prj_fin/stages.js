@@ -12,7 +12,7 @@ import PropTypes from "prop-types"; //Контроль свойств компо
 import { Box, Icon, Stack, Grid, Paper, Table, TableBody, TableRow, TableCell, Typography, Button, IconButton, Link } from "@mui/material"; //Интерфейсные компоненты
 import { hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { BUTTONS, TEXTS, INPUTS } from "../../../app.text"; //Тектовые ресурсы и константы
-import { P8PDataGrid, P8PDATA_GRID_SIZE, P8PDATA_GRID_FILTER_SHAPE } from "../../components/p8p_data_grid"; //Таблица данных
+import { P8PDataGrid, P8P_DATA_GRID_SIZE, P8P_DATA_GRID_FILTER_SHAPE } from "../../components/p8p_data_grid"; //Таблица данных
 import { P8PFullScreenDialog } from "../../components/p8p_fullscreen_dialog"; //Полноэкранный диалог
 import { StageArts } from "./stage_arts"; //Калькуляция этапа проекта
 import { StageContracts } from "./stage_contracts"; //Договоры с соисполнителями этапа проекта
@@ -348,7 +348,7 @@ const Stages = ({ project, projectName, filters }) => {
                     columnsDef={stagesDataGrid.columnsDef}
                     filtersInitial={filters}
                     rows={stagesDataGrid.rows}
-                    size={P8PDATA_GRID_SIZE.SMALL}
+                    size={P8P_DATA_GRID_SIZE.SMALL}
                     morePages={stagesDataGrid.morePages}
                     reloading={stagesDataGrid.reload}
                     expandable={true}
@@ -398,7 +398,7 @@ const Stages = ({ project, projectName, filters }) => {
 Stages.propTypes = {
     project: PropTypes.number.isRequired,
     projectName: PropTypes.string.isRequired,
-    filters: PropTypes.arrayOf(P8PDATA_GRID_FILTER_SHAPE)
+    filters: PropTypes.arrayOf(P8P_DATA_GRID_FILTER_SHAPE)
 };
 
 //----------------

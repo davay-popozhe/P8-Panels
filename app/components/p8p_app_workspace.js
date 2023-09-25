@@ -23,7 +23,7 @@ import {
     ListItemIcon,
     ListItemText
 } from "@mui/material"; //Интерфейсные компоненты
-import { P8PPanelsMenuDrawer, PANEL_SHAPE } from "./p8p_panels_menu";
+import { P8PPanelsMenuDrawer, P8P_PANELS_MENU_PANEL_SHAPE } from "./p8p_panels_menu";
 
 //---------
 //Константы
@@ -113,8 +113,8 @@ const P8PAppWorkspace = ({ children, panels = [], selectedPanel, closeCaption, h
 //Контроль свойств - Рабочее пространство
 P8PAppWorkspace.propTypes = {
     children: PropTypes.element,
-    panels: PropTypes.arrayOf(PANEL_SHAPE).isRequired,
-    selectedPanel: PANEL_SHAPE,
+    panels: PropTypes.arrayOf(P8P_PANELS_MENU_PANEL_SHAPE).isRequired,
+    selectedPanel: P8P_PANELS_MENU_PANEL_SHAPE,
     closeCaption: PropTypes.string.isRequired,
     homeCaption: PropTypes.string.isRequired,
     onHomeNavigate: PropTypes.func,

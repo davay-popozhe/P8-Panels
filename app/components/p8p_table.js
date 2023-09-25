@@ -70,6 +70,13 @@ const P8P_TABLE_COLUMN_MENU_ACTIONS = {
     FILTER: "FILTER"
 };
 
+//Структура элемента описания фильтра
+const P8P_TABLE_FILTER_SHAPE = PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    from: PropTypes.any,
+    to: PropTypes.any
+});
+
 //Стили
 const STYLES = {
     TABLE: {
@@ -97,13 +104,6 @@ const STYLES = {
         padding: "5px"
     }
 };
-
-//Структура элемента описания фильтра
-const P8P_FILTER_SHAPE = PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    from: PropTypes.any,
-    to: PropTypes.any
-});
 
 //--------------------------------
 //Вспомогательные классы и функции
@@ -694,7 +694,7 @@ P8PTable.propTypes = {
             direction: PropTypes.string.isRequired
         })
     ).isRequired,
-    filters: PropTypes.arrayOf(P8P_FILTER_SHAPE).isRequired,
+    filters: PropTypes.arrayOf(P8P_TABLE_FILTER_SHAPE).isRequired,
     size: PropTypes.string,
     morePages: PropTypes.bool.isRequired,
     reloading: PropTypes.bool.isRequired,
@@ -723,4 +723,4 @@ P8PTable.propTypes = {
 //Интерфейс модуля
 //----------------
 
-export { P8PTable, P8P_TABLE_DATA_TYPE, P8P_TABLE_SIZE, P8P_FILTER_SHAPE };
+export { P8P_TABLE_DATA_TYPE, P8P_TABLE_SIZE, P8P_TABLE_FILTER_SHAPE, P8PTable };
