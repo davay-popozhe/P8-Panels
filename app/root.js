@@ -12,6 +12,7 @@ import { MessagingContext } from "./context/messaging"; //Контекст со�
 import { BackEndContext } from "./context/backend"; //Контекст взаимодействия с сервером
 import { ApplicationContext } from "./context/application"; //Контекст приложения
 import { App } from "./app"; //Приложение
+import { genGUID } from "./core/utils"; //Вспомогательные функции
 
 //-----------
 //Тело модуля
@@ -22,7 +23,7 @@ const Root = () => {
     return (
         <MessagingContext>
             <BackEndContext>
-                <ApplicationContext>
+                <ApplicationContext guidGenerator={genGUID}>
                     <App />
                 </ApplicationContext>
             </BackEndContext>

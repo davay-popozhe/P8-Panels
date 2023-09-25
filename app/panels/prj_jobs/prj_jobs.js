@@ -34,7 +34,7 @@ const PrjJobs = () => {
     const { showMsgErr, showMsgWarn, showMsgInfo } = useContext(MessagingСtx);
 
     //Подключение к контексту приложения
-    const { pOnlineShowDocument, pOnlineShowDictionary, pOnlineUserProcedure, pOnlineUserReport } = useContext(ApplicationСtx);
+    const { pOnlineShowTab, pOnlineShowDocument, pOnlineShowDictionary, pOnlineUserProcedure, pOnlineUserReport } = useContext(ApplicationСtx);
 
     //Выполнение запроса к серверу
     const makeReq = async throwError => {
@@ -54,6 +54,16 @@ const PrjJobs = () => {
         }
     };
 
+    //Отображение закладки
+    const openTab = () => {
+        const id = pOnlineShowTab({ id: "123", url: "Modules/p8-panels/#/prj_fin", caption: "Экономика проектов", onClose: handleTabClose });
+        if (id) console.log(`Открыта закладка ${id}`);
+        else console.log("Закладка не открыта");
+    };
+
+    //При сокрытии закладки
+    const handleTabClose = id => console.log(`Закрыта закладка ${id}`);
+
     //Генерация содержимого
     return (
         <div>
@@ -70,6 +80,8 @@ const PrjJobs = () => {
             <Button onClick={navigateBack}>Назад</Button>
             <br />
             <Button onClick={() => navigateRoot()}>Домой</Button>
+            <br />
+            <Button onClick={openTab}>Открыть закладку</Button>
             <br />
             <Button onClick={() => makeReq(false)}>Без Exception</Button>
             <br />

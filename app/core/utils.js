@@ -62,8 +62,14 @@ const formatDateRF = value => (value ? dayjs(value).format("DD.MM.YYYY") : null)
 //Форматирование числа в "Денежном" формате РФ
 const formatNumberRFCurrency = value => (hasValue(value) ? new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2 }).format(value) : null);
 
+//Формирование уникального идентификатора
+const genGUID = () =>
+    "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+        (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+    );
+
 //----------------
 //Интерфейс модуля
 //----------------
 
-export { hasValue, getDisplaySize, deepCopyObject, object2Base64XML, formatDateRF, formatNumberRFCurrency };
+export { hasValue, getDisplaySize, deepCopyObject, object2Base64XML, formatDateRF, formatNumberRFCurrency, genGUID };

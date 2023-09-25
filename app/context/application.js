@@ -34,7 +34,7 @@ const P8O_API = window.parent?.parus?.clientApi;
 export const ApplicationСtx = createContext();
 
 //Провайдер контекста приложения
-export const ApplicationContext = ({ children }) => {
+export const ApplicationContext = ({ guidGenerator, children }) => {
     //Подключим редьюсер состояния
     const [state, dispatch] = useReducer(applicationReducer, INITIAL_STATE);
 
@@ -55,6 +55,18 @@ export const ApplicationContext = ({ children }) => {
 
     //Поиск раздела по имени
     const findPanelByName = name => state.panels.find(panel => panel.name == name);
+
+    //Отображение закладки "ПАРУС 8 Онлайн" с указанным URL
+    const pOnlineShowTab = useCallback(
+        ({ id, url, caption, onClose }) => {
+            if (P8O_API) {
+                const _id = id || guidGenerator();
+                P8O_API.ui.openTab({ id: _id, url, caption, onClose: () => (onClose ? onClose(_id) : null) });
+                return _id;
+            } else showMsgErr(ERROR.P8O_API_UNAVAILABLE);
+        },
+        [showMsgErr, guidGenerator]
+    );
 
     //Отображение раздела "ПАРУС 8 Онлайн"
     const pOnlineShowUnit = useCallback(
@@ -130,6 +142,7 @@ export const ApplicationContext = ({ children }) => {
         <ApplicationСtx.Provider
             value={{
                 findPanelByName,
+                pOnlineShowTab,
                 pOnlineShowUnit,
                 pOnlineShowDocument,
                 pOnlineShowDictionary,
@@ -145,5 +158,6 @@ export const ApplicationContext = ({ children }) => {
 
 //Контроль свойств - Провайдер контекста приложения
 ApplicationContext.propTypes = {
+    guidGenerator: PropTypes.func.isRequired,
     children: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.node), PropTypes.node])
 };
