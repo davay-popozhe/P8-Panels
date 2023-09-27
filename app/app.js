@@ -15,7 +15,8 @@ import { NavigationContext, NavigationCtx, getRootLocation } from "./context/nav
 import { P8PAppErrorPage } from "./components/p8p_app_error_page"; //Страница с ошибкой
 import { P8PAppWorkspace } from "./components/p8p_app_workspace"; //Рабочее пространство панели
 import { P8PPanelsMenuGrid, P8P_PANELS_MENU_PANEL_SHAPE } from "./components/p8p_panels_menu"; //Меню панелей
-import { TITLES, BUTTONS, ERRORS, ERRORS_HTTP } from "../app.text"; //Текстовые ресурсы и константы
+import { BUTTONS, ERRORS, ERRORS_HTTP } from "../app.text"; //Текстовые ресурсы и константы
+import { P8P_PANELS_MENU_GRID_CONFIG_PROPS, P8P_APP_WORKSPACE_CONFIG_PROPS } from "./config_wrapper"; //Подключение компонентов к настройкам приложения
 
 //--------------------------
 //Вспомогательные компоненты
@@ -56,14 +57,7 @@ const MainMenu = ({ panels = [] } = {}) => {
     const handleItemNavigate = panel => navigatePanel(panel);
 
     //Генерация содержимого
-    return (
-        <P8PPanelsMenuGrid
-            panels={panels}
-            onItemNavigate={handleItemNavigate}
-            navigateCaption={BUTTONS.NAVIGATE}
-            defaultGroupTytle={TITLES.DEFAULT_PANELS_GROUP}
-        />
-    );
+    return <P8PPanelsMenuGrid {...P8P_PANELS_MENU_GRID_CONFIG_PROPS} panels={panels} onItemNavigate={handleItemNavigate} />;
 };
 
 //Контроль свойств - главное меню приложения
@@ -85,10 +79,9 @@ const Workspace = ({ panels = [], selectedPanel, children } = {}) => {
     //Генерация содержимого
     return (
         <P8PAppWorkspace
+            {...P8P_APP_WORKSPACE_CONFIG_PROPS}
             panels={panels}
             selectedPanel={selectedPanel}
-            closeCaption={BUTTONS.CLOSE}
-            homeCaption={BUTTONS.NAVIGATE_HOME}
             onHomeNavigate={handleHomeNavigate}
             onItemNavigate={handleItemNavigate}
         >

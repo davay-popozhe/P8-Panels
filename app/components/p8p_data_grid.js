@@ -160,4 +160,4 @@ P8PDataGrid.propTypes = {
 //Интерфейс модуля
 //----------------
 
-export { P8P_DATA_GRID_SIZE, P8P_DATA_GRID_DATA_TYPE, P8P_DATA_GRID_FILTER_SHAPE, P8PDataGrid };
+export { P8P_DATA_GRID_DATA_TYPE, P8P_DATA_GRID_SIZE, P8P_DATA_GRID_FILTER_SHAPE, P8PDataGrid };
