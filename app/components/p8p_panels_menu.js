@@ -59,11 +59,6 @@ const STYLES = {
         alignItems: "flex-start",
         minHeight: "100vh"
     },
-    TITLE: {
-        textTransform: "uppercase",
-        textAlign: "center",
-        fontWeight: "bold"
-    },
     GRID: {
         maxWidth: 1200,
         direction: "row",
@@ -194,7 +189,7 @@ P8PPanelsMenuDrawer.propTypes = {
 };
 
 //Меню панелей - грид
-const P8PPanelsMenuGrid = ({ title, onItemNavigate, navigateCaption, panels = [], defaultGroupTytle } = {}) => {
+const P8PPanelsMenuGrid = ({ onItemNavigate, navigateCaption, panels = [], defaultGroupTytle } = {}) => {
     //Формируем ссылки на панели
     const panelsLinks = getPanelsLinks({ variant: P8P_PANELS_MENU_VARIANT.GRID, panels, defaultGroupTytle, navigateCaption, onItemNavigate });
 
@@ -202,13 +197,6 @@ const P8PPanelsMenuGrid = ({ title, onItemNavigate, navigateCaption, panels = []
     return (
         <Box sx={STYLES.CONTAINER}>
             <Grid container spacing={2} p={2} sx={STYLES.GRID}>
-                {title ? (
-                    <Grid item xs={12} sm={12} md={12} lg={12} xl={12}>
-                        <Typography variant="h5" color="primary" sx={STYLES.TITLE}>
-                            {title}
-                        </Typography>
-                    </Grid>
-                ) : null}
                 {panelsLinks}
             </Grid>
         </Box>
@@ -217,7 +205,6 @@ const P8PPanelsMenuGrid = ({ title, onItemNavigate, navigateCaption, panels = []
 
 //Контроль свойств - Меню панелей - грид
 P8PPanelsMenuGrid.propTypes = {
-    title: PropTypes.string,
     onItemNavigate: PropTypes.func,
     navigateCaption: PropTypes.string.isRequired,
     panels: PropTypes.arrayOf(P8P_PANELS_MENU_PANEL_SHAPE).isRequired,

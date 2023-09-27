@@ -59,7 +59,6 @@ const MainMenu = ({ panels = [] } = {}) => {
     return (
         <P8PPanelsMenuGrid
             panels={panels}
-            title={TITLES.MAIN_MENU}
             onItemNavigate={handleItemNavigate}
             navigateCaption={BUTTONS.NAVIGATE}
             defaultGroupTytle={TITLES.DEFAULT_PANELS_GROUP}
