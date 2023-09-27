@@ -14,6 +14,7 @@ import { ApplicationContext } from "./context/application"; //Контекст �
 import { App } from "./app"; //Приложение
 import { ERRORS, TITLES, TEXTS, BUTTONS } from "../app.text"; //Текстовые ресурсы и константы
 import { getDisplaySize, genGUID } from "./core/utils"; //Вспомогательные функции
+import config from "../app.config"; //Настройки приложения
 import client from "./core/client"; //Клиент для взаимодействия с сервером
 
 //-----------
@@ -25,7 +26,7 @@ const Root = () => {
     return (
         <MessagingContext titles={TITLES} texts={TEXTS} buttons={BUTTONS}>
             <BackEndContext client={client}>
-                <ApplicationContext errors={ERRORS} displaySizeGetter={getDisplaySize} guidGenerator={genGUID}>
+                <ApplicationContext errors={ERRORS} displaySizeGetter={getDisplaySize} guidGenerator={genGUID} config={config}>
                     <App />
                 </ApplicationContext>
             </BackEndContext>

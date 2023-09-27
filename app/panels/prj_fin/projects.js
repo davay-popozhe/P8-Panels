@@ -10,19 +10,17 @@
 import React, { useState, useCallback, useEffect, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Grid, Icon, Stack, Link, Button, Table, TableBody, TableRow, TableCell, Typography, Box, Paper, IconButton } from "@mui/material"; //Интерфейсные компоненты
-import { deepCopyObject, hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
-import { BUTTONS, TEXTS, INPUTS } from "../../../app.text"; //Тектовые ресурсы и константы
+import { hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
+import { TEXTS } from "../../../app.text"; //Тектовые ресурсы и константы
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
+import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 
 //-----------------------
 //Вспомогательные функции
 //-----------------------
-
-//Количество записей на странице
-const PAGE_SIZE = 50;
 
 //Формирование значения для колонки "Состояние проекта"
 const formatPrjStateValue = (value, addText = false) => {
@@ -227,7 +225,7 @@ const Projects = ({ onStagesOpen }) => {
     const { executeStored, SERV_DATA_TYPE_CLOB } = useContext(BackEndСtx);
 
     //Подключение к контексту приложения
-    const { pOnlineShowDocument, pOnlineShowUnit } = useContext(ApplicationСtx);
+    const { pOnlineShowDocument, pOnlineShowUnit, configSystemPageSize } = useContext(ApplicationСtx);
 
     //Подключение к контексту сообщений
     const { showMsgErr } = useContext(MessagingСtx);
@@ -241,7 +239,7 @@ const Projects = ({ onStagesOpen }) => {
                     CFILTERS: { VALUE: object2Base64XML(projectsDataGrid.filters, { arrayNodeName: "filters" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
                     CORDERS: { VALUE: object2Base64XML(projectsDataGrid.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
                     NPAGE_NUMBER: projectsDataGrid.pageNumber,
-                    NPAGE_SIZE: PAGE_SIZE,
+                    NPAGE_SIZE: configSystemPageSize,
                     NINCLUDE_DEF: projectsDataGrid.dataLoaded ? 0 : 1
                 },
                 respArg: "COUT"
@@ -252,7 +250,7 @@ const Projects = ({ onStagesOpen }) => {
                 rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
                 dataLoaded: true,
                 reload: false,
-                morePages: (data.XROWS || []).length >= PAGE_SIZE
+                morePages: (data.XROWS || []).length >= configSystemPageSize
             }));
         }
     }, [
@@ -262,6 +260,7 @@ const Projects = ({ onStagesOpen }) => {
         projectsDataGrid.dataLoaded,
         projectsDataGrid.pageNumber,
         executeStored,
+        configSystemPageSize,
         SERV_DATA_TYPE_CLOB
     ]);
 
@@ -297,23 +296,13 @@ const Projects = ({ onStagesOpen }) => {
         <>
             {projectsDataGrid.dataLoaded ? (
                 <P8PDataGrid
+                    {...P8P_DATA_GRID_CONFIG_PROPS}
                     columnsDef={projectsDataGrid.columnsDef}
                     rows={projectsDataGrid.rows}
                     size={P8P_DATA_GRID_SIZE.SMALL}
                     morePages={projectsDataGrid.morePages}
                     reloading={projectsDataGrid.reload}
                     expandable={true}
-                    orderAscMenuItemCaption={BUTTONS.ORDER_ASC}
-                    orderDescMenuItemCaption={BUTTONS.ORDER_DESC}
-                    filterMenuItemCaption={BUTTONS.FILTER}
-                    valueFilterCaption={INPUTS.VALUE}
-                    valueFromFilterCaption={INPUTS.VALUE_FROM}
-                    valueToFilterCaption={INPUTS.VALUE_TO}
-                    okFilterBtnCaption={BUTTONS.OK}
-                    clearFilterBtnCaption={BUTTONS.CLEAR}
-                    cancelFilterBtnCaption={BUTTONS.CANCEL}
-                    morePagesBtnCaption={BUTTONS.MORE}
-                    noDataFoundText={TEXTS.NO_DATA_FOUND}
                     headCellRender={headCellRender}
                     dataCellRender={prms => dataCellRender(prms, handleStagesOpen)}
                     rowExpandRender={prms => rowExpandRender(prms, pOnlineShowDocument, showProjectPayNotes, handleStagesOpen)}
@@ -321,7 +310,6 @@ const Projects = ({ onStagesOpen }) => {
                     onOrderChanged={handleOrderChanged}
                     onFilterChanged={handleFilterChanged}
                     onPagesCountChanged={handlePagesCountChanged}
-                    objectsCopier={deepCopyObject}
                 />
             ) : null}
         </>

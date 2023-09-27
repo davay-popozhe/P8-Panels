@@ -7,7 +7,7 @@
 //Подключение библиотек
 //---------------------
 
-import React, { useReducer, createContext, useEffect, useContext, useCallback } from "react"; //ReactJS
+import React, { useReducer, createContext, useEffect, useContext, useCallback, useMemo } from "react"; //ReactJS
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { APP_AT, INITIAL_STATE, applicationReducer } from "./application_reducer"; //Редьюсер состояния
 import { MessagingСtx } from "./messaging"; //Контекст отображения сообщений
@@ -33,7 +33,7 @@ const APPLICATION_CONTEXT_ERRORS_SHAPE = PropTypes.shape({
 export const ApplicationСtx = createContext();
 
 //Провайдер контекста приложения
-export const ApplicationContext = ({ errors, displaySizeGetter, guidGenerator, children }) => {
+export const ApplicationContext = ({ errors, displaySizeGetter, guidGenerator, config, children }) => {
     //Подключим редьюсер состояния
     const [state, dispatch] = useReducer(applicationReducer, INITIAL_STATE(displaySizeGetter));
 
@@ -114,6 +114,9 @@ export const ApplicationContext = ({ errors, displaySizeGetter, guidGenerator, c
         [showMsgErr, errors.P8O_API_UNAVAILABLE]
     );
 
+    //Получение количества записей на странице
+    const configSystemPageSize = useMemo(() => config.SYSTEM.PAGE_SIZE, [config.SYSTEM.PAGE_SIZE]);
+
     //Инициализация приложения
     const initApp = useCallback(async () => {
         //Читаем конфигурацию с сервера
@@ -147,6 +150,7 @@ export const ApplicationContext = ({ errors, displaySizeGetter, guidGenerator, c
                 pOnlineShowDictionary,
                 pOnlineUserProcedure,
                 pOnlineUserReport,
+                configSystemPageSize,
                 appState: state
             }}
         >
@@ -160,5 +164,6 @@ ApplicationContext.propTypes = {
     errors: APPLICATION_CONTEXT_ERRORS_SHAPE.isRequired,
     displaySizeGetter: PropTypes.func,
     guidGenerator: PropTypes.func.isRequired,
+    config: PropTypes.object.isRequired,
     children: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.node), PropTypes.node])
 };

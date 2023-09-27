@@ -10,18 +10,15 @@
 import React, { useState, useCallback, useEffect, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Box, Stack, Grid, Paper, Table, TableBody, TableRow, TableCell, Typography, Button, Link } from "@mui/material"; //Интерфейсные компоненты
-import { deepCopyObject, hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
-import { BUTTONS, TEXTS, INPUTS } from "../../../app.text"; //Тектовые ресурсы и константы
+import { hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { P8PDataGrid, P8P_DATA_GRID_SIZE, P8P_DATA_GRID_FILTER_SHAPE } from "../../components/p8p_data_grid"; //Таблица данных
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
+import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 
 //-----------------------
 //Вспомогательные функции
 //-----------------------
-
-//Количество записей на странице
-const PAGE_SIZE = 50;
 
 //Форматирование значений колонок
 const valueFormatter = ({ value, columnDef }) => {
@@ -154,7 +151,7 @@ const StageContracts = ({ stage, filters }) => {
     const { executeStored, SERV_DATA_TYPE_CLOB } = useContext(BackEndСtx);
 
     //Подключение к контексту приложения
-    const { pOnlineShowDocument } = useContext(ApplicationСtx);
+    const { pOnlineShowDocument, configSystemPageSize } = useContext(ApplicationСtx);
 
     //Загрузка данных этапов с сервера
     const loadStageContracts = useCallback(async () => {
@@ -169,7 +166,7 @@ const StageContracts = ({ stage, filters }) => {
                     },
                     CORDERS: { VALUE: object2Base64XML(stageContractsDataGrid.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
                     NPAGE_NUMBER: stageContractsDataGrid.pageNumber,
-                    NPAGE_SIZE: PAGE_SIZE,
+                    NPAGE_SIZE: configSystemPageSize,
                     NINCLUDE_DEF: stageContractsDataGrid.dataLoaded ? 0 : 1
                 },
                 respArg: "COUT"
@@ -180,7 +177,7 @@ const StageContracts = ({ stage, filters }) => {
                 rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
                 dataLoaded: true,
                 reload: false,
-                morePages: (data.XROWS || []).length >= PAGE_SIZE
+                morePages: (data.XROWS || []).length >= configSystemPageSize
             }));
         }
     }, [
@@ -191,6 +188,7 @@ const StageContracts = ({ stage, filters }) => {
         stageContractsDataGrid.dataLoaded,
         stageContractsDataGrid.pageNumber,
         executeStored,
+        configSystemPageSize,
         SERV_DATA_TYPE_CLOB
     ]);
 
@@ -213,6 +211,7 @@ const StageContracts = ({ stage, filters }) => {
         <Box pt={2}>
             {stageContractsDataGrid.dataLoaded ? (
                 <P8PDataGrid
+                    {...P8P_DATA_GRID_CONFIG_PROPS}
                     columnsDef={stageContractsDataGrid.columnsDef}
                     filtersInitial={filters}
                     rows={stageContractsDataGrid.rows}
@@ -220,24 +219,12 @@ const StageContracts = ({ stage, filters }) => {
                     morePages={stageContractsDataGrid.morePages}
                     reloading={stageContractsDataGrid.reload}
                     expandable={true}
-                    orderAscMenuItemCaption={BUTTONS.ORDER_ASC}
-                    orderDescMenuItemCaption={BUTTONS.ORDER_DESC}
-                    filterMenuItemCaption={BUTTONS.FILTER}
-                    valueFilterCaption={INPUTS.VALUE}
-                    valueFromFilterCaption={INPUTS.VALUE_FROM}
-                    valueToFilterCaption={INPUTS.VALUE_TO}
-                    okFilterBtnCaption={BUTTONS.OK}
-                    clearFilterBtnCaption={BUTTONS.CLEAR}
-                    cancelFilterBtnCaption={BUTTONS.CANCEL}
-                    morePagesBtnCaption={BUTTONS.MORE}
-                    noDataFoundText={TEXTS.NO_DATA_FOUND}
                     dataCellRender={prms => dataCellRender(prms, pOnlineShowDocument)}
                     rowExpandRender={prms => rowExpandRender(prms, pOnlineShowDocument)}
                     valueFormatter={valueFormatter}
                     onOrderChanged={handleOrderChanged}
                     onFilterChanged={handleFilterChanged}
                     onPagesCountChanged={handlePagesCountChanged}
-                    objectsCopier={deepCopyObject}
                 />
             ) : null}
         </Box>

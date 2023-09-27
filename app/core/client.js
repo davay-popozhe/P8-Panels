@@ -9,7 +9,7 @@
 
 import { XMLParser, XMLBuilder } from "fast-xml-parser"; //Конвертация XML в JSON и JSON в XML
 import dayjs from "dayjs"; //Работа с датами
-import { SYSTEM } from "../../app.config"; //Настройки приложения
+import config from "../../app.config"; //Настройки приложения
 
 //---------
 //Константы
@@ -165,7 +165,7 @@ const executeStored = async ({ stored, args, respArg, throwError = true, spreadO
                 serverArgs.push({ XARGUMENT: { SNAME: arg, VALUE: value, SDATA_TYPE: dataType } });
             }
         res = await executeAction({
-            serverURL: `${SYSTEM.SERVER}${!SYSTEM.SERVER.endsWith("/") ? "/" : ""}Process`,
+            serverURL: `${config.SYSTEM.SERVER}${!config.SYSTEM.SERVER.endsWith("/") ? "/" : ""}Process`,
             action: SRV_FN_CODE_EXEC_STORED,
             payload: { SSTORED: stored, XARGUMENTS: serverArgs, SRESP_ARG: respArg },
             isArray: (name, jPath) => XML_ALWAYS_ARRAY_PATHS.indexOf(jPath) !== -1 || jPath.endsWith(XML_ALWAYS_ARRAY_POSTFIX)
@@ -189,7 +189,7 @@ const getConfig = async ({ throwError = true } = {}) => {
     let res = null;
     try {
         res = await executeAction({
-            serverURL: `${SYSTEM.SERVER}${!SYSTEM.SERVER.endsWith("/") ? "/" : ""}GetConfig`
+            serverURL: `${config.SYSTEM.SERVER}${!config.SYSTEM.SERVER.endsWith("/") ? "/" : ""}GetConfig`
         });
     } catch (e) {
         if (throwError) throw e;

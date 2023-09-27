@@ -10,12 +10,13 @@
 import React, { useState, useCallback, useEffect, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Box, Icon, Stack, Link } from "@mui/material"; //Интерфейсные компоненты
-import { deepCopyObject, hasValue, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
-import { BUTTONS, TEXTS, INPUTS } from "../../../app.text"; //Тектовые ресурсы и константы
+import { hasValue, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
+import { TEXTS } from "../../../app.text"; //Тектовые ресурсы и константы
 import { P8PDataGrid, P8P_DATA_GRID_SIZE, P8P_DATA_GRID_FILTER_SHAPE } from "../../components/p8p_data_grid"; //Таблица данных
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
+import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 
 //-----------------------
 //Вспомогательные функции
@@ -162,27 +163,16 @@ const StageArts = ({ stage, filters }) => {
         <Box pt={2}>
             {stageArtsDataGrid.dataLoaded ? (
                 <P8PDataGrid
+                    {...P8P_DATA_GRID_CONFIG_PROPS}
                     columnsDef={stageArtsDataGrid.columnsDef}
                     filtersInitial={filters}
                     rows={stageArtsDataGrid.rows}
                     size={P8P_DATA_GRID_SIZE.SMALL}
                     morePages={false}
                     reloading={stageArtsDataGrid.reload}
-                    orderAscMenuItemCaption={BUTTONS.ORDER_ASC}
-                    orderDescMenuItemCaption={BUTTONS.ORDER_DESC}
-                    filterMenuItemCaption={BUTTONS.FILTER}
-                    valueFilterCaption={INPUTS.VALUE}
-                    valueFromFilterCaption={INPUTS.VALUE_FROM}
-                    valueToFilterCaption={INPUTS.VALUE_TO}
-                    okFilterBtnCaption={BUTTONS.OK}
-                    clearFilterBtnCaption={BUTTONS.CLEAR}
-                    cancelFilterBtnCaption={BUTTONS.CANCEL}
-                    morePagesBtnCaption={BUTTONS.MORE}
-                    noDataFoundText={TEXTS.NO_DATA_FOUND}
                     dataCellRender={prms => dataCellRender(prms, showStageArtCostNotes, showStageArtContracts)}
                     valueFormatter={valueFormatter}
                     onFilterChanged={handleFilterChanged}
-                    objectsCopier={deepCopyObject}
                 />
             ) : null}
         </Box>
