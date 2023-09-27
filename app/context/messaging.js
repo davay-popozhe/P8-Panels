@@ -10,8 +10,8 @@
 import React, { useReducer, createContext, useCallback } from "react"; //ReactJS
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { P8PAppProgress } from "../components/p8p_app_progress"; //Индикатор процесса
-import { P8PAppMessage } from "../components/p8p_app_message"; //Диалог сообщения
-import { MSG_AT, MSG_DLGT, INITIAL_STATE, messagingReducer } from "./messaging_reducer"; //Редьюсер состояния
+import { P8PAppMessage, P8PAppInlineMessage, P8PAppInlineError, P8PAppInlineWarn, P8PAppInlineInfo } from "../components/p8p_app_message"; //Диалог сообщения
+import { MSG_AT, MSG_TYPE, INITIAL_STATE, messagingReducer } from "./messaging_reducer"; //Редьюсер состояния
 
 //---------
 //Константы
@@ -61,13 +61,13 @@ export const MessagingContext = ({ titles, texts, buttons, children }) => {
     );
 
     //Отображение сообщения - ошибка
-    const showMsgErr = useCallback((text, msgOnOk = null) => showMsg(MSG_DLGT.ERR, text, msgOnOk), [showMsg]);
+    const showMsgErr = useCallback((text, msgOnOk = null) => showMsg(MSG_TYPE.ERR, text, msgOnOk), [showMsg]);
 
     //Отображение сообщения - информация
-    const showMsgInfo = useCallback((text, msgOnOk = null) => showMsg(MSG_DLGT.INFO, text, msgOnOk), [showMsg]);
+    const showMsgInfo = useCallback((text, msgOnOk = null) => showMsg(MSG_TYPE.INFO, text, msgOnOk), [showMsg]);
 
     //Отображение сообщения - предупреждение
-    const showMsgWarn = useCallback((text, msgOnOk = null, msgOnCancel = null) => showMsg(MSG_DLGT.WARN, text, msgOnOk, msgOnCancel), [showMsg]);
+    const showMsgWarn = useCallback((text, msgOnOk = null, msgOnCancel = null) => showMsg(MSG_TYPE.WARN, text, msgOnOk, msgOnCancel), [showMsg]);
 
     //Сокрытие сообщения
     const hideMsg = useCallback(
@@ -89,11 +89,23 @@ export const MessagingContext = ({ titles, texts, buttons, children }) => {
         hideMsg(true);
     };
 
+    //Встраиваемое сообщение
+    const InlineMsg = useCallback(props => P8PAppInlineMessage({ okBtn: true, okBtnCaption: buttons.OK, ...props }), [buttons.OK]);
+
+    //Встраиваемое сообщение об ошибке
+    const InlineMsgErr = useCallback(props => P8PAppInlineError({ okBtn: true, okBtnCaption: buttons.OK, ...props }), [buttons.OK]);
+
+    //Встраиваемое сообщение с информацией
+    const InlineMsgInfo = useCallback(props => P8PAppInlineInfo({ okBtn: true, okBtnCaption: buttons.OK, ...props }), [buttons.OK]);
+
+    //Встраиваемое сообщение с предупреждением
+    const InlineMsgWarn = useCallback(props => P8PAppInlineWarn({ okBtn: true, okBtnCaption: buttons.OK, ...props }), [buttons.OK]);
+
     //Вернём компонент провайдера
     return (
         <MessagingСtx.Provider
             value={{
-                MSG_DLGT,
+                MSG_TYPE,
                 showLoader,
                 hideLoader,
                 showMsg,
@@ -101,6 +113,10 @@ export const MessagingContext = ({ titles, texts, buttons, children }) => {
                 showMsgInfo,
                 showMsgWarn,
                 hideMsg,
+                InlineMsg,
+                InlineMsgErr,
+                InlineMsgInfo,
+                InlineMsgWarn,
                 msgState: state
             }}
         >
@@ -111,11 +127,11 @@ export const MessagingContext = ({ titles, texts, buttons, children }) => {
                     variant={state.msgType}
                     text={state.msgText}
                     title
-                    titleText={state.msgType == MSG_DLGT.ERR ? titles.ERR : state.msgType == MSG_DLGT.WARN ? titles.WARN : titles.INFO}
+                    titleText={state.msgType == MSG_TYPE.ERR ? titles.ERR : state.msgType == MSG_TYPE.WARN ? titles.WARN : titles.INFO}
                     okBtn={true}
                     onOk={handleMessageOkClick}
-                    okBtnCaption={[MSG_DLGT.ERR, MSG_DLGT.INFO].includes(state.msgType) ? buttons.CLOSE : buttons.OK}
-                    cancelBtn={state.msgType == MSG_DLGT.WARN}
+                    okBtnCaption={[MSG_TYPE.ERR, MSG_TYPE.INFO].includes(state.msgType) ? buttons.CLOSE : buttons.OK}
+                    cancelBtn={state.msgType == MSG_TYPE.WARN}
                     onCancel={handleMessageCancelClick}
                     cancelBtnCaption={buttons.CANCEL}
                 />

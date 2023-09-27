@@ -21,8 +21,8 @@ const MSG_AT = {
     HIDE_MSG: "HIDE_MSG" //Сокрытие сообщения
 };
 
-//Типы диалогов сообщений
-const MSG_DLGT = {
+//Типы сообщений
+const MSG_TYPE = {
     INFO: P8P_APP_MESSAGE_VARIANT.INFO, //Тип диалога - информация
     WARN: P8P_APP_MESSAGE_VARIANT.WARN, //Тип диалога - предупреждение
     ERR: P8P_APP_MESSAGE_VARIANT.ERR //Тип диалога - ошибка
@@ -33,7 +33,7 @@ const INITIAL_STATE = {
     loading: false,
     loadingMessage: "",
     msg: false,
-    msgType: MSG_DLGT.ERR,
+    msgType: MSG_TYPE.ERR,
     msgText: null,
     msgOnOk: null,
     msgOnCancel: null
@@ -57,7 +57,7 @@ const handlers = {
     [MSG_AT.SHOW_MSG]: (state, { payload }) => ({
         ...state,
         msg: true,
-        msgType: payload.type || MSG_DLGT.APP_ERR,
+        msgType: payload.type || MSG_TYPE.APP_ERR,
         msgText: payload.text,
         msgOnOk: payload.msgOnOk,
         msgOnCancel: payload.msgOnCancel
@@ -73,7 +73,7 @@ const handlers = {
 //----------------
 
 //Константы
-export { MSG_AT, MSG_DLGT, INITIAL_STATE };
+export { MSG_AT, MSG_TYPE, INITIAL_STATE };
 
 //Редьюсер состояния
 export const messagingReducer = (state, action) => {

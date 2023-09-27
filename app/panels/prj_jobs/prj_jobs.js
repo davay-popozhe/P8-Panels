@@ -31,7 +31,7 @@ const PrjJobs = () => {
     const { executeStored } = useContext(BackEndСtx);
 
     //Подключение к контексту сообщений
-    const { showMsgErr, showMsgWarn, showMsgInfo } = useContext(MessagingСtx);
+    const { MSG_TYPE, showMsgErr, showMsgWarn, showMsgInfo, InlineMsg, InlineMsgErr, InlineMsgInfo, InlineMsgWarn } = useContext(MessagingСtx);
 
     //Подключение к контексту приложения
     const { pOnlineShowTab, pOnlineShowDocument, pOnlineShowDictionary, pOnlineUserProcedure, pOnlineUserReport } = useContext(ApplicationСtx);
@@ -67,6 +67,14 @@ const PrjJobs = () => {
     //Генерация содержимого
     return (
         <div>
+            <InlineMsg
+                variant={MSG_TYPE.WARN}
+                text="Просто сообщение, очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень очень длинное"
+                onOk={() => console.log("INLINE MESSAGE ON OK")}
+            />
+            <InlineMsgInfo text="Информация" onOk={() => console.log("INLINE INFO ON OK")} />
+            <InlineMsgWarn text="Предупреждение" onOk={() => console.log("INLINE WARN ON OK")} />
+            <InlineMsgErr text="Ошибка" onOk={() => console.log("INLINE ERR ON OK")} />
             <h1>Это панель работ!</h1>
             <br />
             <h2>Параметры: {isNavigationState() ? JSON.stringify(getNavigationState()) : "НЕ ПЕРЕДАНЫ"}</h2>

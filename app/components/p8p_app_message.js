@@ -156,14 +156,14 @@ const P8PAppInlineMessage = ({ variant, text, okBtn, onOk, okBtnCaption }) => {
     //Генерация содержимого
     return (
         <Container style={STYLES.INLINE_MESSAGE}>
-            <Box p={5}>
+            <Box p={1}>
                 <Typography
                     color={variant === P8P_APP_MESSAGE_VARIANT.ERR ? "error" : variant === P8P_APP_MESSAGE_VARIANT.WARN ? "primary" : "textSecondary"}
                 >
                     {text}
                 </Typography>
                 {okBtn && okBtnCaption ? (
-                    <Box pt={2}>
+                    <Box pt={1}>
                         <Button onClick={() => (onOk ? onOk() : null)} color="primary" autoFocus>
                             {okBtnCaption}
                         </Button>
