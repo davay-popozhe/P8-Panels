@@ -9,6 +9,7 @@
 
 //Типы действий
 const APP_AT = {
+    SET_URL_BASE: "SET_URL_BASE", //Установка базового URL приложения
     LOAD_PANELS: "LOAD_PANELS", //Загрузка списка панелей
     SET_INITIALIZED: "SET_INITIALIZED", //Установка флага инициализированности приложения
     SET_DISPLAY_SIZE: "SET_DISPLAY_SIZE" //Установка текущего типового размера экрана
@@ -17,6 +18,7 @@ const APP_AT = {
 //Состояние приложения по умолчанию
 const INITIAL_STATE = displaySizeGetter => ({
     displaySize: displaySizeGetter(),
+    urlBase: "",
     panels: [],
     panelsLoaded: false,
     initialized: false
@@ -28,6 +30,8 @@ const INITIAL_STATE = displaySizeGetter => ({
 
 //Обработчики действий
 const handlers = {
+    //Установка базового URL приложения
+    [APP_AT.SET_URL_BASE]: (state, { payload }) => ({ ...state, urlBase: payload }),
     //Загрузка списка панелей
     [APP_AT.LOAD_PANELS]: (state, { payload }) => {
         let panels = [];

@@ -14,7 +14,7 @@ import { ApplicationСtx } from "./context/application"; //Контекст пр
 import { NavigationContext, NavigationCtx, getRootLocation } from "./context/navigation"; //Контекст навигации
 import { P8PAppErrorPage } from "./components/p8p_app_error_page"; //Страница с ошибкой
 import { P8PAppWorkspace } from "./components/p8p_app_workspace"; //Рабочее пространство панели
-import { P8PPanelsMenuGrid, P8P_PANELS_MENU_PANEL_SHAPE } from "./components/p8p_panels_menu"; //Меню панелей
+import { P8PPanelsMenuDesktop, P8PPanelsMenuGrid, P8P_PANELS_MENU_PANEL_SHAPE } from "./components/p8p_panels_menu"; //Меню панелей
 import { BUTTONS, ERRORS, ERRORS_HTTP } from "../app.text"; //Текстовые ресурсы и константы
 import { P8P_PANELS_MENU_GRID_CONFIG_PROPS, P8P_APP_WORKSPACE_CONFIG_PROPS } from "./config_wrapper"; //Подключение компонентов к настройкам приложения
 
@@ -51,13 +51,29 @@ RouterError.propTypes = {
 //Главное меню приложения
 const MainMenu = ({ panels = [] } = {}) => {
     //Подключение к контексту навигации
-    const { navigatePanel } = useContext(NavigationCtx);
+    const { navigatePanel, isNavigationSearch, getNavigationSearch } = useContext(NavigationCtx);
+
+    //Подключение к контексту приложения
+    const { configUrlBase, pOnlineShowTab } = useContext(ApplicationСtx);
+
+    //Получим параметры запроса из адресной строки
+    const qS = isNavigationSearch() ? getNavigationSearch() : null;
 
     //Отработка действия навигации элемента меню
-    const handleItemNavigate = panel => navigatePanel(panel);
+    const handleItemNavigate = (panel, newTab) =>
+        newTab ? pOnlineShowTab({ id: panel.name, url: `${configUrlBase}${panel.url}`, caption: panel.caption }) : navigatePanel(panel);
 
     //Генерация содержимого
-    return <P8PPanelsMenuGrid {...P8P_PANELS_MENU_GRID_CONFIG_PROPS} panels={panels} onItemNavigate={handleItemNavigate} />;
+    return qS?.mode === "DESKTOP" ? (
+        <P8PPanelsMenuDesktop
+            {...P8P_PANELS_MENU_GRID_CONFIG_PROPS}
+            group={qS?.group}
+            panels={panels}
+            onItemNavigate={panel => handleItemNavigate(panel, true)}
+        />
+    ) : (
+        <P8PPanelsMenuGrid {...P8P_PANELS_MENU_GRID_CONFIG_PROPS} panels={panels} onItemNavigate={panel => handleItemNavigate(panel, false)} />
+    );
 };
 
 //Контроль свойств - главное меню приложения

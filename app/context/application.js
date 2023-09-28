@@ -18,7 +18,7 @@ import { BackEndСtx } from "./backend"; //Контекст взаимодейс
 //---------
 
 //Клиентский API "ПАРУС 8 Онлайн"
-const P8O_API = window.parent?.parus?.clientApi;
+const P8O_API = window.top?.parus?.clientApi;
 
 //Структура объекта с описанием ошибок
 const APPLICATION_CONTEXT_ERRORS_SHAPE = PropTypes.shape({
@@ -48,6 +48,9 @@ export const ApplicationContext = ({ errors, displaySizeGetter, guidGenerator, c
 
     //Установка текущего размера экрана
     const setDisplaySize = displaySize => dispatch({ type: APP_AT.SET_DISPLAY_SIZE, payload: displaySize });
+
+    //Установка базового URL приложения
+    const setUrlBase = urlBase => dispatch({ type: APP_AT.SET_URL_BASE, payload: urlBase });
 
     //Установка списка панелей
     const setPanels = panels => dispatch({ type: APP_AT.LOAD_PANELS, payload: panels });
@@ -117,10 +120,15 @@ export const ApplicationContext = ({ errors, displaySizeGetter, guidGenerator, c
     //Получение количества записей на странице
     const configSystemPageSize = useMemo(() => config.SYSTEM.PAGE_SIZE, [config.SYSTEM.PAGE_SIZE]);
 
+    //Получение базового URL приложения
+    const configUrlBase = useMemo(() => state.urlBase, [state.urlBase]);
+
     //Инициализация приложения
     const initApp = useCallback(async () => {
         //Читаем конфигурацию с сервера
         let res = await getConfig();
+        //Сохраняем базовый URL  приложения
+        setUrlBase(getRespPayload(res)?.Panels?.urlBase);
         //Сохраняем список панелей
         setPanels(getRespPayload(res)?.Panels?.Panel);
         //Установим флаг завершения инициализации
@@ -151,6 +159,7 @@ export const ApplicationContext = ({ errors, displaySizeGetter, guidGenerator, c
                 pOnlineUserProcedure,
                 pOnlineUserReport,
                 configSystemPageSize,
+                configUrlBase,
                 appState: state
             }}
         >

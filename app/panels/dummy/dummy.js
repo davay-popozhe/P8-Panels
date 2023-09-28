@@ -19,10 +19,10 @@ import { BUTTONS, ERRORS } from "../../../app.text"; //Текстовые рес
 //Заглушка
 const Dummy = () => {
     //Подключение к контексту навигации
-    const { navigateBack } = useContext(NavigationCtx);
+    const { navigateRoot } = useContext(NavigationCtx);
 
     //Генерация содержимого
-    return <P8PAppErrorPage errorMessage={ERRORS.UNDER_CONSTRUCTION} onNavigate={() => navigateBack()} navigateCaption={BUTTONS.NAVIGATE_BACK} />;
+    return <P8PAppErrorPage errorMessage={ERRORS.UNDER_CONSTRUCTION} onNavigate={() => navigateRoot()} navigateCaption={BUTTONS.NAVIGATE_HOME} />;
 };
 
 //----------------

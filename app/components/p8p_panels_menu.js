@@ -35,7 +35,8 @@ import {
 //Типы меню
 const P8P_PANELS_MENU_VARIANT = {
     DRAWER: "DRAWER",
-    GRID: "GRID"
+    GRID: "GRID",
+    DESKTOP: "DESKTOP"
 };
 
 //Структура элемента описания панели
@@ -53,36 +54,16 @@ const P8P_PANELS_MENU_PANEL_SHAPE = PropTypes.shape({
 
 //Стили
 const STYLES = {
-    CONTAINER: {
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "flex-start",
-        minHeight: "100vh"
-    },
-    GRID: {
-        maxWidth: 1200,
-        direction: "row",
-        justifyContent: "left",
-        alignItems: "stretch"
-    },
-    PANEL_CARD: {
-        maxWidth: 400,
-        height: "100%",
-        flexDirection: "column",
-        display: "flex"
-    },
-    PANEL_CARD_MEDIA: {
-        height: 140
-    },
-    PANEL_CARD_CONTENT_TITLE: {
-        alignItems: "center"
-    },
-    PANEL_CARD_ACTIONS: {
-        marginTop: "auto",
-        display: "flex",
-        justifyContent: "flex-end",
-        alignItems: "flex-start"
-    }
+    GRID_CONTAINER: { display: "flex", justifyContent: "center", alignItems: "flex-start", minHeight: "100vh" },
+    GRID: { maxWidth: 1200, direction: "row", justifyContent: "left", alignItems: "stretch" },
+    GRID_PANEL_CARD: { maxWidth: 400, height: "100%", flexDirection: "column", display: "flex" },
+    GRID_PANEL_CARD_MEDIA: { height: 140 },
+    GRID_PANEL_CARD_CONTENT_TITLE: { alignItems: "center" },
+    GRID_PANEL_CARD_ACTIONS: { marginTop: "auto", display: "flex", justifyContent: "flex-end", alignItems: "flex-start" },
+    DESKTOP_GROUP_HEADER: { fontWeight: "bold", fontFamily: "tahoma, arial, verdana, sans-serif!important", fontSize: "13px!important" },
+    DESKTOP_ITEM_BUTTON: { fontSize: "12px", textTransform: "none", "&:hover": { backgroundColor: "#c3e1ff" } },
+    DESKTOP_ITEM_STACK: { justifyContent: "center", alignItems: "center" },
+    DESKTOP_ITEM_ICON: { width: "64px", height: "64px", fontSize: "64px" }
 };
 
 //--------------------------------
@@ -90,7 +71,7 @@ const STYLES = {
 //--------------------------------
 
 //Формирование групп
-const getGroups = panels => {
+const getGroups = (panels, group) => {
     let res = [];
     let addDefaultGroup = false;
     for (const panel of panels)
@@ -99,13 +80,14 @@ const getGroups = panels => {
             if (!panel.group) addDefaultGroup = true;
         }
     if (addDefaultGroup || res.length == 0) res.push(null);
+    if (group) res = res.filter(g => g == group);
     return res;
 };
 
 //Формирование ссылок на панели
-const getPanelsLinks = ({ variant, panels, selectedPanel, defaultGroupTytle, navigateCaption, onItemNavigate }) => {
+const getPanelsLinks = ({ variant, panels, selectedPanel, group, defaultGroupTytle, navigateCaption, onItemNavigate }) => {
     //Получим группы
-    let grps = getGroups(panels);
+    let grps = getGroups(panels, group);
 
     //Построим ссылки
     const panelsLinks = [];
@@ -118,8 +100,14 @@ const getPanelsLinks = ({ variant, panels, selectedPanel, defaultGroupTytle, nav
                             {grp ? grp : defaultGroupTytle}
                         </Typography>
                     </Grid>
-                ) : (
+                ) : variant === P8P_PANELS_MENU_VARIANT.DRAWER ? (
                     <Divider key={grp} />
+                ) : (
+                    <Box pb={1} key={grp}>
+                        <Typography variant="h7" sx={STYLES.DESKTOP_GROUP_HEADER}>
+                            {grp ? grp : defaultGroupTytle}
+                        </Typography>
+                    </Box>
                 )
             );
         for (const panel of panels) {
@@ -127,12 +115,12 @@ const getPanelsLinks = ({ variant, panels, selectedPanel, defaultGroupTytle, nav
                 panelsLinks.push(
                     variant === P8P_PANELS_MENU_VARIANT.GRID ? (
                         <Grid item xs={12} sm={6} md={4} lg={4} xl={4} key={panel.name}>
-                            <Card sx={STYLES.PANEL_CARD}>
+                            <Card sx={STYLES.GRID_PANEL_CARD}>
                                 {panel.preview ? (
-                                    <CardMedia component="img" alt={panel.name} image={panel.preview} sx={STYLES.PANEL_CARD_MEDIA} />
+                                    <CardMedia component="img" alt={panel.name} image={panel.preview} sx={STYLES.GRID_PANEL_CARD_MEDIA} />
                                 ) : null}
                                 <CardContent>
-                                    <Stack gap={1} direction="row" sx={STYLES.PANEL_CARD_CONTENT_TITLE}>
+                                    <Stack gap={1} direction="row" sx={STYLES.GRID_PANEL_CARD_CONTENT_TITLE}>
                                         {panel.icon ? <Icon>{panel.icon}</Icon> : null}
                                         <Typography variant="h5">{panel.caption}</Typography>
                                     </Stack>
@@ -140,14 +128,14 @@ const getPanelsLinks = ({ variant, panels, selectedPanel, defaultGroupTytle, nav
                                         {panel.desc}
                                     </Typography>
                                 </CardContent>
-                                <CardActions sx={STYLES.PANEL_CARD_ACTIONS}>
+                                <CardActions sx={STYLES.GRID_PANEL_CARD_ACTIONS}>
                                     <Button size="large" onClick={() => (onItemNavigate ? onItemNavigate(panel) : null)}>
                                         {navigateCaption}
                                     </Button>
                                 </CardActions>
                             </Card>
                         </Grid>
-                    ) : (
+                    ) : variant === P8P_PANELS_MENU_VARIANT.DRAWER ? (
                         <ListItem key={panel.name} disablePadding>
                             <ListItemButton
                                 selected={selectedPanel?.name === panel.name}
@@ -159,6 +147,18 @@ const getPanelsLinks = ({ variant, panels, selectedPanel, defaultGroupTytle, nav
                                 <ListItemText primary={panel.caption} />
                             </ListItemButton>
                         </ListItem>
+                    ) : (
+                        <Button
+                            p={3}
+                            key={panel.name}
+                            onClick={() => (onItemNavigate ? onItemNavigate(panel) : null)}
+                            sx={STYLES.DESKTOP_ITEM_BUTTON}
+                        >
+                            <Stack sx={STYLES.DESKTOP_ITEM_STACK}>
+                                <Icon sx={STYLES.DESKTOP_ITEM_ICON}>{panel.icon}</Icon>
+                                {panel.caption}
+                            </Stack>
+                        </Button>
                     )
                 );
         }
@@ -195,7 +195,7 @@ const P8PPanelsMenuGrid = ({ onItemNavigate, navigateCaption, panels = [], defau
 
     //Генерация содержимого
     return (
-        <Box sx={STYLES.CONTAINER}>
+        <Box sx={STYLES.GRID_CONTAINER}>
             <Grid container spacing={2} p={2} sx={STYLES.GRID}>
                 {panelsLinks}
             </Grid>
@@ -211,8 +211,25 @@ P8PPanelsMenuGrid.propTypes = {
     defaultGroupTytle: PropTypes.string.isRequired
 };
 
+//Меню панелей - рабочий стол
+const P8PPanelsMenuDesktop = ({ group, onItemNavigate, panels = [], defaultGroupTytle } = {}) => {
+    //Формируем ссылки на панели
+    const panelsLinks = getPanelsLinks({ variant: P8P_PANELS_MENU_VARIANT.DESKTOP, panels, group, defaultGroupTytle, onItemNavigate });
+
+    //Генерация содержимого
+    return <Box p={2}>{panelsLinks}</Box>;
+};
+
+//Контроль свойств - Меню панелей - рабочий стол
+P8PPanelsMenuDesktop.propTypes = {
+    group: PropTypes.string,
+    onItemNavigate: PropTypes.func,
+    panels: PropTypes.arrayOf(P8P_PANELS_MENU_PANEL_SHAPE).isRequired,
+    defaultGroupTytle: PropTypes.string.isRequired
+};
+
 //----------------
 //Интерфейс модуля
 //----------------
 
-export { P8P_PANELS_MENU_PANEL_SHAPE, P8PPanelsMenuDrawer, P8PPanelsMenuGrid };
+export { P8P_PANELS_MENU_PANEL_SHAPE, P8PPanelsMenuDrawer, P8PPanelsMenuGrid, P8PPanelsMenuDesktop };
