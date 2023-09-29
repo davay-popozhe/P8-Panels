@@ -98,20 +98,20 @@ const headCellRender = ({ columnDef }) => {
 };
 
 //Генерация представления ячейки c данными
-const dataCellRender = ({ row, columnDef }, showStageArts) => {
+const dataCellRender = ({ row, columnDef }, showStageArts, showStageContracts) => {
     switch (columnDef.name) {
         case "NSTATE":
             return {
                 cellProps: { align: "center" },
                 data: formatStageStatusValue(row[columnDef.name], false)
             };
-        case "NCTRL_FIN":
         case "NCTRL_COEXEC":
         case "NCTRL_ACT":
             return {
                 cellProps: { align: "center" },
                 data: formatCtrlValue(row[columnDef.name], false)
             };
+        case "NCTRL_FIN":
         case "NCTRL_CONTR":
         case "NCTRL_COST":
             return {
@@ -119,7 +119,11 @@ const dataCellRender = ({ row, columnDef }, showStageArts) => {
                 data: hasValue(row[columnDef.name]) ? (
                     <IconButton
                         onClick={() =>
-                            showStageArts({ stage: row.NRN, stageNumb: row.SNUMB, filters: [{ name: columnDef.name, from: row[columnDef.name] }] })
+                            (columnDef.name === "NCTRL_FIN" ? showStageContracts : showStageArts)({
+                                stage: row.NRN,
+                                stageNumb: row.SNUMB,
+                                filters: [{ name: columnDef.name, from: row[columnDef.name] }]
+                            })
                         }
                     >
                         {formatCtrlValue(row[columnDef.name], false)}
@@ -353,7 +357,7 @@ const Stages = ({ project, projectName, filters }) => {
                     reloading={stagesDataGrid.reload}
                     expandable={true}
                     headCellRender={headCellRender}
-                    dataCellRender={prms => dataCellRender(prms, showStageArts)}
+                    dataCellRender={prms => dataCellRender(prms, showStageArts, showStageContracts)}
                     rowExpandRender={prms =>
                         rowExpandRender(prms, pOnlineShowDocument, showStageArts, showStageContracts, showStagePayNotes, showStageCostNotes)
                     }

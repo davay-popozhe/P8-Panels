@@ -123,7 +123,7 @@ create or replace package PKG_P8PANELS_PROJECTS as
   function STAGES_GET_CTRL_FIN
   (
     NRN                     in number   -- Рег. номер этапа проекта
-  ) return                  number;     -- Состояние (0 - без отклонений, 1 - есть отклонения)
+  ) return                  number;     -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
 
   /* Получение состояния контрактации этапа проекта */
   function STAGES_GET_CTRL_CONTR
@@ -239,6 +239,37 @@ create or replace package PKG_P8PANELS_PROJECTS as
   /* Список договоров этапа проекта */
   procedure STAGE_CONTRACTS_COND;
 
+  /* Подбор входящих счетов на оплату соисполнителя этапа проекта */
+  procedure STAGE_CONTRACTS_SELECT_PAY_IN
+  (
+    NPROJECTSTAGEPF         in number,  -- Рег. номер соисполнителя этапа проекта
+    NIDENT                  out number  -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
+  );
+
+  /* Подбор платежей финансирования соисполнителя этапа проекта */
+  procedure STAGE_CONTRACTS_SELECT_FIN_OUT
+  (
+    NPROJECTSTAGEPF         in number,  -- Рег. номер соисполнителя этапа проекта
+    NIDENT                  out number  -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
+  );
+  
+  /* Получение состояния финансирования по договору соисполнителя этапа проекта */
+  function STAGE_CONTRACTS_GET_CTRL_FIN
+  (
+    NPROJECTSTAGEPF         in number   -- Рег. номер соисполнителя этапа проекта
+  ) return                  number;     -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+
+  /* Получение сведений по договору соисполнителя этапа проекта */
+  procedure STAGE_CONTRACTS_GET
+  (
+    NPROJECTSTAGEPF         in number,      -- Рег. номер соисполнителя этапа проекта
+    NINC_FIN                in number := 0, -- Включить сведения о финансированеии (0 - нет, 1 - да)
+    NPAY_IN                 out number,     -- Сведения о финансировании - сумма акцептованных счетов на оплату
+    NFIN_OUT                out number,     -- Сведения о финансировании - сумма оплаченных счетов на оплату
+    NPAY_IN_REST            out number,     -- Сведения о финансировании - сумма оставшихся к оплате счетов на оплату
+    NCTRL_FIN               out number      -- Сведения о финансировани - состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+  );
+  
   /* Список договоров этапа проекта */
   procedure STAGE_CONTRACTS_LIST
   (
@@ -421,25 +452,38 @@ text="ПРАВА ДОСТУПА!!!!"
   /* Получение состояния финансирования проекта */
   function GET_CTRL_FIN
   (
-    NRN                     in number         -- Рег. номер проекта
-  ) return                  number            -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+    NRN                     in number            -- Рег. номер проекта
+  ) return                  number               -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   is
-    BFOUND                  boolean := false; -- Флаг наличия этапов
+    NSTAGE_CTRL             PKG_STD.TNUMBER;     -- Состояние этапа
+    NCNT_STAGES             PKG_STD.TNUMBER :=0; -- Количество этапов
+    NCNT_NULL               PKG_STD.TNUMBER :=0; -- Количество "безконтрольных" этапов
   begin
     /* Обходим этапы */
     for C in (select PS.RN from PROJECTSTAGE PS where PS.PRN = NRN)
     loop
-      /* Выставим флаг наличия этапов */
-      BFOUND := true;
+      /* Увеличим счётчик этапов */
+      NCNT_STAGES := NCNT_STAGES + 1;
+      /* Получим состояние этапа */
+      NSTAGE_CTRL := STAGES_GET_CTRL_FIN(NRN => C.RN);
+      /* Подсчитаем количество "безконтрольных" */
+      if (NSTAGE_CTRL is null) then
+        NCNT_NULL := NCNT_NULL + 1;
+      end if;
       /* Если у этапа есть отклонение - оно есть и у проекта */
-      if (STAGES_GET_CTRL_FIN(NRN => C.RN) = 1) then
+      if (NSTAGE_CTRL = 1) then
         return 1;
       end if;
     end loop;
+    /* Если ни один этап не подлежит контролю - то и состояние проекта тоже */
+    if (NCNT_NULL = NCNT_STAGES) then
+      return null;
+    end if;
     /* Если мы здесь - отклонений нет */
-    if (BFOUND) then
+    if (NCNT_STAGES > 0) then
       return 0;
     else
+      /* Нет этапов и нет контроля */
       return null;
     end if;
   end GET_CTRL_FIN;
@@ -801,7 +845,7 @@ text="ПРАВА ДОСТУПА!!!!"
     PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 1);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_FIN',
-                                               SCAPTION   => 'Финансирование',
+                                               SCAPTION   => 'Финансирование (исходящее)',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_FIN',
                                                BORDER     => true,
@@ -1203,7 +1247,7 @@ text="ПРАВА ДОСТУПА!!!!"
     NRES                    PKG_STD.TNUMBER; -- Буфер для рузультата
   begin
     /* Суммируем фактические платежи нужного направления по лицевому счёту затрат этапа */
-    select COALESCE(sum(PN.PAY_SUM * (PN.CURR_RATE_BASE/PN.CURR_RATE)), 0)
+    select COALESCE(sum(PN.PAY_SUM * (PN.CURR_RATE_BASE / PN.CURR_RATE)), 0)
       into NRES
       from PAYNOTES PN,
            DICTOPER O
@@ -1244,11 +1288,40 @@ text="ПРАВА ДОСТУПА!!!!"
   /* Получение состояния финансирования этапа проекта */
   function STAGES_GET_CTRL_FIN
   (
-    NRN                     in number   -- Рег. номер этапа проекта
-  ) return                  number      -- Состояние (0 - без отклонений, 1 - есть отклонения)
+    NRN                     in number            -- Рег. номер этапа проекта
+  ) return                  number               -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   is
+    NCONTR_CTRL             PKG_STD.TNUMBER;     -- Состояние соисполнителя этапа
+    NCNT_CONTR              PKG_STD.TNUMBER :=0; -- Количество соисполнителей этапа
+    NCNT_NULL               PKG_STD.TNUMBER :=0; -- Количество "безконтрольных" соисполнителей этапа
   begin
-    return 0;
+    /* Обходим соисполнителей этапа */
+    for C in (select PSPF.RN from PROJECTSTAGEPF PSPF where PSPF.PRN = NRN)
+    loop
+      /* Увеличим счётчик соисполнителей */
+      NCNT_CONTR := NCNT_CONTR + 1;
+      /* Получим состояние соисполнителя */
+      NCONTR_CTRL := STAGE_CONTRACTS_GET_CTRL_FIN(NPROJECTSTAGEPF => C.RN);
+      /* Подсчитаем количество "безконтрольных" */
+      if (NCONTR_CTRL is null) then
+        NCNT_NULL := NCNT_NULL + 1;
+      end if;
+      /* Если у соисполнителя есть отклонение - оно есть и у этапа */
+      if (NCONTR_CTRL = 1) then
+        return 1;
+      end if;
+    end loop;
+    /* Если ни один соисполнитель не подлежит контролю - то и состояние жтапа тоже */
+    if (NCNT_NULL = NCNT_CONTR) then
+      return null;
+    end if;
+    /* Если мы здесь - отклонений нет */
+    if (NCNT_CONTR > 0) then
+      return 0;
+    else
+      /* Нет соисполнителей и нет контроля */
+      return null;
+    end if;
   end STAGES_GET_CTRL_FIN;
 
   /* Получение состояния контрактации этапа проекта */
@@ -1567,7 +1640,7 @@ text="ПРАВА ДОСТУПА!!!!"
     PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 1);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_FIN',
-                                               SCAPTION   => 'Финансирование',
+                                               SCAPTION   => 'Финансирование (исходящее)',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_FIN',
                                                BORDER     => true,
@@ -2267,8 +2340,196 @@ text="ПРАВА ДОСТУПА!!!!"
                                                 SCONDITION_NAME_FROM => 'EDDOC_DATEFrom',
                                                 SCONDITION_NAME_TO   => 'EDDOC_DATETo',
                                                 SJOINS               => 'PRN <- RN;CONTRACTS');
+    /* Контроль финансирования */
+    if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_FIN') = 1) then
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGE_CONTRACTS_GET_CTRL_FIN(RN) = :EDCTRL_FIN');
+      PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_FIN',
+                                    NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_FIN'));
+    end if;
   end STAGE_CONTRACTS_COND;
 
+  /* Подбор входящих счетов на оплату соисполнителя этапа проекта */
+  procedure STAGE_CONTRACTS_SELECT_PAY_IN
+  (
+    NPROJECTSTAGEPF         in number,    -- Рег. номер соисполнителя этапа проекта
+    NIDENT                  out number    -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
+  )
+  is
+    NSELECTLIST             PKG_STD.TREF; -- Рег. номер добавленной записи буфера подобранных
+  begin
+    /* Подберём счета */
+    for C in (select PAI.COMPANY,
+                     PAI.RN
+                from PROJECTSTAGEPF PSPF,
+                     PROJECTSTAGE   PS,
+                     PAYACCIN       PAI
+               where PSPF.RN = NPROJECTSTAGEPF
+                 and PSPF.PRN = PS.RN
+                 and PSPF.FACEACC = PAI.FACEACC
+                 and PAI.DOC_STATE = 1
+                 and exists (select null
+                        from PAYACCINSPCLC PCLC
+                       where PCLC.PRN in (select PAIS.RN from PAYACCINSPEC PAIS where PAIS.PRN = PAI.RN)
+                         and PCLC.FACEACCOUNT = PS.FACEACC))
+    loop
+      /* Сформируем идентификатор буфера */
+      if (NIDENT is null) then
+        NIDENT := GEN_IDENT();
+      end if;
+      /* Добавим подобранное в список отмеченных записей */
+      P_SELECTLIST_BASE_INSERT(NIDENT       => NIDENT,
+                               NCOMPANY     => C.COMPANY,
+                               NDOCUMENT    => C.RN,
+                               SUNITCODE    => 'PaymentAccountsIn',
+                               SACTIONCODE  => null,
+                               NCRN         => null,
+                               NDOCUMENT1   => null,
+                               SUNITCODE1   => null,
+                               SACTIONCODE1 => null,
+                               NRN          => NSELECTLIST);
+    end loop;
+  end STAGE_CONTRACTS_SELECT_PAY_IN;
+
+  /* Подбор платежей финансирования соисполнителя этапа проекта */
+  procedure STAGE_CONTRACTS_SELECT_FIN_OUT
+  (
+    NPROJECTSTAGEPF         in number,    -- Рег. номер соисполнителя этапа проекта
+    NIDENT                  out number    -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
+  )
+  is
+    NSELECTLIST             PKG_STD.TREF; -- Рег. номер добавленной записи буфера подобранных
+  begin
+    /* Подберём платежи */
+    for C in (select PN.COMPANY,
+                     PN.RN
+                from PROJECTSTAGEPF PSPF,
+                     PROJECTSTAGE   PS,
+                     PAYNOTES       PN
+               where PSPF.RN = NPROJECTSTAGEPF
+                 and PSPF.PRN = PS.RN
+                 and PSPF.FACEACC = PN.FACEACC
+                 and PN.SIGNPLAN = 0
+                 and exists (select null
+                        from PAYNOTESCLC PNCLC
+                       where PNCLC.PRN = PN.RN
+                         and PNCLC.FACEACCOUNT = PS.FACEACC))
+    loop
+      /* Сформируем идентификатор буфера */
+      if (NIDENT is null) then
+        NIDENT := GEN_IDENT();
+      end if;
+      /* Добавим подобранное в список отмеченных записей */
+      P_SELECTLIST_BASE_INSERT(NIDENT       => NIDENT,
+                               NCOMPANY     => C.COMPANY,
+                               NDOCUMENT    => C.RN,
+                               SUNITCODE    => 'PayNotes',
+                               SACTIONCODE  => null,
+                               NCRN         => null,
+                               NDOCUMENT1   => null,
+                               SUNITCODE1   => null,
+                               SACTIONCODE1 => null,
+                               NRN          => NSELECTLIST);
+    end loop;
+  end STAGE_CONTRACTS_SELECT_FIN_OUT;
+
+  /* Получение состояния финансирования по договору соисполнителя этапа проекта */
+  function STAGE_CONTRACTS_GET_CTRL_FIN
+  (
+    NPROJECTSTAGEPF         in number        -- Рег. номер соисполнителя этапа проекта
+  ) return                  number           -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+  is
+    NTMP                    PKG_STD.TNUMBER; -- Буфер для вызова процедуры расчёта
+    NCTRL_FIN               PKG_STD.TNUMBER; -- Буфер для результата
+  begin
+    /* Получим сведения по договору соисполнителя этапа */
+    STAGE_CONTRACTS_GET(NPROJECTSTAGEPF => NPROJECTSTAGEPF,
+                        NINC_FIN        => 1,
+                        NPAY_IN         => NTMP,
+                        NFIN_OUT        => NTMP,
+                        NPAY_IN_REST    => NTMP,
+                        NCTRL_FIN       => NCTRL_FIN);
+    /* Вернём результат */
+    return NCTRL_FIN;
+  end STAGE_CONTRACTS_GET_CTRL_FIN;
+  
+  /* Получение сведений по договору соисполнителя этапа проекта */
+  procedure STAGE_CONTRACTS_GET
+  (
+    NPROJECTSTAGEPF         in number,       -- Рег. номер соисполнителя этапа проекта
+    NINC_FIN                in number := 0,  -- Включить сведения о финансированеии (0 - нет, 1 - да)
+    NPAY_IN                 out number,      -- Сведения о финансировании - сумма акцептованных счетов на оплату
+    NFIN_OUT                out number,      -- Сведения о финансировании - сумма оплаченных счетов на оплату
+    NPAY_IN_REST            out number,      -- Сведения о финансировании - сумма оставшихся к оплате счетов на оплату
+    NCTRL_FIN               out number       -- Сведения о финансировани - состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+  )
+  is
+    NPS_FACEACC             PKG_STD.TREF;    -- Рег. номер лицевого счета затрат этапа проекта
+  begin
+    /* Читаем лицевой счёт затрат родительского этапа проекта */
+    begin
+      select PS.FACEACC
+        into NPS_FACEACC
+        from PROJECTSTAGEPF PSPF,
+             PROJECTSTAGE   PS
+       where PSPF.RN = NPROJECTSTAGEPF
+         and PSPF.PRN = PS.RN;
+    exception
+      when others then
+        NPS_FACEACC := null;
+    end;
+    /* Если ЛС этапа проекта нашли */
+    if (NPS_FACEACC is not null) then
+      /* Если нужны сведения о финансировании */
+      if (NINC_FIN = 1) then
+        /* Сумма акцептованных счетов на оплату - по ВСО с ЛС соисполнителя этапа проекта, в калькуляции которых присутствует ЛС затрат этапа проекта */
+        select sum(PAI.SUMMWITHNDS * PAI.FA_BASECOURS)
+          into NPAY_IN
+          from PROJECTSTAGEPF PSPF,
+               PAYACCIN       PAI
+         where PSPF.RN = NPROJECTSTAGEPF
+           and PSPF.FACEACC = PAI.FACEACC
+           and PAI.DOC_STATE = 1
+           and exists (select null
+                  from PAYACCINSPCLC PCLC
+                 where PCLC.PRN in (select PAIS.RN from PAYACCINSPEC PAIS where PAIS.PRN = PAI.RN)
+                   and PCLC.FACEACCOUNT = NPS_FACEACC);
+        /* Сумма оплаченных счетов на оплату - по расходным факт. ЖП с ЛС соисполнителя этапа проекта, в калькуляции которых присутствует ЛС затрат этапа проекта */
+        select sum(PN.PAY_SUM * (PN.CURR_RATE_BASE / PN.CURR_RATE))
+          into NFIN_OUT
+          from PROJECTSTAGEPF PSPF,
+               PAYNOTES       PN
+         where PSPF.RN = NPROJECTSTAGEPF
+           and PSPF.FACEACC = PN.FACEACC
+           and PN.SIGNPLAN = 0
+           and exists (select null
+                  from PAYNOTESCLC PNCLC
+                 where PNCLC.PRN = PN.RN
+                   and PNCLC.FACEACCOUNT = NPS_FACEACC);
+        /* Сумма оставшихся к оплате счетов на оплату */
+        NPAY_IN_REST := COALESCE(NPAY_IN, 0) - COALESCE(NFIN_OUT, 0);
+        /* Контроль отклонений (состояние) */
+        if (NPAY_IN is null) then
+          NCTRL_FIN := null;
+        else
+          if (NPAY_IN_REST > 0) then
+            NCTRL_FIN := 1;
+          else
+            NCTRL_FIN := 0;
+          end if;
+        end if;
+        /* Приведение значений */
+        NPAY_IN  := COALESCE(NPAY_IN, 0);
+        NFIN_OUT := COALESCE(NFIN_OUT, 0);
+      end if;
+    else
+      /* Без ЛС этапа проекта посчитать ничего не можем */
+      NPAY_IN      := 0;
+      NFIN_OUT     := 0;
+      NPAY_IN_REST := 0;
+      NCTRL_FIN    := null;
+    end if;
+  end STAGE_CONTRACTS_GET;
+  
   /* Список договоров этапа проекта */
   procedure STAGE_CONTRACTS_LIST
   (
@@ -2287,10 +2548,17 @@ text="ПРАВА ДОСТУПА!!!!"
     RO                      PKG_P8PANELS_VISUAL.TORDERS;           -- Сортировки
     RDG                     PKG_P8PANELS_VISUAL.TDATA_GRID;        -- Описание таблицы
     RDG_ROW                 PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы
+    RCOL_VALS               PKG_P8PANELS_VISUAL.TCOL_VALS;         -- Предопределённые значения столбцов
     NROW_FROM               PKG_STD.TREF;                          -- Номер строки с
     NROW_TO                 PKG_STD.TREF;                          -- Номер строки по
     CSQL                    clob;                                  -- Буфер для запроса
     ICURSOR                 integer;                               -- Курсор для исполнения запроса
+    NPROJECTSTAGEPF         PKG_STD.TREF;                          -- Рег. номер соисполнителя этапа проекта
+    NSUMM                   PKG_STD.TNUMBER;                       -- Сумма по договору соисполнителя
+    NPAY_IN                 PKG_STD.TNUMBER;                       -- Сведения о финансировании - сумма акцептованных счетов на оплату
+    NFIN_OUT                PKG_STD.TNUMBER;                       -- Сведения о финансировании - сумма оплаченных счетов на оплату
+    NPAY_IN_REST            PKG_STD.TNUMBER;                       -- Сведения о финансировании - сумма оставшихся к оплате счетов на оплату
+    NCTRL_FIN               PKG_STD.TNUMBER;                       -- Сведения о финансировани - состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   begin
     /* Читаем фильтры */
     RF := PKG_P8PANELS_VISUAL.TFILTERS_FROM_XML(CFILTERS => CFILTERS);
@@ -2423,6 +2691,36 @@ text="ПРАВА ДОСТУПА!!!!"
                                                SCOND_FROM => 'EDSCOST_ART',
                                                BORDER     => true,
                                                BFILTER    => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NPAY_IN',
+                                               SCAPTION   => 'Акцептовано счетов на оплату',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NFIN_OUT',
+                                               SCAPTION   => 'Оплачено счетов',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NPAY_IN_REST',
+                                               SCAPTION   => 'Осталось оплатить счетов',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 0, BCLEAR => true);
+    PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 1);                                               
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NCTRL_FIN',
+                                               SCAPTION   => 'Финансирование (исходящее)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               SCOND_FROM => 'EDCTRL_FIN',                                               
+                                               BORDER     => true,
+                                               BFILTER    => true,
+                                               RCOL_VALS  => RCOL_VALS);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NREST',
+                                               SCAPTION   => 'Общий остаток к оплате по договору',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
     /* Обходим данные */
     begin
       /* Собираем запрос */
@@ -2510,11 +2808,8 @@ text="ПРАВА ДОСТУПА!!!!"
       while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
       loop
         /* Добавляем колонки с данными */
-        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
-                                              SNAME     => 'NRN',
-                                              ICURSOR   => ICURSOR,
-                                              NPOSITION => 1,
-                                              BCLEAR    => true);
+        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 1, NVALUE => NPROJECTSTAGEPF);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NRN', NVALUE => NPROJECTSTAGEPF, BCLEAR => true);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
                                               SNAME     => 'SDOC_PREF',
                                               ICURSOR   => ICURSOR,
@@ -2573,12 +2868,24 @@ text="ПРАВА ДОСТУПА!!!!"
                                               SNAME     => 'DCSTAGE_END_DATE',
                                               ICURSOR   => ICURSOR,
                                               NPOSITION => 17);
-        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW => RDG_ROW, SNAME => 'NSUMM', ICURSOR => ICURSOR, NPOSITION => 18);
+        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 18, NVALUE => NSUMM);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NSUMM', NVALUE => NSUMM);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SCURR', ICURSOR => ICURSOR, NPOSITION => 19);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
                                               SNAME     => 'SCOST_ART',
                                               ICURSOR   => ICURSOR,
                                               NPOSITION => 20);
+        STAGE_CONTRACTS_GET(NPROJECTSTAGEPF => NPROJECTSTAGEPF,
+                            NINC_FIN        => 1,
+                            NPAY_IN         => NPAY_IN,
+                            NFIN_OUT        => NFIN_OUT,
+                            NPAY_IN_REST    => NPAY_IN_REST,
+                            NCTRL_FIN       => NCTRL_FIN);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NPAY_IN', NVALUE => NPAY_IN);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NFIN_OUT', NVALUE => NFIN_OUT);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NPAY_IN_REST', NVALUE => NPAY_IN_REST);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NCTRL_FIN', NVALUE => NCTRL_FIN);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NREST', NVALUE => NSUMM - COALESCE(NFIN_OUT, 0));
         /* Добавляем строку в таблицу */
         PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
       end loop;
