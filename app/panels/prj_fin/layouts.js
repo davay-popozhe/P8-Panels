@@ -137,7 +137,11 @@ export const headCellRender = ({ columnDef }) => {
 export const dataCellRender = ({ panelUnit, row, columnDef, pOnlineShowDocument, showStages, showStageArts, showCostNotes, showContracts }) => {
     //Подбор функции на нажатие в ячейки контрольной колонки в зависимости от контекста
     const getCrlOnClick = () =>
-        panelUnit == PANEL_UNITS.PROJECT_STAGES ? (columnDef.name === "NCTRL_FIN" ? showContracts : showStageArts) : showStages;
+        panelUnit == PANEL_UNITS.PROJECT_STAGES
+            ? ["NCTRL_FIN", "NCTRL_COEXEC"].includes(columnDef.name)
+                ? showContracts
+                : showStageArts
+            : showStages;
     //Подбор представления ячейки контрольной колонки в зависимости от контекста
     const renderCtl = () => ({
         cellProps: {
@@ -165,7 +169,8 @@ export const dataCellRender = ({ panelUnit, row, columnDef, pOnlineShowDocument,
                     ) : null}
                     {formatCtrlValue(row[columnDef.name], false)}
                 </Stack>
-            ) : panelUnit == PANEL_UNITS.PROJECT_STAGES && ["NCTRL_COEXEC", "NCTRL_ACT"].includes(columnDef.name) ? (
+            ) : (panelUnit == PANEL_UNITS.PROJECT_STAGES && columnDef.name == "NCTRL_ACT") ||
+              (panelUnit == PANEL_UNITS.PROJECT_STAGE_CONTRACTS && columnDef.name == "NCTRL_COEXEC") ? (
                 formatCtrlValue(row[columnDef.name], false)
             ) : panelUnit == PANEL_UNITS.PROJECT_STAGE_ARTS && ["NCTRL_COST", "NCTRL_CONTR"].includes(columnDef.name) ? (
                 <Stack sx={{ justifyContent: "right" }} direction="row" spacing={1}>
@@ -249,6 +254,7 @@ export const rowExpandRender = ({
     showPayNotes,
     showCostNotes,
     showPaymentAccountsIn,
+    showIncomingInvoices,
     showStageArts,
     showContracts
 }) => {
@@ -316,7 +322,7 @@ export const rowExpandRender = ({
                                         </TableCell>
                                         <TableCell sx={{ paddingLeft: 0 }}>
                                             {(hasValue(row[`SLNK_UNIT_${cardColumn.name}`]) && hasValue(row[`NLNK_DOCUMENT_${cardColumn.name}`])) ||
-                                            ["NPAY_IN", "NFIN_OUT"].includes(cardColumn.name) ? (
+                                            ["NPAY_IN", "NFIN_OUT", "NCOEXEC_IN"].includes(cardColumn.name) ? (
                                                 <Link
                                                     component="button"
                                                     variant="body2"
@@ -329,6 +335,8 @@ export const rowExpandRender = ({
                                                             ? showCostNotes({ sender: row })
                                                             : cardColumn.name == "NPAY_IN"
                                                             ? showPaymentAccountsIn({ sender: row })
+                                                            : cardColumn.name == "NCOEXEC_IN"
+                                                            ? showIncomingInvoices({ sender: row })
                                                             : pOnlineShowDocument({
                                                                   unitCode: row[`SLNK_UNIT_${cardColumn.name}`],
                                                                   document: row[`NLNK_DOCUMENT_${cardColumn.name}`]

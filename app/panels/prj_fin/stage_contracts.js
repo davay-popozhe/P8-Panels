@@ -105,6 +105,16 @@ const StageContracts = ({ stage, filters }) => {
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 
+    //Отображение приходных накладных от соисполнителя этапа
+    const showIncomingInvoices = async ({ sender }) => {
+        const data = await executeStored({
+            stored: "PKG_P8PANELS_PROJECTS.STAGE_CONTRACTS_SELECT_ININV",
+            args: { NPROJECTSTAGEPF: sender.NRN }
+        });
+        if (data.NIDENT) pOnlineShowUnit({ unitCode: "IncomingInvoices", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+        else showMsgErr(TEXTS.NO_DATA_FOUND);
+    };
+
     //При изменении состояния фильтра
     const handleFilterChanged = ({ filters }) => setStageContractsDataGrid(pv => ({ ...pv, filters, pageNumber: 1, reload: true }));
 
@@ -139,7 +149,8 @@ const StageContracts = ({ stage, filters }) => {
                             panelUnit: PANEL_UNITS.PROJECT_STAGE_CONTRACTS,
                             pOnlineShowDocument,
                             showPaymentAccountsIn,
-                            showPayNotes
+                            showPayNotes,
+                            showIncomingInvoices
                         })
                     }
                     valueFormatter={valueFormatter}
