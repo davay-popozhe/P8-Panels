@@ -9,80 +9,15 @@
 
 import React, { useState, useCallback, useEffect, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Box, Icon, Stack, Link } from "@mui/material"; //Интерфейсные компоненты
-import { hasValue, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
+import { Box } from "@mui/material"; //Интерфейсные компоненты
+import { object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { TEXTS } from "../../../app.text"; //Тектовые ресурсы и константы
 import { P8PDataGrid, P8P_DATA_GRID_SIZE, P8P_DATA_GRID_FILTER_SHAPE } from "../../components/p8p_data_grid"; //Таблица данных
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
-
-//-----------------------
-//Вспомогательные функции
-//-----------------------
-
-//Формирование значения для контрольных колонок
-const formatCtrlValue = (value, addText = false) => {
-    if (hasValue(value)) {
-        const [text, icon, color] = value == 0 ? ["В норме", "done", "green"] : ["Требует внимания", "error", "red"];
-        return (
-            <Stack direction="row" gap={0.5} alignItems="center" justifyContent="center">
-                <Icon title={text} sx={{ color }}>
-                    {icon}
-                </Icon>
-                {addText == true ? text : null}
-            </Stack>
-        );
-    } else return value;
-};
-
-//Форматирование значений колонок
-const valueFormatter = ({ value, columnDef }) => {
-    switch (columnDef.name) {
-        case "NPLAN":
-        case "NCOST_FACT":
-        case "NCONTR":
-            return formatNumberRFCurrency(value);
-        case "NCTRL_COST":
-        case "NCTRL_CONTR":
-            return formatCtrlValue(value, true);
-    }
-    return value;
-};
-
-//Генерация представления ячейки c данными
-const dataCellRender = ({ row, columnDef }, showStageArtCostNotes, showStageArtContracts) => {
-    switch (columnDef.name) {
-        case "NCOST_FACT":
-        case "NCONTR":
-            return {
-                data: row[columnDef.name] ? (
-                    <Link
-                        component="button"
-                        variant="body2"
-                        align="left"
-                        underline="hover"
-                        onClick={() => (columnDef.name === "NCOST_FACT" ? showStageArtCostNotes(row.NRN) : showStageArtContracts(row.NRN))}
-                    >
-                        {formatNumberRFCurrency(row[columnDef.name])}
-                    </Link>
-                ) : null
-            };
-        case "NCTRL_COST":
-        case "NCTRL_CONTR":
-            return {
-                data: (
-                    <Stack sx={{ justifyContent: "right" }} direction="row" spacing={1}>
-                        <div style={{ color: row[columnDef.name] === 1 ? "red" : "green", display: "flex", alignItems: "center" }}>
-                            {formatNumberRFCurrency(row[columnDef.name === "NCTRL_COST" ? "NCOST_DIFF" : "NCONTR_LEFT"])}
-                        </div>
-                        {formatCtrlValue(row[columnDef.name], false)}
-                    </Stack>
-                )
-            };
-    }
-};
+import { PANEL_UNITS, dataCellRender, valueFormatter } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
 
 //-----------
 //Тело модуля
@@ -131,20 +66,20 @@ const StageArts = ({ stage, filters }) => {
     }, [stage, stageArtsDataGrid.reload, stageArtsDataGrid.filters, stageArtsDataGrid.dataLoaded, executeStored, SERV_DATA_TYPE_CLOB]);
 
     //Отображение журнала затрат по статье калькуляции
-    const showStageArtCostNotes = async article => {
+    const showCostNotes = async ({ sender }) => {
         const data = await executeStored({
             stored: "PKG_P8PANELS_PROJECTS.STAGE_ARTS_SELECT_COST_FACT",
-            args: { NSTAGE: stage, NFPDARTCL: article }
+            args: { NSTAGE: stage, NFPDARTCL: sender.NRN }
         });
         if (data.NIDENT) pOnlineShowUnit({ unitCode: "CostNotes", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 
     //Отображение договоров по статье калькуляции
-    const showStageArtContracts = async article => {
+    const showContracts = async ({ sender }) => {
         const data = await executeStored({
             stored: "PKG_P8PANELS_PROJECTS.STAGE_ARTS_SELECT_CONTR",
-            args: { NSTAGE: stage, NFPDARTCL: article }
+            args: { NSTAGE: stage, NFPDARTCL: sender.NRN }
         });
         if (data.NIDENT) pOnlineShowUnit({ unitCode: "Contracts", inputParameters: [{ name: "in_Ident", value: data.NIDENT }] });
         else showMsgErr(TEXTS.NO_DATA_FOUND);
@@ -170,7 +105,7 @@ const StageArts = ({ stage, filters }) => {
                     size={P8P_DATA_GRID_SIZE.SMALL}
                     morePages={false}
                     reloading={stageArtsDataGrid.reload}
-                    dataCellRender={prms => dataCellRender(prms, showStageArtCostNotes, showStageArtContracts)}
+                    dataCellRender={prms => dataCellRender({ ...prms, panelUnit: PANEL_UNITS.PROJECT_STAGE_ARTS, showCostNotes, showContracts })}
                     valueFormatter={valueFormatter}
                     onFilterChanged={handleFilterChanged}
                 />

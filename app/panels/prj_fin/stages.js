@@ -9,8 +9,8 @@
 
 import React, { useState, useCallback, useEffect, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Box, Icon, Stack, Grid, Paper, Table, TableBody, TableRow, TableCell, Typography, Button, IconButton, Link } from "@mui/material"; //Интерфейсные компоненты
-import { hasValue, formatDateRF, formatNumberRFCurrency, object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
+import { Box } from "@mui/material"; //Интерфейсные компоненты
+import { object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { TEXTS } from "../../../app.text"; //Тектовые ресурсы и константы
 import { P8PDataGrid, P8P_DATA_GRID_SIZE, P8P_DATA_GRID_FILTER_SHAPE } from "../../components/p8p_data_grid"; //Таблица данных
 import { P8PFullScreenDialog } from "../../components/p8p_fullscreen_dialog"; //Полноэкранный диалог
@@ -20,210 +20,7 @@ import { BackEndСtx } from "../../context/backend"; //Контекст взаи
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
-
-//-----------------------
-//Вспомогательные функции
-//-----------------------
-
-//Формирование значения для колонки "Состояние"
-const formatStageStatusValue = (value, addText = false) => {
-    const [text, icon] =
-        value == 0
-            ? ["Зарегистрирован", "app_registration"]
-            : value == 1
-            ? ["Открыт", "lock_open"]
-            : value == 2
-            ? ["Закрыт", "lock_outline"]
-            : value == 3
-            ? ["Согласован", "thumb_up_alt"]
-            : value == 4
-            ? ["Исполнение прекращено", "block"]
-            : ["Остановлен", "do_not_disturb_on"];
-    return (
-        <Stack direction="row" gap={0.5} alignItems="center" justifyContent="center">
-            <Icon title={text}>{icon}</Icon>
-            {addText == true ? text : null}
-        </Stack>
-    );
-};
-
-//Формирование значения для контрольных колонок
-const formatCtrlValue = (value, addText = false) => {
-    if (hasValue(value)) {
-        const [text, icon, color] = value == 0 ? ["В норме", "done", "green"] : ["Требует внимания", "error", "red"];
-        return (
-            <Stack direction="row" gap={0.5} alignItems="center" justifyContent="center">
-                <Icon title={text} sx={{ color }}>
-                    {icon}
-                </Icon>
-                {addText == true ? text : null}
-            </Stack>
-        );
-    } else return value;
-};
-
-//Форматирование значений колонок
-const valueFormatter = ({ value, columnDef }) => {
-    switch (columnDef.name) {
-        case "NSTATE":
-            return formatStageStatusValue(value, true);
-        case "DBEGPLAN":
-        case "DENDPLAN":
-            return formatDateRF(value);
-        case "NCTRL_FIN":
-        case "NCTRL_CONTR":
-        case "NCTRL_COEXEC":
-        case "NCTRL_PERIOD":
-        case "NCTRL_COST":
-        case "NCTRL_ACT":
-            return formatCtrlValue(value, true);
-    }
-    return value;
-};
-
-//Генерация представления ячейки заголовка
-const headCellRender = ({ columnDef }) => {
-    switch (columnDef.name) {
-        case "NSTATE":
-        case "NCTRL_FIN":
-        case "NCTRL_CONTR":
-        case "NCTRL_COEXEC":
-        case "NCTRL_COST":
-        case "NCTRL_ACT":
-            return {
-                stackProps: { justifyContent: "center" },
-                cellProps: { align: "center" }
-            };
-    }
-};
-
-//Генерация представления ячейки c данными
-const dataCellRender = ({ row, columnDef }, showStageArts, showStageContracts) => {
-    switch (columnDef.name) {
-        case "NSTATE":
-            return {
-                cellProps: { align: "center" },
-                data: formatStageStatusValue(row[columnDef.name], false)
-            };
-        case "NCTRL_COEXEC":
-        case "NCTRL_ACT":
-            return {
-                cellProps: { align: "center" },
-                data: formatCtrlValue(row[columnDef.name], false)
-            };
-        case "NCTRL_FIN":
-        case "NCTRL_CONTR":
-        case "NCTRL_COST":
-            return {
-                cellProps: { align: "center" },
-                data: hasValue(row[columnDef.name]) ? (
-                    <IconButton
-                        onClick={() =>
-                            (columnDef.name === "NCTRL_FIN" ? showStageContracts : showStageArts)({
-                                stage: row.NRN,
-                                stageNumb: row.SNUMB,
-                                filters: [{ name: columnDef.name, from: row[columnDef.name] }]
-                            })
-                        }
-                    >
-                        {formatCtrlValue(row[columnDef.name], false)}
-                    </IconButton>
-                ) : null
-            };
-        case "NCTRL_PERIOD":
-            return {
-                cellProps: { align: "right" },
-                data: hasValue(row[columnDef.name]) ? (
-                    <Stack sx={{ justifyContent: "right" }} direction="row" spacing={1}>
-                        <div style={{ color: row[columnDef.name] === 1 ? "red" : "green", display: "flex", alignItems: "center" }}>
-                            {row.NDAYS_LEFT} дн.
-                        </div>
-                        {formatCtrlValue(row[columnDef.name], false)}
-                    </Stack>
-                ) : null
-            };
-    }
-};
-
-//Генерация представления расширения строки
-const rowExpandRender = ({ columnsDef, row }, pOnlineShowDocument, showStageArts, showStageContracts, showStagePayNotes, showStageCostNotes) => {
-    const cardColumns = columnsDef.filter(
-        columnDef =>
-            columnDef.visible == false &&
-            columnDef.name != "NRN" &&
-            !columnDef.name.startsWith("SLNK_UNIT_") &&
-            !columnDef.name.startsWith("NLNK_DOCUMENT_") &&
-            hasValue(row[columnDef.name])
-    );
-    const formatColumnValue = (name, value) =>
-        name.startsWith("N") ? formatNumberRFCurrency(value) : name.startsWith("D") ? formatDateRF(value) : value;
-    return (
-        <Box p={2}>
-            <Grid container spacing={2}>
-                <Grid item xs={12} md={1}>
-                    <Stack spacing={2}>
-                        <Button fullWidth variant="contained" onClick={() => showStageArts({ stage: row.NRN, stageNumb: row.SNUMB })}>
-                            <nobr>Статьи</nobr>
-                        </Button>
-                        <Button fullWidth variant="contained" onClick={() => showStageContracts({ stage: row.NRN, stageNumb: row.SNUMB })}>
-                            <nobr>Сисполнители</nobr>
-                        </Button>
-                        <Button fullWidth variant="contained" onClick={() => pOnlineShowDocument({ unitCode: "ProjectsStages", document: row.NRN })}>
-                            <nobr>В раздел</nobr>
-                        </Button>
-                    </Stack>
-                </Grid>
-                <Grid item xs={12} md={11}>
-                    <Paper elevation={5}>
-                        <Table sx={{ width: "100%" }} size="small">
-                            <TableBody>
-                                {cardColumns.map((cardColumn, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell sx={{ width: "1px", whiteSpace: "nowrap" }}>
-                                            <Typography variant="h6" color="primary" noWrap>
-                                                {cardColumn.caption}:
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ paddingLeft: 0 }}>
-                                            {hasValue(row[`SLNK_UNIT_${cardColumn.name}`]) && hasValue(row[`NLNK_DOCUMENT_${cardColumn.name}`]) ? (
-                                                <Link
-                                                    component="button"
-                                                    variant="body2"
-                                                    align="left"
-                                                    underline="always"
-                                                    onClick={() => {
-                                                        if (["NFIN_IN", "NFIN_OUT"].includes(cardColumn.name))
-                                                            showStagePayNotes(row.NRN, row[`NLNK_DOCUMENT_${cardColumn.name}`]);
-                                                        else if (cardColumn.name == "NCOST_FACT") showStageCostNotes(row.NRN);
-                                                        else
-                                                            pOnlineShowDocument({
-                                                                unitCode: row[`SLNK_UNIT_${cardColumn.name}`],
-                                                                document: row[`NLNK_DOCUMENT_${cardColumn.name}`]
-                                                            });
-                                                    }}
-                                                >
-                                                    <Typography variant="h6" color="text.secondary">
-                                                        {formatColumnValue(cardColumn.name, row[cardColumn.name])}
-                                                    </Typography>
-                                                </Link>
-                                            ) : (
-                                                <Typography variant="h6" color="text.secondary">
-                                                    {["NDAYS_LEFT", "NINCOME_PRC"].includes(cardColumn.name)
-                                                        ? row[cardColumn.name]
-                                                        : formatColumnValue(cardColumn.name, row[cardColumn.name])}
-                                                </Typography>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </Paper>
-                </Grid>
-            </Grid>
-        </Box>
-    );
-};
+import { PANEL_UNITS, headCellRender, dataCellRender, valueFormatter, rowExpandRender } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
 
 //-----------
 //Тело модуля
@@ -294,34 +91,32 @@ const Stages = ({ project, projectName, filters }) => {
     ]);
 
     //Отображение журнала платежей по этапу проекта
-    const showStagePayNotes = async (stage, direction) => {
+    const showPayNotes = async ({ sender, direction }) => {
         const data = await executeStored({
             stored: "PKG_P8PANELS_PROJECTS.STAGES_SELECT_FIN",
-            args: { NRN: stage, NDIRECTION: direction }
+            args: { NRN: sender.NRN, NDIRECTION: direction }
         });
         if (data.NIDENT) pOnlineShowUnit({ unitCode: "PayNotes", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 
     //Отображение журнала затрат по этапу проекта
-    const showStageCostNotes = async stage => {
+    const showCostNotes = async ({ sender }) => {
         const data = await executeStored({
             stored: "PKG_P8PANELS_PROJECTS.STAGES_SELECT_COST_FACT",
-            args: { NRN: stage }
+            args: { NRN: sender.NRN }
         });
         if (data.NIDENT) pOnlineShowUnit({ unitCode: "CostNotes", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 
     //Отображение статей калькуляции по этапу проекта
-    const showStageArts = ({ stage, stageNumb, filters = [] } = {}) => {
-        setStagesDataGrid(pv => ({ ...pv, showStageArts: stage, selectedStageNumb: stageNumb, stageArtsFilters: [...filters] }));
-    };
+    const showStageArts = ({ sender, filters = [] } = {}) =>
+        setStagesDataGrid(pv => ({ ...pv, showStageArts: sender.NRN, selectedStageNumb: sender.SNUMB, stageArtsFilters: [...filters] }));
 
     //Отображение договоров с соисполнителями по этапу проекта
-    const showStageContracts = ({ stage, stageNumb, filters = [] } = {}) => {
-        setStagesDataGrid(pv => ({ ...pv, showStageContracts: stage, selectedStageNumb: stageNumb, stageContractsFilters: [...filters] }));
-    };
+    const showContracts = ({ sender, filters = [] } = {}) =>
+        setStagesDataGrid(pv => ({ ...pv, showStageContracts: sender.NRN, selectedStageNumb: sender.SNUMB, stageContractsFilters: [...filters] }));
 
     //При изменении состояния фильтра
     const handleFilterChanged = ({ filters }) => setStagesDataGrid(pv => ({ ...pv, filters, pageNumber: 1, reload: true }));
@@ -357,11 +152,19 @@ const Stages = ({ project, projectName, filters }) => {
                     reloading={stagesDataGrid.reload}
                     expandable={true}
                     headCellRender={headCellRender}
-                    dataCellRender={prms => dataCellRender(prms, showStageArts, showStageContracts)}
+                    dataCellRender={prms => dataCellRender({ ...prms, panelUnit: PANEL_UNITS.PROJECT_STAGES, showStageArts, showContracts })}
                     rowExpandRender={prms =>
-                        rowExpandRender(prms, pOnlineShowDocument, showStageArts, showStageContracts, showStagePayNotes, showStageCostNotes)
+                        rowExpandRender({
+                            ...prms,
+                            panelUnit: PANEL_UNITS.PROJECT_STAGES,
+                            pOnlineShowDocument,
+                            showStageArts,
+                            showContracts,
+                            showPayNotes,
+                            showCostNotes
+                        })
                     }
-                    valueFormatter={valueFormatter}
+                    valueFormatter={prms => valueFormatter({ ...prms, panelUnit: PANEL_UNITS.PROJECT_STAGES })}
                     onOrderChanged={handleOrderChanged}
                     onFilterChanged={handleFilterChanged}
                     onPagesCountChanged={handlePagesCountChanged}
