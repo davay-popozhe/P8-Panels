@@ -304,15 +304,17 @@ end PKG_P8PANELS_PROJECTS;
 /
 create or replace package body PKG_P8PANELS_PROJECTS as
 
-/*
-TODO: owner="root" created="20.09.2023"
-text="ПРАВА ДОСТУПА!!!!"
-*/
   /* Константы - предопределённые значения */
   SYES                        constant PKG_STD.TSTRING := 'Да';              -- Да
   NDAYS_LEFT_LIMIT            constant PKG_STD.TNUMBER := 30;                -- Лимит отстатка дней для контроля сроков
   SFPDARTCL_REALIZ            constant PKG_STD.TSTRING := '14 Цена без НДС'; -- Мнемокод статьи калькуляции для учёта реализации
 
+  /* Константы - дополнительные свойства */
+  SDP_SECON_RESP              constant PKG_STD.TSTRING := 'ПУП.SECON_RESP'; -- Ответственный экономист проекта
+  SDP_STAX_GROUP              constant PKG_STD.TSTRING := 'ПУП.TAX_GROUP';  -- Налоговая группа проекта
+  SDP_SCTL_COST               constant PKG_STD.TSTRING := 'ПУП.CTL_COST';   -- Принзнак необходимости контроля факт. затрат по статье калькуляции
+  SDP_SCTL_CONTR              constant PKG_STD.TSTRING := 'ПУП.CTL_CONTR';  -- Принзнак необходимости контроля контрактации по статье калькуляции
+   
   /* Считывание записи проекта */
   function GET
   (
@@ -411,6 +413,41 @@ text="ПРАВА ДОСТУПА!!!!"
                where PS.PRN = NRN
                  and PS.FACEACCCUST = S.FACEACC
                  and S.PRN = CN.RN
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = PS.CRN)
+                 and exists (select null
+                        from V_USERPRIV UP
+                       where UP.JUR_PERS = PS.JUR_PERS
+                         and UP.UNITCODE = 'Projects')
+                 and exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */
+                       null
+                        from USERPRIV UP
+                       where UP.CATALOG = CN.CRN
+                         and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                            UR.ROLEID
+                                             from USERROLES UR
+                                            where UR.AUTHID = UTILIZER)
+                      union all
+                      select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */
+                       null
+                        from USERPRIV UP
+                       where UP.CATALOG = CN.CRN
+                         and UP.AUTHID = UTILIZER)
+                 and exists (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
+                       null
+                        from USERPRIV UP
+                       where UP.JUR_PERS = CN.JUR_PERS
+                         and UP.UNITCODE = 'Contracts'
+                         and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                            UR.ROLEID
+                                             from USERROLES UR
+                                            where UR.AUTHID = UTILIZER)
+                      union all
+                      select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
+                       null
+                        from USERPRIV UP
+                       where UP.JUR_PERS = CN.JUR_PERS
+                         and UP.UNITCODE = 'Contracts'
+                         and UP.AUTHID = UTILIZER)
                group by CN.RN)
     loop
       /* Вернём первый найденный */
@@ -936,7 +973,7 @@ text="ПРАВА ДОСТУПА!!!!"
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS);
     /* Определим дополнительные свойства - ответственный экономист */
-    FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1, NCOMPANY => NCOMPANY, SCODE => 'ПУП.SECON_RESP', NRN => NECON_RESP_DP);
+    FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1, NCOMPANY => NCOMPANY, SCODE => SDP_SECON_RESP, NRN => NECON_RESP_DP);
     /* Обходим данные */
     begin
       /* Собираем запрос */
@@ -986,7 +1023,9 @@ text="ПРАВА ДОСТУПА!!!!"
                              and P.GOVCNTRID = GC.RN(+)
                              and P.SUBDIV_RESP = SR.RN(+)
                              and P.RESPONSIBLE = R.RN(+)
-                             and P.CURNAMES = CN.RN 
+                             and P.CURNAMES = CN.RN
+                             and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
+                             and exists (select null from V_USERPRIV UP where UP.JUR_PERS = P.JUR_PERS and UP.UNITCODE = ''Projects'')
                              and P.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
            where F.NROW between :NROW_FROM and :NROW_TO';
       /* Учтём сортировки */
@@ -1266,8 +1305,43 @@ text="ПРАВА ДОСТУПА!!!!"
                              PROJECTSTAGE PS
                        where PNC.PRN = PN.RN
                          and PNC.FACEACCOUNT = PS.FACEACC
+                         and exists (select null from V_USERPRIV UP where UP.CATALOG = PS.CRN)
+                         and exists (select null
+                                from V_USERPRIV UP
+                               where UP.JUR_PERS = PS.JUR_PERS
+                                 and UP.UNITCODE = 'Projects')
                          and ((NRN is null) or ((NRN is not null) and (PS.RN = NRN)))
-                         and ((NPRN is null) or ((NPRN is not null) and (PS.PRN = NPRN)))))
+                         and ((NPRN is null) or ((NPRN is not null) and (PS.PRN = NPRN))))
+                 and exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */
+                       null
+                        from USERPRIV UP
+                       where UP.CATALOG = PN.CRN
+                         and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                            UR.ROLEID
+                                             from USERROLES UR
+                                            where UR.AUTHID = UTILIZER)
+                      union all
+                      select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */
+                       null
+                        from USERPRIV UP
+                       where UP.CATALOG = PN.CRN
+                         and UP.AUTHID = UTILIZER)
+                 and exists (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
+                       null
+                        from USERPRIV UP
+                       where UP.JUR_PERS = PN.JUR_PERS
+                         and UP.UNITCODE = 'PayNotes'
+                         and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                            UR.ROLEID
+                                             from USERROLES UR
+                                            where UR.AUTHID = UTILIZER)
+                      union all
+                      select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
+                       null
+                        from USERPRIV UP
+                       where UP.JUR_PERS = PN.JUR_PERS
+                         and UP.UNITCODE = 'PayNotes'
+                         and UP.AUTHID = UTILIZER))
     loop
       /* Сформируем идентификатор буфера */
       if (NIDENT is null) then
@@ -1867,7 +1941,9 @@ text="ПРАВА ДОСТУПА!!!!"
                                  CURNAMES       CN
                            where PS.PRN = P.RN
                              and PS.FACEACC = FAC.RN(+)
-                             and P.CURNAMES = CN.RN                             
+                             and P.CURNAMES = CN.RN
+                             and exists (select null from V_USERPRIV UP where UP.CATALOG = PS.CRN)
+                             and exists (select null from V_USERPRIV UP where UP.JUR_PERS = PS.JUR_PERS and UP.UNITCODE = ''Projects'')                             
                              and PS.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
            where F.NROW between :NROW_FROM and :NROW_TO';
       /* Учтём сортировки */
@@ -2057,7 +2133,10 @@ text="ПРАВА ДОСТУПА!!!!"
                  and FS.TYPE = 1
                  and CN.COST_ARTICLE = FA.RN
                  and FA.DEF_FLOW = FT.RN(+)
-                 and ((NFINFLOW_TYPE is null) or ((NFINFLOW_TYPE is not null) and (FT.TYPE = NFINFLOW_TYPE))))
+                 and ((NFINFLOW_TYPE is null) or ((NFINFLOW_TYPE is not null) and (FT.TYPE = NFINFLOW_TYPE)))
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = PS.CRN)
+                 and exists (select null from V_USERPRIV UP where UP.JUR_PERS = PS.JUR_PERS and UP.UNITCODE = 'Projects')
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = CN.CRN))
     loop
       /* Сформируем идентификатор буфера */
       if (NIDENT is null) then
@@ -2124,7 +2203,11 @@ text="ПРАВА ДОСТУПА!!!!"
                      STAGES         S
                where EPF.PRN = NSTAGE
                  and EPF.FACEACC = S.FACEACC
-                 and ((NFPDARTCL is null) or ((NFPDARTCL is not null) and (EPF.COST_ARTICLE = NFPDARTCL))))
+                 and ((NFPDARTCL is null) or ((NFPDARTCL is not null) and (EPF.COST_ARTICLE = NFPDARTCL)))
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = EPF.CRN)
+                 and exists (select null from V_USERPRIV UP where UP.JUR_PERS = EPF.JUR_PERS and UP.UNITCODE = 'Projects')
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = S.CRN)
+                 and exists (select null from V_USERPRIV UP where UP.JUR_PERS = S.JUR_PERS and UP.UNITCODE = 'Contracts'))
     loop
       /* Сформируем идентификатор буфера */
       if (NIDENT is null) then
@@ -2169,7 +2252,7 @@ text="ПРАВА ДОСТУПА!!!!"
       /* Определим рег. номер доп. свойства для налоговой группы проекта */
       FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1,
                            NCOMPANY    => RSTG.COMPANY,
-                           SCODE       => 'ПУП.TAX_GROUP',
+                           SCODE       => SDP_STAX_GROUP,
                            NRN         => NTAX_GROUP_DP);
       /* Считаем налоговую группу проекта */
       SPRJ_TAX_GROUP := F_DOCS_PROPS_GET_STR_VALUE(NPROPERTY => NTAX_GROUP_DP,
@@ -2214,14 +2297,11 @@ text="ПРАВА ДОСТУПА!!!!"
     RSTG := STAGES_GET(NRN => NSTAGE);
     /* Определим дополнительные свойства - контроль затрат */
     if (NINC_COST = 1) then
-      FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1, NCOMPANY => RSTG.COMPANY, SCODE => 'ПУП.CTL_COST', NRN => NCTL_COST_DP);
+      FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1, NCOMPANY => RSTG.COMPANY, SCODE => SDP_SCTL_COST, NRN => NCTL_COST_DP);
     end if;
     /* Определим дополнительные свойства - контроль контрактации */
     if (NINC_CONTR = 1) then
-      FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1,
-                           NCOMPANY    => RSTG.COMPANY,
-                           SCODE       => 'ПУП.CTL_CONTR',
-                           NRN         => NCTL_CONTR_DP);
+      FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1, NCOMPANY => RSTG.COMPANY, SCODE => SDP_SCTL_CONTR, NRN => NCTL_CONTR_DP);
     end if;
     /* Инициализируем коллекцию */
     RSTAGE_ARTS := TSTAGE_ARTS();
@@ -2241,6 +2321,10 @@ text="ПРАВА ДОСТУПА!!!!"
                  and CSP.SIGN_ACT = 1
                  and CSPA.PRN = CSP.RN
                  and CSPA.COST_ARTICLE = A.RN
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = PS.CRN)
+                 and exists (select null from V_USERPRIV UP where UP.JUR_PERS = PS.JUR_PERS and UP.UNITCODE = 'Projects')
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = CS.CRN)
+                 and exists (select null from V_USERPRIV UP where UP.JUR_PERS = CS.JUR_PERS and UP.UNITCODE = 'Contracts')
                order by CSPA.NUMB)
     loop
       /* Добавим строку в коллекцию */
@@ -2512,7 +2596,13 @@ text="ПРАВА ДОСТУПА!!!!"
                  and exists (select null
                         from PAYACCINSPCLC PCLC
                        where PCLC.PRN in (select PAIS.RN from PAYACCINSPEC PAIS where PAIS.PRN = PAI.RN)
-                         and PCLC.FACEACCOUNT = PS.FACEACC))
+                         and PCLC.FACEACCOUNT = PS.FACEACC)
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = PSPF.CRN)
+                 and exists (select null
+                        from V_USERPRIV UP
+                       where UP.JUR_PERS = PSPF.JUR_PERS
+                         and UP.UNITCODE = 'Projects')
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = PAI.CRN))
     loop
       /* Сформируем идентификатор буфера */
       if (NIDENT is null) then
@@ -2554,7 +2644,26 @@ text="ПРАВА ДОСТУПА!!!!"
                  and exists (select null
                         from ININVOICESSPC ICLC
                        where ICLC.PRN in (select ISP.RN from ININVOICESSPECS ISP where ISP.PRN = I.RN)
-                         and ICLC.FACEACCOUNT = PS.FACEACC))
+                         and ICLC.FACEACCOUNT = PS.FACEACC)
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = PSPF.CRN)
+                 and exists (select null
+                        from V_USERPRIV UP
+                       where UP.JUR_PERS = PSPF.JUR_PERS
+                         and UP.UNITCODE = 'Projects')
+                 and exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */
+                       null
+                        from USERPRIV UP
+                       where UP.CATALOG = I.CRN
+                         and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                            UR.ROLEID
+                                             from USERROLES UR
+                                            where UR.AUTHID = UTILIZER)
+                      union all
+                      select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */
+                       null
+                        from USERPRIV UP
+                       where UP.CATALOG = I.CRN
+                         and UP.AUTHID = UTILIZER))
     loop
       /* Сформируем идентификатор буфера */
       if (NIDENT is null) then
@@ -2596,7 +2705,42 @@ text="ПРАВА ДОСТУПА!!!!"
                  and exists (select null
                         from PAYNOTESCLC PNCLC
                        where PNCLC.PRN = PN.RN
-                         and PNCLC.FACEACCOUNT = PS.FACEACC))
+                         and PNCLC.FACEACCOUNT = PS.FACEACC)
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = PSPF.CRN)
+                 and exists (select null
+                        from V_USERPRIV UP
+                       where UP.JUR_PERS = PSPF.JUR_PERS
+                         and UP.UNITCODE = 'Projects')
+                 and exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */
+                       null
+                        from USERPRIV UP
+                       where UP.CATALOG = PN.CRN
+                         and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                            UR.ROLEID
+                                             from USERROLES UR
+                                            where UR.AUTHID = UTILIZER)
+                      union all
+                      select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */
+                       null
+                        from USERPRIV UP
+                       where UP.CATALOG = PN.CRN
+                         and UP.AUTHID = UTILIZER)
+                 and exists (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
+                       null
+                        from USERPRIV UP
+                       where UP.JUR_PERS = PN.JUR_PERS
+                         and UP.UNITCODE = 'PayNotes'
+                         and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                            UR.ROLEID
+                                             from USERROLES UR
+                                            where UR.AUTHID = UTILIZER)
+                      union all
+                      select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
+                       null
+                        from USERPRIV UP
+                       where UP.JUR_PERS = PN.JUR_PERS
+                         and UP.UNITCODE = 'PayNotes'
+                         and UP.AUTHID = UTILIZER))
     loop
       /* Сформируем идентификатор буфера */
       if (NIDENT is null) then
@@ -3022,7 +3166,11 @@ text="ПРАВА ДОСТУПА!!!!"
                              and PSPF.PERFORMER = AG.RN
                              and CN.CURRENCY = CUR.RN
                              and PSPF.COST_ARTICLE = ART.RN(+)
-                             and CN.GOVCNTRID = GC.RN(+)                             
+                             and CN.GOVCNTRID = GC.RN(+)
+                             and exists (select null from V_USERPRIV UP where UP.CATALOG = PSPF.CRN)
+                             and exists (select null from V_USERPRIV UP where UP.JUR_PERS = PSPF.JUR_PERS and UP.UNITCODE = ''Projects'')
+                             and exists (select null from V_USERPRIV UP where UP.CATALOG = ST.CRN)
+                             and exists (select null from V_USERPRIV UP where UP.JUR_PERS = ST.JUR_PERS and UP.UNITCODE = ''Contracts'')
                              and PSPF.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
            where F.NROW between :NROW_FROM and :NROW_TO';
       /* Учтём сортировки */
