@@ -300,6 +300,38 @@ create or replace package PKG_P8PANELS_PROJECTS as
     COUT                    out clob    -- Сериализованная таблица данных
   );
 
+    /* Получение списка проектов */
+  procedure JB_PRJCTS_LIST
+  (
+    NIDENT                  in number,  -- Идентификатор процесса
+    COUT                    out clob    -- Список проектов
+  );
+  
+  /* Получение списка работ проектов для диаграммы Ганта */
+  procedure JB_JOBS_LIST
+  (
+    NIDENT                  in number,  -- Идентификатор процесса
+    NPRN                    in number,  -- Рег. номер родителя
+    NINCLUDE_DEF            in number,  -- Признак включения описания диаграммы в ответ
+    COUT                    out clob    -- Список проектов
+  );
+  
+  /* Очистка данных балансировки */
+  procedure JB_CLEAN
+  (
+    NIDENT                  in number   -- Идентификатор буфера сформированных данных
+  );
+  
+  /* Формирование исходных данных для балансировки планов-графиков работ */
+  procedure JB_INIT
+  (
+    DBEGIN                  in date,      -- Дата начала периода мониторинга загрузки ресурсов
+    DFACT                   in date,      -- Факт по состоянию на
+    NDURATION_MEAS          in number,    -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
+    SLAB_MEAS               in varchar2,  -- Единица измерения трудоёмкости
+    NIDENT                  in out number -- Идентификатор буфера сформированных данных (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
+  );
+
 end PKG_P8PANELS_PROJECTS;
 /
 create or replace package body PKG_P8PANELS_PROJECTS as
@@ -308,13 +340,29 @@ create or replace package body PKG_P8PANELS_PROJECTS as
   SYES                        constant PKG_STD.TSTRING := 'Да';              -- Да
   NDAYS_LEFT_LIMIT            constant PKG_STD.TNUMBER := 30;                -- Лимит отстатка дней для контроля сроков
   SFPDARTCL_REALIZ            constant PKG_STD.TSTRING := '14 Цена без НДС'; -- Мнемокод статьи калькуляции для учёта реализации
+  NGANTT_TASK_CAPTION_LEN     constant PKG_STD.TNUMBER := 50;                -- Предельная длина метки задачи при отображении диаграммы Ганта
 
   /* Константы - дополнительные свойства */
   SDP_SECON_RESP              constant PKG_STD.TSTRING := 'ПУП.SECON_RESP'; -- Ответственный экономист проекта
   SDP_STAX_GROUP              constant PKG_STD.TSTRING := 'ПУП.TAX_GROUP';  -- Налоговая группа проекта
   SDP_SCTL_COST               constant PKG_STD.TSTRING := 'ПУП.CTL_COST';   -- Принзнак необходимости контроля факт. затрат по статье калькуляции
   SDP_SCTL_CONTR              constant PKG_STD.TSTRING := 'ПУП.CTL_CONTR';  -- Принзнак необходимости контроля контрактации по статье калькуляции
-   
+
+  /* Считывание наименование подразделения по рег. номеру */
+  function UTL_INS_DEPARTMENT_GET_NAME
+  (
+    NRN                     in number        -- Рег. номер подразделения
+  ) return                  varchar2         -- Наименование подразеления (null - если не нашли)
+  is
+    SRES                    PKG_STD.TSTRING; -- Буфер для результата
+  begin
+    select T.NAME into SRES from INS_DEPARTMENT T where T.RN = NRN;
+    return SRES;
+  exception
+    when NO_DATA_FOUND then
+      return null;
+  end UTL_INS_DEPARTMENT_GET_NAME;   
+     
   /* Считывание записи проекта */
   function GET
   (
@@ -987,7 +1035,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                  P.EXPECTED_RES SEXPECTED_RES,
                                  PT.CODE SPRJTYPE,
                                  EC.AGNABBR SEXT_CUST,
-                                 ''"'' || GC.CODE || ''"'' SGOVCNTRID,
+                                 GC.CODE SGOVCNTRID,
                                  P.DOC_OSN SDOC_OSN,
                                  ''Contracts'' SLNK_UNIT_SDOC_OSN,
                                  PKG_P8PANELS_PROJECTS.GET_DOC_OSN_LNK_DOCUMENT(P.RN) NLNK_DOCUMENT_SDOC_OSN,
@@ -3146,7 +3194,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                  AG.AGNNAME SAGENT,
                                  AG.AGNIDNUMB SAGENT_INN,
                                  AG.REASON_CODE SAGENT_KPP,
-                                 ''"'' || GC.CODE || ''"'' SGOVCNTRID,
+                                 GC.CODE SGOVCNTRID,
                                  trim(ST.NUMB) SCSTAGE,
                                  ST.DESCRIPTION SCSTAGE_DESCRIPTION,
                                  ST.BEGIN_DATE DCSTAGE_BEGIN_DATE,
@@ -3317,6 +3365,594 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
   end STAGE_CONTRACTS_LIST;
+  
+    /* Считывание записи работы проекта */
+  function JOBS_GET
+  (
+    NRN                     in number           -- Рег. номер работы проекта
+  ) return                  PROJECTJOB%rowtype  -- Запись работы проекта
+  is
+    RRES                    PROJECTJOB%rowtype; -- Буфер для результата
+  begin
+    select PS.* into RRES from PROJECTJOB PS where PS.RN = NRN;
+    return RRES;
+  exception
+    when NO_DATA_FOUND then
+      PKG_MSG.RECORD_NOT_FOUND(NFLAG_SMART => 0, NDOCUMENT => NRN, SUNIT_TABLE => 'PROJECTJOB');
+  end JOBS_GET;
+  
+  /* Считывание записи проекта из буфера балансировки работ */
+  function JB_PRJCTS_GET
+  (
+    NJB_PRJCTS              in number                -- Рег. номер записи списка балансируемых проектов
+  ) return                  P8PNL_JB_PRJCTS%rowtype  -- Запись проекта
+  is
+    RRES                    P8PNL_JB_PRJCTS%rowtype; -- Буфер для результата
+  begin
+    select P.* into RRES from P8PNL_JB_PRJCTS P where P.RN = NJB_PRJCTS;
+    return RRES;
+  exception
+    when NO_DATA_FOUND then
+      PKG_MSG.RECORD_NOT_FOUND(NFLAG_SMART => 0, NDOCUMENT => NJB_PRJCTS, SUNIT_TABLE => 'P8PNL_JB_PRJCTS');
+  end JB_PRJCTS_GET;
+  
+  /* Базовое добавление проекта для балансировки работ */
+  procedure JB_PRJCTS_BASE_INSERT
+  (
+    NIDENT                  in number,  -- Идентификатор процесса
+    NPROJECT                in number,  -- Рег. номер проекта
+    NJOBS                   in number,  -- Признак наличия плана-графика (0 - нет, 1 - да)
+    NEDITABLE               in number,  -- Признак возможности редактирования (0 - нет, 1 - да)
+    NCHANGED                in number,  -- Признак наличия изменений, требующих сохранения (0 - нет, 1 - да)  
+    NJB_PRJCTS              out number  -- Рег. номер записи списка балансируемых проектов
+  )
+  is
+  begin
+    /* Сформируем рег. номер записи */
+    NJB_PRJCTS := GEN_ID();
+    /* Добавим запись */
+    insert into P8PNL_JB_PRJCTS
+      (RN, IDENT, PROJECT, JOBS, EDITABLE, CHANGED)
+    values
+      (NJB_PRJCTS, NIDENT, NPROJECT, NJOBS, NEDITABLE, NCHANGED);
+  end JB_PRJCTS_BASE_INSERT;
+  
+  /* Установка признака наличия изменений проекта, требующих сохранения */
+  procedure JB_PRJCTS_SET_CHANGED
+  (
+    NJB_PRJCTS              in number,  -- Рег. номер записи списка балансируемых проектов
+    NCHANGED                in number   -- Признак наличия изменений, требующих сохранения (0 - нет, 1 - да)  
+  )
+  is
+  begin
+    /* Установим признак */
+    update P8PNL_JB_PRJCTS T set T.CHANGED = NCHANGED where T.RN = NJB_PRJCTS;
+  end JB_PRJCTS_SET_CHANGED;
+  
+  /* Получение списка проектов */
+  procedure JB_PRJCTS_LIST
+  (
+    NIDENT                  in number,  -- Идентификатор процесса
+    COUT                    out clob    -- Список проектов
+  )
+  is
+  begin
+    /* Начинаем формирование XML */
+    PKG_XFAST.PROLOGUE(ITYPE => PKG_XFAST.CONTENT_);
+    /* Открываем корень */
+    PKG_XFAST.DOWN_NODE(SNAME => 'XDATA');
+    /* Обходим буфер балансировки */
+    for C in (select T.RN       NRN,
+                     T.PROJECT  NPROJECT,
+                     P.NAME_USL SNAME,
+                     T.JOBS     NJOBS,
+                     T.EDITABLE NEDITABLE,
+                     T.CHANGED  NCHANGED
+                from P8PNL_JB_PRJCTS T,
+                     PROJECT         P
+               where T.IDENT = NIDENT
+                 and T.PROJECT = P.RN
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
+                 and exists (select null
+                        from V_USERPRIV UP
+                       where UP.JUR_PERS = P.JUR_PERS
+                         and UP.UNITCODE = 'Projects')
+               order by T.RN)
+    loop
+      /* Открываем проект */
+      PKG_XFAST.DOWN_NODE(SNAME => 'XPROJECTS');
+      /* Описываем проект */
+      PKG_XFAST.ATTR(SNAME => 'NRN', NVALUE => C.NRN);
+      PKG_XFAST.ATTR(SNAME => 'NPROJECT', NVALUE => C.NPROJECT);
+      PKG_XFAST.ATTR(SNAME => 'SNAME', SVALUE => C.SNAME);
+      PKG_XFAST.ATTR(SNAME => 'NJOBS', NVALUE => C.NJOBS);
+      PKG_XFAST.ATTR(SNAME => 'NEDITABLE', NVALUE => C.NEDITABLE);
+      PKG_XFAST.ATTR(SNAME => 'NCHANGED', NVALUE => C.NCHANGED);
+      /* Закрываем проект */
+      PKG_XFAST.UP();
+    end loop;
+    /* Закрываем корень */
+    PKG_XFAST.UP();
+    /* Сериализуем */
+    COUT := PKG_XFAST.SERIALIZE_TO_CLOB();
+    /* Завершаем формирование XML */
+    PKG_XFAST.EPILOGUE();
+  exception
+    when others then
+      /* Завершаем формирование XML */
+      PKG_XFAST.EPILOGUE();
+      /* Вернем ошибку */
+      PKG_STATE.DIAGNOSTICS_STACKED();
+      P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
+  end JB_PRJCTS_LIST;
+  
+  /* Поиск записи работы/этапа в списке балансировки по этапу/работе проекта */
+  function JB_JOBS_GET_BY_SOURCE
+  (
+    NIDENT                  in number,             -- Идентификатор процесса
+    NPRN                    in number,             -- Рег. номер родителя
+    NSOURCE                 in number              -- Рег. номер источника (работы/этапа проекта)
+  ) return                  P8PNL_JB_JOBS%rowtype  -- Найденная запись
+  is
+    RRES                    P8PNL_JB_JOBS%rowtype; -- Буфер для результата
+  begin
+    select T.*
+      into RRES
+      from P8PNL_JB_JOBS T
+     where T.IDENT = NIDENT
+       and T.PRN = NPRN
+       and T.SOURCE = NSOURCE;
+    return RRES;
+  exception
+    when NO_DATA_FOUND then
+      P_EXCEPTION(0,
+                  'Запись работы/этапа (RN-источника: %s) не определена в буфере балансировки.',
+                  COALESCE(TO_CHAR(NSOURCE), '<НЕ УКАЗАН>'));
+  end JB_JOBS_GET_BY_SOURCE;
+  
+  /* Базовое добавление работы/этапа для балансировки работ */
+  procedure JB_JOBS_BASE_INSERT
+  (
+    NIDENT                  in number,   -- Идентификатор процесса
+    NPRN                    in number,   -- Рег. номер родителя
+    NHRN                    in number,   -- Рег. номер родительской записи в иерархии работ/этапов
+    NSOURCE                 in number,   -- Рег. номер источника (работы/этапа проекта)
+    SNUMB                   in varchar2, -- Номер
+    SNAME                   in varchar2, -- Наименование
+    DDATE_FROM              in date,     -- Начало
+    DDATE_TO                in date,     -- Окончание
+    NDURATION               in number,   -- Длительность
+    SEXECUTOR               in varchar2, -- Исполнитель
+    NSTAGE                  in number,   -- Признак этапа (0 - нет, 1 - да)  
+    NJB_JOBS                out number   -- Рег. номер записи балансируемой работы/этапа
+  )
+  is
+  begin
+    /* Сформируем рег. номер записи */
+    NJB_JOBS := GEN_ID();
+    /* Добавим запись */
+    insert into P8PNL_JB_JOBS
+      (RN, IDENT, PRN, HRN, source, NUMB, name, DATE_FROM, DATE_TO, DURATION, EXECUTOR, STAGE)
+    values
+      (NJB_JOBS, NIDENT, NPRN, NHRN, NSOURCE, SNUMB, SNAME, DDATE_FROM, DDATE_TO, NDURATION, SEXECUTOR, NSTAGE);
+  end JB_JOBS_BASE_INSERT;
+  
+  /* Получение списка работ проектов для диаграммы Ганта */
+  procedure JB_JOBS_LIST
+  (
+    NIDENT                  in number,                                -- Идентификатор процесса
+    NPRN                    in number,                                -- Рег. номер родителя
+    NINCLUDE_DEF            in number,                                -- Признак включения описания диаграммы в ответ
+    COUT                    out clob                                  -- Список проектов
+  )
+  is
+    /* Константы */
+    SBG_COLOR_DANGER        constant PKG_STD.TSTRING := '#ff4d4d';    -- Цвет заливки проблемных задач
+    SBG_COLOR_WARN          constant PKG_STD.TSTRING := 'orange';     -- Цвет заливки задач с предупреждениями
+    SBG_COLOR_OK            constant PKG_STD.TSTRING := 'lightgreen'; -- Цвет заливки беспроблемных задач
+    SBG_COLOR_DISABLED      constant PKG_STD.TSTRING := 'darkgrey';   -- Цвет заливки невыполняемых задач
+    SBG_COLOR_STAGE         constant PKG_STD.TSTRING := 'cadetblue';  -- Цвет заливки этапов
+    STEXT_COLOR_DANGER      constant PKG_STD.TSTRING := 'blue';       -- Цвет текста задач с предупреждениями
+
+    /* Переменные */
+    RJB_PRJ                 P8PNL_JB_PRJCTS%rowtype;                  -- Родительская запись буфера балансировки
+    RPRJ                    PROJECT%rowtype;                          -- Запись проекта
+    RSTG                    PROJECTSTAGE%rowtype;                     -- Запись этапа
+    RJOB                    PROJECTJOB%rowtype;                       -- Запись работы
+    RG                      PKG_P8PANELS_VISUAL.TGANTT;               -- Описание диаграммы Ганта
+    RGT                     PKG_P8PANELS_VISUAL.TGANTT_TASK;          -- Описание задачи для диаграммы    
+    STITLE                  PKG_STD.TSTRING;                          -- Общий заголовок
+    BREAD_ONLY              boolean := false;                         -- Флаг доступности проекта только для чтения
+    BTASK_READ_ONLY         boolean;                                  -- Флаг доступности задачи только для чтения
+    STASK_BG_COLOR          PKG_STD.TSTRING;                          -- Цвет фона задачи
+    STASK_TEXT_COLOR        PKG_STD.TSTRING;                          -- Цвет текста задачи
+    STASK_CAPTION           PKG_STD.TSTRING;                          -- Заголовок задачи    
+    NTASK_STATE             PKG_STD.TNUMBER;                          -- Состояние задачи
+    NTASK_PROGRESS          PKG_STD.TNUMBER;                          -- Прогресс выполнения задачи    
+    STASK_RESP              PKG_STD.TSTRING;                          -- Ответственный за исполнение задачи
+  begin
+    /* Читаем родительскую запись буфера балансировки */
+    RJB_PRJ := JB_PRJCTS_GET(NJB_PRJCTS => NPRN);
+    /* Читаем запись проекта */
+    RPRJ := GET(NRN => RJB_PRJ.PROJECT);
+    /* Определимся с возможностью изменения данных проекта */
+    if (RJB_PRJ.EDITABLE = 0) then
+      BREAD_ONLY := true;
+    end if;
+    /* Сформируем общий заголовок */
+    STITLE := RPRJ.NAME_USL || ' - ' || RPRJ.NAME;
+    if ((RPRJ.EXT_CUST is not null) or ((RPRJ.BEGPLAN is not null) and (RPRJ.ENDPLAN is not null))) then
+      STITLE := STITLE || ' (';
+      if (RPRJ.EXT_CUST is not null) then
+        STITLE := STITLE || 'заказчик: "' ||
+                  COALESCE(GET_AGNLIST_AGNABBR_ID(NFLAG_SMART => 1, NRN => RPRJ.EXT_CUST), '<НЕ ОПРЕДЕЛЁН>') || '", ';
+      end if;
+      if ((RPRJ.BEGPLAN is not null) and (RPRJ.ENDPLAN is not null)) then
+        STITLE := STITLE || 'с ' || TO_CHAR(RPRJ.BEGPLAN, 'dd.mm.yyyy') || ' по ' ||
+                  TO_CHAR(RPRJ.ENDPLAN, 'dd.mm.yyyy');
+      end if;
+      STITLE := STITLE || ')';
+    end if;
+    /* Инициализируем диаграмму Ганта */
+    RG := PKG_P8PANELS_VISUAL.TGANTT_MAKE(STITLE     => STITLE,
+                                          NZOOM      => PKG_P8PANELS_VISUAL.NGANTT_ZOOM_MONTH,
+                                          BREAD_ONLY => BREAD_ONLY);
+    /* Добавим динамические атрибуты к задачам */
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'type', SCAPTION => 'Тип');
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'state', SCAPTION => 'Состояние');
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'resp', SCAPTION => 'Ответственный');
+    /* Добавим описание цветов задач */
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT      => RG,
+                                              SBG_COLOR   => SBG_COLOR_DANGER,
+                                              STEXT_COLOR => STEXT_COLOR_DANGER,
+                                              SDESC       => 'Для задач в состоянии "Не начата" - срыв срока начала, есть угроза срыва сроков окончания задачи. ' ||
+                                                             'Для задач в состоянии "Выполняется", "Остановлена" - срыв срока окончания, есть угроза срыва срока окончания этапа/проекта.');
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                              SBG_COLOR => SBG_COLOR_WARN,
+                                              SDESC     => 'Для задач в состоянии "Не начата" - приближается срок начала, важно обеспечить своевременное выполнение работ. ' ||
+                                                           'Для задач в состоянии "Выполняется", "Остановлена" - приближается срок окончания, важно обеспечить своевременное завершение работ.');
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                              SBG_COLOR => SBG_COLOR_OK,
+                                              SDESC     => 'Сроки исполнения задачи не вызывают опасений.');
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                              SBG_COLOR => SBG_COLOR_DISABLED,
+                                              SDESC     => 'Задача не выполняется (она в состоянии "Выполнена" или "Отменена").');
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                              SBG_COLOR => SBG_COLOR_STAGE,
+                                              SDESC     => 'Этим цветом выделены этапы.');
+    /* Обходим работы */
+    for C in (select JB.*
+                from P8PNL_JB_JOBS   JB,
+                     P8PNL_JB_PRJCTS PB,
+                     PROJECT         P
+               where JB.IDENT = NIDENT
+                 and JB.PRN = NPRN
+                 and JB.PRN = PB.RN
+                 and PB.PROJECT = P.RN
+                 and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
+                 and exists (select null
+                        from V_USERPRIV UP
+                       where UP.JUR_PERS = P.JUR_PERS
+                         and UP.UNITCODE = 'Projects')
+               order by JB.RN)
+    loop
+      /* Считаем источник - этап или работу проекта, здесь же найдём ответственного */
+      STASK_RESP := null;
+      if (C.STAGE = 1) then
+        RSTG := STAGES_GET(NRN => C.SOURCE);
+        if (RSTG.RESPONSIBLE is not null) then
+          STASK_RESP := GET_AGNLIST_AGNABBR_ID(NFLAG_SMART => 1, NRN => RSTG.RESPONSIBLE);
+        elsif (RSTG.SUBDIV_RESP is not null) then
+          STASK_RESP := UTL_INS_DEPARTMENT_GET_NAME(NRN => RSTG.SUBDIV_RESP);
+        end if;
+      else
+        RJOB := JOBS_GET(NRN => C.SOURCE);
+        if (RJOB.PERFORM is not null) then
+          STASK_RESP := GET_AGNLIST_AGNABBR_ID(NFLAG_SMART => 1, NRN => RJOB.PERFORM);
+        elsif (RJOB.SUBDIV is not null) then
+          STASK_RESP := UTL_INS_DEPARTMENT_GET_NAME(NRN => RJOB.SUBDIV);
+        end if;
+      end if;
+      /* Определимся с состоянием */
+      if (C.STAGE = 1) then
+        NTASK_STATE := RSTG.STATE;
+      else
+        NTASK_STATE := RJOB.STATE;
+      end if;
+      /* Определимся с форматированием */
+      if (C.STAGE = 1) then
+        /* Этапы всегда одинаково красим и всегда "только для чтения" */
+        BTASK_READ_ONLY := true;
+        STASK_BG_COLOR  := SBG_COLOR_STAGE;
+      else
+        /* Сбросим цвета от предыдущей работы (на всякий случай) */
+        STASK_BG_COLOR   := null;
+        STASK_TEXT_COLOR := null;
+        /* Работы - от статуса ("Не начата") */
+        if (RJOB.STATE = 0) then
+          if (C.DATE_FROM <= sysdate) then
+            STASK_BG_COLOR   := SBG_COLOR_DANGER;
+            STASK_TEXT_COLOR := STEXT_COLOR_DANGER;
+          elsif (C.DATE_FROM <= sysdate + NDAYS_LEFT_LIMIT) then
+            STASK_BG_COLOR := SBG_COLOR_WARN;
+          else
+            STASK_BG_COLOR := SBG_COLOR_OK;
+          end if;
+        end if;
+        /* Работы - от статуса ("Выполняется", "Остановлена") */
+        if (RJOB.STATE in (1, 3)) then
+          if (C.DATE_TO <= sysdate) then
+            STASK_BG_COLOR   := SBG_COLOR_DANGER;
+            STASK_TEXT_COLOR := STEXT_COLOR_DANGER;
+          elsif (C.DATE_TO <= sysdate + NDAYS_LEFT_LIMIT) then
+            STASK_BG_COLOR := SBG_COLOR_WARN;
+          else
+            STASK_BG_COLOR := SBG_COLOR_OK;
+          end if;
+        end if;
+        /* Работы - от статуса ("Выполнена", "Отменена") */
+        if (RJOB.STATE in (2, 4)) then
+          /* Всегда тёмные */
+          STASK_BG_COLOR := SBG_COLOR_DISABLED;
+        end if;
+        /* Состояние "только для чтения" наследуем от заголовка */
+        BTASK_READ_ONLY := BREAD_ONLY;
+      end if;
+      /* Сформируем заголовок для выдачи в диаграмме */
+      STASK_CAPTION := trim(C.NUMB) || ' - ' || C.NAME;
+      if (LENGTH(STASK_CAPTION) > NGANTT_TASK_CAPTION_LEN) then
+        STASK_CAPTION := SUBSTR(STASK_CAPTION, 1, NGANTT_TASK_CAPTION_LEN) || '...';
+      end if;
+      /* Определим прогресс (только для работ в статусах "Выполняется" и "Остановлена") */
+      if ((C.STAGE = 0) and (RJOB.STATE in (1, 3)) and (RJOB.LAB_PLAN > 0)) then
+        NTASK_PROGRESS := RJOB.LAB_FACT / RJOB.LAB_PLAN * 100;
+      else
+        NTASK_PROGRESS := null;
+      end if;
+      /* Сформируем работу */
+      RGT := PKG_P8PANELS_VISUAL.TGANTT_TASK_MAKE(NRN                 => C.RN,
+                                                  SNUMB               => C.NUMB,
+                                                  SCAPTION            => STASK_CAPTION,
+                                                  SNAME               => C.NAME,
+                                                  DSTART              => C.DATE_FROM,
+                                                  DEND                => C.DATE_TO,
+                                                  NPROGRESS           => NTASK_PROGRESS,
+                                                  SBG_COLOR           => STASK_BG_COLOR,
+                                                  STEXT_COLOR         => STASK_TEXT_COLOR,
+                                                  BREAD_ONLY          => BTASK_READ_ONLY,
+                                                  BREAD_ONLY_PROGRESS => true);
+      PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_ATTR_VAL(RGANTT => RG,
+                                                   RTASK  => RGT,
+                                                   SNAME  => 'type',
+                                                   SVALUE => C.STAGE,
+                                                   BCLEAR => true);
+      PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_ATTR_VAL(RGANTT => RG, RTASK => RGT, SNAME => 'state', SVALUE => NTASK_STATE);
+      PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_ATTR_VAL(RGANTT => RG, RTASK => RGT, SNAME => 'resp', SVALUE => STASK_RESP);
+      /* Определимся с предшествующими работами */
+      for CP in (select JP.JB_JOBS
+                   from P8PNL_JB_JOBSPREV JP
+                  where JP.IDENT = NIDENT
+                    and JP.PRN = C.RN)
+      loop
+        PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_DEPENDENCY(RTASK => RGT, NDEPENDENCY => CP.JB_JOBS);
+      end loop;
+      /* Добавляем работу в диаграмму */
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK(RGANTT => RG, RTASK => RGT);
+    end loop;
+    /* Формируем список */
+    COUT := PKG_P8PANELS_VISUAL.TGANTT_TO_XML(RGANTT => RG, NINCLUDE_DEF => NINCLUDE_DEF);
+  end JB_JOBS_LIST;
+  
+  /* Базовое добавление предшествующей работы/этапа для балансировки работ */
+  procedure JB_JOBSPREV_BASE_INSERT
+  (    
+    NIDENT                  in number, -- Идентификатор процесса
+    NPRN                    in number, -- Рег. номер родителя
+    NJB_JOBS                in number, -- Рег. номер предшествующей работы/этапа
+    NJB_JOBSPREV            out number -- Рег. номер записи предшествующей балансируемой работы/этапа
+  )
+  is
+  begin
+    /* Сформируем рег. номер записи */
+    NJB_JOBSPREV := GEN_ID();
+    /* Добавим запись */
+    insert into P8PNL_JB_JOBSPREV (RN, IDENT, PRN, JB_JOBS) values (NJB_JOBSPREV, NIDENT, NPRN, NJB_JOBS);
+  end JB_JOBSPREV_BASE_INSERT;
+  
+  /* Очистка данных балансировки */
+  procedure JB_CLEAN
+  (
+    NIDENT                  in number   -- Идентификатор буфера сформированных данных
+  )
+  is
+  begin
+    /* Удаляем список предшествующих работ */
+    delete from P8PNL_JB_JOBSPREV T where T.IDENT = NIDENT;
+    /* Удаляем список работ */
+    for C in (select T.RN
+                from P8PNL_JB_JOBS T
+               where T.IDENT = NIDENT
+              connect by prior T.RN = T.HRN
+               start with T.HRN is null
+               order by level desc)
+    loop
+      delete from P8PNL_JB_JOBS T where T.RN = C.RN;
+    end loop;
+    /* Удаляем список проектов */
+    delete from P8PNL_JB_PRJCTS T where T.IDENT = NIDENT;
+  end JB_CLEAN;
+  
+  /* Формирование исходных данных для балансировки планов-графиков работ */
+  procedure JB_INIT
+  (
+    DBEGIN                  in date,                               -- Дата начала периода мониторинга загрузки ресурсов
+    DFACT                   in date,                               -- Факт по состоянию на
+    NDURATION_MEAS          in number,                             -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
+    SLAB_MEAS               in varchar2,                           -- Единица измерения трудоёмкости
+    NIDENT                  in out number                          -- Идентификатор буфера сформированных данных (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
+    SUTILIZER               PKG_STD.TSTRING := UTILIZER();         -- Пользователь сеанса
+    NUTILIZER_AGENT         PKG_STD.TREF;                          -- Рег. номер контрагента текущего пользователя
+    NJB_PRJCTS              PKG_STD.TREF;                          -- Рег. номер проекта в списке для балансировки
+    NJB_JOBS_STAGE          PKG_STD.TREF;                          -- Рег. номер этапа проекта в списке для балансировки
+    NJB_JOBS_JOB            PKG_STD.TREF;                          -- Рег. номер работы проекта в списке для балансировки
+    NJB_JOBS_JOBPREV        PKG_STD.TREF;                          -- Рег. номер предшествующей работы проекта в списке для балансировки
+    RH_JB_JOBS              P8PNL_JB_JOBS%rowtype;                 -- Запись родительской работы/этапа в иехархии балансируемых
+    RH_JB_JOBS_PREV         P8PNL_JB_JOBS%rowtype;                 -- Запись предшествующей работы в иехархии балансируемых    
+    NDURATION               P8PNL_JB_JOBS.DURATION%type;           -- Длительност текущей работы/этапа
+  begin
+    /* Отработаем идентификатор буфера */
+    if (NIDENT is null) then
+      NIDENT := GEN_IDENT();
+    else
+      JB_CLEAN(NIDENT => NIDENT);
+    end if;
+    /* Найдем контрагента, соответствующего текущему пользователю */
+    FIND_AGNLIST_AUTHID(NFLAG_OPTION => 1, NCOMPANY => NCOMPANY, SPERS_AUTHID => SUTILIZER, NAGENT => NUTILIZER_AGENT);
+    /* Обходим проекты */
+    for PRJ in (select P.RN NRN,
+                       COALESCE((select 1
+                                  from PROJECTJOB   PJ,
+                                       PROJECTSTAGE PS
+                                 where PJ.PRN = P.RN
+                                   and PJ.BEGPLAN is not null
+                                   and PJ.ENDPLAN is not null
+                                   and PJ.PROJECTSTAGE = PS.RN
+                                   and PS.BEGPLAN is not null
+                                   and PS.ENDPLAN is not null
+                                   and ROWNUM <= 1),
+                                0) NJOBS,
+                       COALESCE((select 1
+                                  from AGNLIST AG
+                                 where AG.RN = P.RESPONSIBLE
+                                   and AG.RN = NUTILIZER_AGENT),
+                                0) NEDITABLE,
+                       P.BEGPLAN DBEGPLAN,
+                       P.ENDPLAN DENDPLAN
+                  from PROJECT P
+                 where P.COMPANY = NCOMPANY
+                   and P.STATE not in (3, 5)
+                   and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
+                   and exists (select null
+                          from V_USERPRIV UP
+                         where UP.JUR_PERS = P.JUR_PERS
+                           and UP.UNITCODE = 'Projects')
+                 order by P.NAME_USL)
+    loop
+      /* Помещаем проект в список балансируемых */
+      JB_PRJCTS_BASE_INSERT(NIDENT     => NIDENT,
+                            NPROJECT   => PRJ.NRN,
+                            NJOBS      => PRJ.NJOBS,
+                            NEDITABLE  => PRJ.NEDITABLE,
+                            NCHANGED   => 0,
+                            NJB_PRJCTS => NJB_PRJCTS);
+      /* Обходим этапы проекта в порядке иерархии */
+      for STG in (select PS.COMPANY NCOMPANY,
+                         PS.RN NRN,
+                         PS.HRN NHRN,
+                         trim(PS.NUMB) SNUMB,
+                         PS.NAME SNAME,
+                         PS.BEGPLAN DBEGPLAN,
+                         PS.ENDPLAN DENDPLAN,
+                         COALESCE(AG.AGNABBR, DP.CODE) SEXECUTOR
+                    from PROJECTSTAGE   PS,
+                         AGNLIST        AG,
+                         INS_DEPARTMENT DP
+                   where PS.PRN = PRJ.NRN
+                     and PS.BEGPLAN is not null
+                     and PS.ENDPLAN is not null
+                     and PS.RESPONSIBLE = AG.RN(+)
+                     and PS.SUBDIV_RESP = DP.RN(+)
+                  connect by prior PS.RN = PS.HRN
+                   start with PS.HRN is null
+                   order by level,
+                            PS.NUMB,
+                            PS.BEGPLAN)
+      loop
+        /* Найдём родительский этап в списке балансировки */
+        if (STG.NHRN is not null) then
+          RH_JB_JOBS := JB_JOBS_GET_BY_SOURCE(NIDENT => NIDENT, NPRN => NJB_PRJCTS, NSOURCE => STG.NHRN);
+        else
+          RH_JB_JOBS := null;
+        end if;
+        /* Определим длительность этапа */
+        P_PROJECTJOB_GET_DURATION(NCOMPANY       => STG.NCOMPANY,
+                                  DBEG_DATE      => STG.DBEGPLAN,
+                                  DEND_DATE      => STG.DENDPLAN,
+                                  NDURATION_MEAS => NDURATION_MEAS,
+                                  NDURATION      => NDURATION);
+        /* Помещаем этап в список балансировки */
+        JB_JOBS_BASE_INSERT(NIDENT     => NIDENT,
+                            NPRN       => NJB_PRJCTS,
+                            NHRN       => RH_JB_JOBS.RN,
+                            NSOURCE    => STG.NRN,
+                            SNUMB      => STG.SNUMB,
+                            SNAME      => STG.SNAME,
+                            DDATE_FROM => STG.DBEGPLAN,
+                            DDATE_TO   => STG.DENDPLAN,
+                            NDURATION  => COALESCE(NDURATION, 0),
+                            SEXECUTOR  => STG.SEXECUTOR,
+                            NSTAGE     => 1,
+                            NJB_JOBS   => NJB_JOBS_STAGE);
+        /* Обходим работы этапа */
+        for PJ in (select J.COMPANY NCOMPANY,
+                          J.RN NRN,
+                          trim(J.NUMB) SNUMB,
+                          J.NAME SNAME,
+                          J.BEGPLAN DBEGPLAN,
+                          J.ENDPLAN DENDPLAN,
+                          COALESCE(COALESCE(DP.CODE, AG.AGNABBR), STG.SEXECUTOR) SEXECUTOR
+                     from PROJECTJOB     J,
+                          AGNLIST        AG,
+                          INS_DEPARTMENT DP
+                    where J.PRN = PRJ.NRN
+                      and J.PROJECTSTAGE = STG.NRN
+                      and J.BEGPLAN is not null
+                      and J.ENDPLAN is not null
+                      and J.SUBDIV = DP.RN(+)
+                      and J.PERFORM = AG.RN(+)
+                    order by J.NUMB,
+                             J.BEGPLAN)
+        loop
+          /* Определим длительность работы */
+          P_PROJECTJOB_GET_DURATION(NCOMPANY       => PJ.NCOMPANY,
+                                    DBEG_DATE      => PJ.DBEGPLAN,
+                                    DEND_DATE      => PJ.DENDPLAN,
+                                    NDURATION_MEAS => NDURATION_MEAS,
+                                    NDURATION      => NDURATION);
+          /* Помещаем работу в список балансировки */
+          JB_JOBS_BASE_INSERT(NIDENT     => NIDENT,
+                              NPRN       => NJB_PRJCTS,
+                              NHRN       => NJB_JOBS_STAGE,
+                              NSOURCE    => PJ.NRN,
+                              SNUMB      => PJ.SNUMB,
+                              SNAME      => PJ.SNAME,
+                              DDATE_FROM => PJ.DBEGPLAN,
+                              DDATE_TO   => PJ.DENDPLAN,
+                              NDURATION  => COALESCE(NDURATION, 0),
+                              SEXECUTOR  => PJ.SEXECUTOR,
+                              NSTAGE     => 0,
+                              NJB_JOBS   => NJB_JOBS_JOB);
+        end loop;
+      end loop;
+      /* Обходим работы проекта ещё раз, для наполнения списка предшествующих в буфере балансировки */
+      for PJ in (select J.RN NRN from PROJECTJOB J where J.PRN = PRJ.NRN)
+      loop
+        RH_JB_JOBS := JB_JOBS_GET_BY_SOURCE(NIDENT => NIDENT, NPRN => NJB_PRJCTS, NSOURCE => PJ.NRN);
+        /* Помещаем предшествующие работы в буфер балансировки */
+        for PJPREV in (select JP.PROJECTJOB NPROJECTJOB from PROJECTJOBPREV JP where JP.PRN = PJ.NRN)
+        loop
+          RH_JB_JOBS_PREV := JB_JOBS_GET_BY_SOURCE(NIDENT => NIDENT, NPRN => NJB_PRJCTS, NSOURCE => PJPREV.NPROJECTJOB);
+          JB_JOBSPREV_BASE_INSERT(NIDENT       => NIDENT,
+                                  NPRN         => RH_JB_JOBS.RN,
+                                  NJB_JOBS     => RH_JB_JOBS_PREV.RN,
+                                  NJB_JOBSPREV => NJB_JOBS_JOBPREV);
+        end loop;
+      end loop;
+    end loop;
+  end JB_INIT;
 
 end PKG_P8PANELS_PROJECTS;
 /
