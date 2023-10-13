@@ -36,11 +36,17 @@ export const BUTTONS = {
     MORE: "Ещё" //Догрузка данных
 };
 
-//Текст элементов ввода
-export const INPUTS = {
+//Метки атрибутов, сопроводительные надписи
+export const CAPTIONS = {
     VALUE: "Значение",
     VALUE_FROM: "С",
-    VALUE_TO: "По"
+    VALUE_TO: "По",
+    NUMB: "Номер",
+    NAME: "Наименование",
+    START: "Начало",
+    END: "Окончание",
+    PROGRESS: "Прогресс",
+    LEGEND: "Легенда"
 };
 
 //Типовые сообщения об ошибках
