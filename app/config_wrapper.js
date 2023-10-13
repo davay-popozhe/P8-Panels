@@ -10,9 +10,9 @@
 import React from "react"; //Классы React
 import { deepCopyObject } from "./core/utils"; //Вспомогательные процедуры и функции
 import { TITLES, BUTTONS, TEXTS, CAPTIONS } from "../app.text"; //Текстовые ресурсы и константы
-import { P8PPanelsMenuGrid, P8P_PANELS_MENU_PANEL_SHAPE } from "./components/p8p_data_grid"; //Меню панелей
+import { P8PPanelsMenuGrid, P8P_PANELS_MENU_PANEL_SHAPE } from "./components/p8p_panels_menu"; //Меню панелей
 import { P8PAppWorkspace } from "./components/p8p_app_workspace"; //Рабочее пространство
-import { P8PTable, P8P_TABLE_DATA_TYPE, P8P_TABLE_SIZE, P8P_TABLE_FILTER_SHAPE } from "./components/p8p_data_grid"; //Таблица данных
+import { P8PTable, P8P_TABLE_DATA_TYPE, P8P_TABLE_SIZE, P8P_TABLE_FILTER_SHAPE } from "./components/p8p_table"; //Таблица данных
 import { P8PDataGrid, P8P_DATA_GRID_DATA_TYPE, P8P_DATA_GRID_SIZE, P8P_DATA_GRID_FILTER_SHAPE } from "./components/p8p_data_grid"; //Таблица данных
 import { P8PGantt, P8P_GANTT_TASK_SHAPE, P8P_GANTT_TASK_ATTRIBUTE_SHAPE, P8P_GANTT_TASK_COLOR_SHAPE } from "./components/p8p_gantt"; //Диаграмма Ганта
 
