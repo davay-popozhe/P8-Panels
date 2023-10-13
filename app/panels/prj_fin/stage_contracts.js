@@ -62,6 +62,7 @@ const StageContracts = ({ stage, filters }) => {
                     NPAGE_SIZE: configSystemPageSize,
                     NINCLUDE_DEF: stageContractsDataGrid.dataLoaded ? 0 : 1
                 },
+                attributeValueProcessor: (name, val) => (name == "SGOVCNTRID" ? undefined : val),
                 respArg: "COUT"
             });
             setStageContractsDataGrid(pv => ({

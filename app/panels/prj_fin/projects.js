@@ -61,6 +61,7 @@ const Projects = () => {
                     NPAGE_SIZE: configSystemPageSize,
                     NINCLUDE_DEF: projectsDataGrid.dataLoaded ? 0 : 1
                 },
+                attributeValueProcessor: (name, val) => (name == "SGOVCNTRID" ? undefined : val),
                 respArg: "COUT"
             });
             setProjectsDataGrid(pv => ({
