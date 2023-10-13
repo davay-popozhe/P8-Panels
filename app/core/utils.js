@@ -59,6 +59,9 @@ const object2Base64XML = (obj, builderOptions) => {
 //Форматирование даты в формат РФ
 const formatDateRF = value => (value ? dayjs(value).format("DD.MM.YYYY") : null);
 
+//Форматирование даты в формат JSON (только дата, без времени)
+const formatDateJSONDateOnly = value => (value ? dayjs(value).format("YYYY-MM-DD") : null);
+
 //Форматирование числа в "Денежном" формате РФ
 const formatNumberRFCurrency = value => (hasValue(value) ? new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2 }).format(value) : null);
 
@@ -72,4 +75,4 @@ const genGUID = () =>
 //Интерфейс модуля
 //----------------
 
-export { hasValue, getDisplaySize, deepCopyObject, object2Base64XML, formatDateRF, formatNumberRFCurrency, genGUID };
+export { hasValue, getDisplaySize, deepCopyObject, object2Base64XML, formatDateRF, formatDateJSONDateOnly, formatNumberRFCurrency, genGUID };

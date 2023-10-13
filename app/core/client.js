@@ -38,7 +38,11 @@ const XML_ALWAYS_ARRAY_PATHS = [
     "XRESPOND.XPAYLOAD.XOUT_ARGUMENTS",
     "XRESPOND.XPAYLOAD.XROWS",
     "XRESPOND.XPAYLOAD.XCOLUMNS_DEF",
-    "XRESPOND.XPAYLOAD.XCOLUMNS_DEF.values"
+    "XRESPOND.XPAYLOAD.XCOLUMNS_DEF.values",
+    "XRESPOND.XPAYLOAD.XGANTT_DEF.taskAttributes",
+    "XRESPOND.XPAYLOAD.XGANTT_DEF.taskColors",
+    "XRESPOND.XPAYLOAD.XGANTT_TASKS",
+    "XRESPOND.XPAYLOAD.XGANTT_TASKS.dependencies"
 ];
 
 //Типовой постфикс тега для массива (при переводе XML -> JSON)
@@ -60,7 +64,7 @@ const getServerDataType = value => {
 const makeRespErr = ({ message }) => ({ SSTATUS: RESP_STATUS_ERR, SMESSAGE: message });
 
 //Разбор XML
-const parseXML = (xmlDoc, isArray, transformTagName) => {
+const parseXML = (xmlDoc, isArray, transformTagName, tagValueProcessor, attributeValueProcessor) => {
     return new Promise((resolve, reject) => {
         try {
             let opts = {
@@ -71,6 +75,8 @@ const parseXML = (xmlDoc, isArray, transformTagName) => {
             };
             if (isArray) opts.isArray = isArray;
             if (transformTagName) opts.transformTagName = transformTagName;
+            if (tagValueProcessor) opts.tagValueProcessor = tagValueProcessor;
+            if (attributeValueProcessor) opts.attributeValueProcessor = attributeValueProcessor;
             const parser = new XMLParser(opts);
             resolve(parser.parse(xmlDoc));
         } catch (e) {
@@ -101,7 +107,7 @@ const getRespErrMessage = resp => (isRespErr(resp) && resp.SMESSAGE ? resp.SMESS
 const getRespPayload = resp => (resp && resp.XPAYLOAD ? resp.XPAYLOAD : null);
 
 //Исполнение действия на сервере
-const executeAction = async ({ serverURL, action, payload = {}, isArray, transformTagName } = {}) => {
+const executeAction = async ({ serverURL, action, payload = {}, isArray, transformTagName, tagValueProcessor, attributeValueProcessor } = {}) => {
     console.log(`EXECUTING ${action ? action : ""} ON ${serverURL} WITH PAYLOAD:`);
     console.log(payload ? payload : "NO PAYLOAD");
     let response = null;
@@ -130,7 +136,7 @@ const executeAction = async ({ serverURL, action, payload = {}, isArray, transfo
         let responseText = await response.text();
         //console.log("SERVER RESPONSE TEXT:");
         //console.log(responseText);
-        responseJSON = await parseXML(responseText, isArray, transformTagName);
+        responseJSON = await parseXML(responseText, isArray, transformTagName, tagValueProcessor, attributeValueProcessor);
     } catch (e) {
         //Что-то пошло не так при парсинге
         throw new Error(ERR_UNEXPECTED);
@@ -151,14 +157,24 @@ const executeAction = async ({ serverURL, action, payload = {}, isArray, transfo
 };
 
 //Запуск хранимой процедуры
-const executeStored = async ({ stored, args, respArg, throwError = true, spreadOutArguments = false } = {}) => {
+const executeStored = async ({
+    stored,
+    args,
+    respArg,
+    isArray,
+    tagValueProcessor,
+    attributeValueProcessor,
+    throwError = true,
+    spreadOutArguments = false
+} = {}) => {
     let res = null;
     try {
         let serverArgs = [];
         if (args)
             for (const arg in args) {
                 let typedArg = false;
-                if (Object.hasOwn(args[arg], "VALUE") && Object.hasOwn(args[arg], "SDATA_TYPE") && args[arg]?.SDATA_TYPE) typedArg = true;
+                if (args[arg] && Object.hasOwn(args[arg], "VALUE") && Object.hasOwn(args[arg], "SDATA_TYPE") && args[arg]?.SDATA_TYPE)
+                    typedArg = true;
                 const dataType = typedArg ? args[arg].SDATA_TYPE : getServerDataType(args[arg]);
                 let value = typedArg ? args[arg].VALUE : args[arg];
                 if (dataType === SERV_DATA_TYPE_DATE) value = dayjs(value).format("YYYY-MM-DDTHH:mm:ss");
@@ -168,7 +184,10 @@ const executeStored = async ({ stored, args, respArg, throwError = true, spreadO
             serverURL: `${config.SYSTEM.SERVER}${!config.SYSTEM.SERVER.endsWith("/") ? "/" : ""}Process`,
             action: SRV_FN_CODE_EXEC_STORED,
             payload: { SSTORED: stored, XARGUMENTS: serverArgs, SRESP_ARG: respArg },
-            isArray: (name, jPath) => XML_ALWAYS_ARRAY_PATHS.indexOf(jPath) !== -1 || jPath.endsWith(XML_ALWAYS_ARRAY_POSTFIX)
+            isArray: (name, jPath) =>
+                XML_ALWAYS_ARRAY_PATHS.indexOf(jPath) !== -1 || jPath.endsWith(XML_ALWAYS_ARRAY_POSTFIX) || (isArray ? isArray(name, jPath) : false),
+            tagValueProcessor,
+            attributeValueProcessor
         });
         if (spreadOutArguments === true && Array.isArray(res?.XPAYLOAD?.XOUT_ARGUMENTS)) {
             let spreadArgs = {};

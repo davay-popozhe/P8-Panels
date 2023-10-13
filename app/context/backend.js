@@ -55,6 +55,9 @@ export const BackEndContext = ({ client, children }) => {
             stored,
             args,
             respArg,
+            isArray,
+            tagValueProcessor,
+            attributeValueProcessor,
             loader = true,
             loaderMessage = "",
             throwError = true,
@@ -64,7 +67,16 @@ export const BackEndContext = ({ client, children }) => {
         } = {}) => {
             try {
                 if (loader !== false) showLoader(loaderMessage);
-                let result = await client.executeStored({ stored, args, respArg, throwError, spreadOutArguments });
+                let result = await client.executeStored({
+                    stored,
+                    args,
+                    respArg,
+                    isArray,
+                    tagValueProcessor,
+                    attributeValueProcessor,
+                    throwError,
+                    spreadOutArguments
+                });
                 if (fullResponse === true || isRespErr(result)) return result;
                 else return result.XPAYLOAD;
             } catch (e) {
