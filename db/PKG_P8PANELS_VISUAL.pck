@@ -8,6 +8,13 @@ create or replace package PKG_P8PANELS_VISUAL as
   /* Константы - направление сортировки */
   SORDER_DIRECTION_ASC      constant PKG_STD.TSTRING := 'ASC';  -- По возрастанию
   SORDER_DIRECTION_DESC     constant PKG_STD.TSTRING := 'DESC'; -- По убыванию
+  
+  /* Константы - масштаб диаграммы Ганта */
+  NGANTT_ZOOM_QUARTER_DAY   constant PKG_STD.TNUMBER := 0; -- Четверть дня
+  NGANTT_ZOOM_HALF_DAY      constant PKG_STD.TNUMBER := 1; -- Пол дня
+  NGANTT_ZOOM_DAY           constant PKG_STD.TNUMBER := 2; -- День
+  NGANTT_ZOOM_WEEK          constant PKG_STD.TNUMBER := 3; -- Неделя
+  NGANTT_ZOOM_MONTH         constant PKG_STD.TNUMBER := 4; -- Месяц
 
   /* Типы данных - значение колонки таблицы данных */
   type TCOL_VAL is record
@@ -83,6 +90,76 @@ create or replace package PKG_P8PANELS_VISUAL as
   
   /* Типы данных - коллекция сортировок */
   type TORDERS is table of TORDER;
+  
+  /* Типы данных - описание атрибута задачи для диаграммы Ганта */
+  type TGANTT_TASK_ATTR is record
+  (
+    SNAME                   PKG_STD.TSTRING, -- Наименование
+    SCAPTION                PKG_STD.TSTRING  -- Заголовок
+  );
+  
+  /* Типы данных - коллекция описаний атрибутов задачи для диаграммы Ганта */
+  type TGANTT_TASK_ATTRS is table of TGANTT_TASK_ATTR;
+
+  /* Типы данных - значение атрибута задачи для диаграммы Ганта */
+  type TGANTT_TASK_ATTR_VAL is record
+  (
+    SNAME                   PKG_STD.TSTRING, -- Наименование
+    SVALUE                  PKG_STD.TSTRING  -- Значение
+  );
+  
+  /* Типы данных - коллекция значений атрибутов задачи для диаграммы Ганта */
+  type TGANTT_TASK_ATTR_VALS is table of TGANTT_TASK_ATTR_VAL;
+  
+  /* Типы данных - коллекция ссылок на предшествующие задачи для диаграммы Ганта */
+  type TGANTT_TASK_DEPENDENCIES is table of PKG_STD.TREF;
+  
+  /* Тип данных - задача для диаграммы Ганта */
+  type TGANTT_TASK is record
+  (
+    NRN                     PKG_STD.TREF,                    -- Рег. номер
+    SNUMB                   PKG_STD.TSTRING,                 -- Номер
+    SCAPTION                PKG_STD.TSTRING,                 -- Заголовок
+    SNAME                   PKG_STD.TSTRING,                 -- Наименование
+    DSTART                  PKG_STD.TLDATE,                  -- Дата начала
+    DEND                    PKG_STD.TLDATE,                  -- Дата окончания
+    NPROGRESS               PKG_STD.TNUMBER := null,         -- Прогресс (% готовности) задачи (null - не определен)
+    SBG_COLOR               PKG_STD.TSTRING := null,         -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей)
+    STEXT_COLOR             PKG_STD.TSTRING := null,         -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей)
+    BREAD_ONLY              boolean := null,                 -- Сроки и прогресс задачи только для чтения (null - как указано в описании диаграммы)
+    BREAD_ONLY_DATES        boolean := null,                 -- Сроки задачи только для чтения (null - как указано в описании диаграммы)
+    BREAD_ONLY_PROGRESS     boolean := null,                 -- Прогресс задачи только для чтения (null - как указано в описании диаграммы)
+    RATTR_VALS              TGANTT_TASK_ATTR_VALS := null,   -- Значения дополнительных атрбутов (null - дополнительные атрибуты не определены)
+    RDEPENDENCIES           TGANTT_TASK_DEPENDENCIES := null -- Список предшествующих задач
+  );
+  
+  /* Тип данных - коллекция задач диаграммы Ганта */
+  type TGANTT_TASKS is table of TGANTT_TASK;
+  
+  /* Тип данных - описание цвета задач диаграммы Ганта */
+  type TGANTT_TASK_COLOR is record
+  (
+    SBG_COLOR               PKG_STD.TSTRING := null, -- Цвет заливки задачи
+    STEXT_COLOR             PKG_STD.TSTRING := null, -- Цвет текста заголовка задачи
+    SDESC                   PKG_STD.TSTRING          -- Описание
+  );
+  
+  /* Тип данных - коллекция описаний цветов задач диаграммы Ганта */
+  type TGANTT_TASK_COLORS is table of TGANTT_TASK_COLOR;
+  
+  /* Типы данных - диаграмма Ганта */
+  type TGANTT is record
+  (
+    STITLE                  PKG_STD.TSTRING := null,             -- Заголовок (null - не отображать)
+    NZOOM                   PKG_STD.TNUMBER := NGANTT_ZOOM_WEEK, -- Текущий масштаб (см. константы NGANTT_ZOOM_*)
+    BZOOM_BAR               boolean := true,                     -- Обображать панель масштабирования
+    BREAD_ONLY              boolean := false,                    -- Сроки и прогресс задач только для чтения
+    BREAD_ONLY_DATES        boolean := false,                    -- Сроки задач только для чтения
+    BREAD_ONLY_PROGRESS     boolean := false,                    -- Прогресс задач только для чтения
+    RTASK_ATTRS             TGANTT_TASK_ATTRS,                   -- Описание атрибутов карточки задачи
+    RTASK_COLORS            TGANTT_TASK_COLORS,                  -- Описание цветов задач
+    RTASKS                  TGANTT_TASKS                         -- Список задач
+  );
   
   /* Расчет диапаона выдаваемых записей */
   procedure UTL_ROWS_LIMITS_CALC
@@ -160,7 +237,7 @@ create or replace package PKG_P8PANELS_VISUAL as
     BCLEAR                  in boolean := false -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
   );
   
-  /* Формирование таблицы данныз */
+  /* Формирование таблицы данных */
   function TDATA_GRID_MAKE
   return                    TDATA_GRID; -- Результат работы
   
@@ -258,37 +335,138 @@ create or replace package PKG_P8PANELS_VISUAL as
     SPATTERN                in varchar2,       -- Шаблон для подстановки условий отбора в запрос
     CSQL                    in out nocopy clob -- Буфер запроса
   );
+  
+  /* Формирование задачи для диаграммы Ганта */
+  function TGANTT_TASK_MAKE
+  (
+    NRN                     in number,           -- Рег. номер
+    SNUMB                   in varchar2,         -- Номер
+    SCAPTION                in varchar2,         -- Заголовок
+    SNAME                   in varchar2,         -- Наименование    
+    DSTART                  in date,             -- Дата начала
+    DEND                    in date,             -- Дата окончания
+    NPROGRESS               in number := null,   -- Прогресс (% готовности) задачи (null - не определен)
+    SBG_COLOR               in varchar2 := null, -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей)
+    STEXT_COLOR             in varchar2 := null, -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей)
+    BREAD_ONLY              in boolean := null,  -- Сроки и прогресс задачи только для чтения (null - как указано в описании диаграммы)
+    BREAD_ONLY_DATES        in boolean := null,  -- Сроки задачи только для чтения (null - как указано в описании диаграммы)
+    BREAD_ONLY_PROGRESS     in boolean := null   -- Прогресс задачи только для чтения (null - как указано в описании диаграммы)
+  ) return                  TGANTT_TASK;         -- Результат работы
+  
+  /* Добавление значения атрибута к задаче диаграммы Ганта */
+  procedure TGANTT_TASK_ADD_ATTR_VAL
+  (
+    RGANTT                  in TGANTT,                 -- Описание диаграммы
+    RTASK                   in out nocopy TGANTT_TASK, -- Описание задачи
+    SNAME                   in varchar2,               -- Наименование
+    SVALUE                  in varchar2,               -- Значение
+    BCLEAR                  in boolean := false        -- Флаг очистки коллекции значений атрибутов (false - не очищать, true - очистить коллекцию перед добавлением)
+  );
+  
+  /* Добавление предшествующей задачи к задаче диаграммы Ганта */
+  procedure TGANTT_TASK_ADD_DEPENDENCY
+  (
+    RTASK                   in out nocopy TGANTT_TASK, -- Описание задачи
+    NDEPENDENCY             in number,                 -- Рег. номер предшествующей задачи
+    BCLEAR                  in boolean := false        -- Флаг очистки коллекции предшествущих задач (false - не очищать, true - очистить коллекцию перед добавлением)
+  );
+  
+  /* Формирование диаграммы Ганта */
+  function TGANTT_MAKE
+  (
+    STITLE                  in varchar2 := null,           -- Заголовок (null - не отображать)
+    NZOOM                   in number := NGANTT_ZOOM_WEEK, -- Текущий масштаб (см. константы NGANTT_ZOOM_*)
+    BZOOM_BAR               in boolean := true,            -- Обображать панель масштабирования
+    BREAD_ONLY              in boolean := false,           -- Сроки и прогресс задач только для чтения
+    BREAD_ONLY_DATES        in boolean := false,           -- Сроки задач только для чтения
+    BREAD_ONLY_PROGRESS     in boolean := false            -- Прогресс задач только для чтения
+  ) return                  TGANTT;                        -- Результат работы
+  
+  /* Добавление описания атрибута карточки задачи диаграммы Ганта */
+  procedure TGANTT_ADD_TASK_ATTR
+  (
+    RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
+    SNAME                   in varchar2,          -- Наименование
+    SCAPTION                in varchar2,          -- Заголовок
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции атрибутов (false - не очищать, true - очистить коллекцию перед добавлением)
+  );
+
+  /* Добавление описания цвета задачи диаграммы Ганта */
+  procedure TGANTT_ADD_TASK_COLOR
+  (
+    RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
+    SBG_COLOR               in varchar2 := null,  -- Цвет заливки задачи
+    STEXT_COLOR             in varchar2 := null,  -- Цвет текста заголовка задачи
+    SDESC                   in varchar2,          -- Описание
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции атрибутов (false - не очищать, true - очистить коллекцию перед добавлением)
+  );
+
+  /* Добавление задачи к диаграмме Ганта */
+  procedure TGANTT_ADD_TASK
+  (
+    RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
+    RTASK                   in TGANTT_TASK,       -- Задача
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции задач диаграммы (false - не очищать, true - очистить коллекцию перед добавлением)
+  );
+  
+  /* Сериализация диаграммы Ганта */
+  function TGANTT_TO_XML
+  (
+    RGANTT                  in TGANTT,     -- Описание диаграммы Ганта
+    NINCLUDE_DEF            in number := 1 -- Включить описание заголовка (0 - нет, 1 - да)
+  ) return                  clob;          -- XML-описание
 
 end PKG_P8PANELS_VISUAL;
 /
 create or replace package body PKG_P8PANELS_VISUAL as
 
   /* Константы - тэги запросов */
-  SRQ_TAG_XROOT           constant PKG_STD.TSTRING := 'XROOT';     -- Тэг для корня данных запроса
-  SRQ_TAG_XFILTERS        constant PKG_STD.TSTRING := 'filters';   -- Тэг для строк данных
-  SRQ_TAG_XORDERS         constant PKG_STD.TSTRING := 'orders';    -- Тэг для описания колонок
-  SRQ_TAG_SNAME           constant PKG_STD.TSTRING := 'name';      -- Тэг для наименования
-  SRQ_TAG_SDIRECTION      constant PKG_STD.TSTRING := 'direction'; -- Тэг для направления
-  SRQ_TAG_SFROM           constant PKG_STD.TSTRING := 'from';      -- Тэг для значения "с"
-  SRQ_TAG_STO             constant PKG_STD.TSTRING := 'to';        -- Тэг для значения "по"
+  SRQ_TAG_XROOT               constant PKG_STD.TSTRING := 'XROOT';     -- Тэг для корня данных запроса
+  SRQ_TAG_XFILTERS            constant PKG_STD.TSTRING := 'filters';   -- Тэг для строк данных
+  SRQ_TAG_XORDERS             constant PKG_STD.TSTRING := 'orders';    -- Тэг для описания колонок
+  SRQ_TAG_SNAME               constant PKG_STD.TSTRING := 'name';      -- Тэг для наименования
+  SRQ_TAG_SDIRECTION          constant PKG_STD.TSTRING := 'direction'; -- Тэг для направления
+  SRQ_TAG_SFROM               constant PKG_STD.TSTRING := 'from';      -- Тэг для значения "с"
+  SRQ_TAG_STO                 constant PKG_STD.TSTRING := 'to';        -- Тэг для значения "по"
 
   /* Константы - тэги ответов */
-  SRESP_TAG_XDATA           constant PKG_STD.TSTRING := 'XDATA';        -- Тэг для корня описания данных
-  SRESP_TAG_XROWS           constant PKG_STD.TSTRING := 'XROWS';        -- Тэг для строк данных
-  SRESP_TAG_XCOLUMNS_DEF    constant PKG_STD.TSTRING := 'XCOLUMNS_DEF'; -- Тэг для описания колонок
-
+  SRESP_TAG_XDATA             constant PKG_STD.TSTRING := 'XDATA';             -- Тэг для корня описания данных
+  SRESP_TAG_XROWS             constant PKG_STD.TSTRING := 'XROWS';             -- Тэг для строк данных
+  SRESP_TAG_XCOLUMNS_DEF      constant PKG_STD.TSTRING := 'XCOLUMNS_DEF';      -- Тэг для описания колонок
+  SRESP_TAG_XGANTT_DEF        constant PKG_STD.TSTRING := 'XGANTT_DEF';        -- Тэг для описания заголовка диаграммы Ганта
+  SRESP_TAG_XGANTT_TASKS      constant PKG_STD.TSTRING := 'XGANTT_TASKS';      -- Тэг для описания коллекции задач диаграммы Ганта
+  
   /* Константы - атрибуты ответов */
-  SRESP_ATTR_NAME           constant PKG_STD.TSTRING := 'name';     -- Атрибут для наименования
-  SRESP_ATTR_CAPTION        constant PKG_STD.TSTRING := 'caption';  -- Атрибут для подписи
-  SRESP_ATTR_DATA_TYPE      constant PKG_STD.TSTRING := 'dataType'; -- Атрибут для типа данных
-  SRESP_ATTR_VISIBLE        constant PKG_STD.TSTRING := 'visible';  -- Атрибут для флага видимости
-  SRESP_ATTR_ORDER          constant PKG_STD.TSTRING := 'order';    -- Атрибут для флага сортировки
-  SRESP_ATTR_FILTER         constant PKG_STD.TSTRING := 'filter';   -- Атрибут для флага отбора
-  SRESP_ATTR_VALUES         constant PKG_STD.TSTRING := 'values';   -- Атрибут для значений
+  SRESP_ATTR_NAME             constant PKG_STD.TSTRING := 'name';             -- Атрибут для наименования
+  SRESP_ATTR_CAPTION          constant PKG_STD.TSTRING := 'caption';          -- Атрибут для подписи
+  SRESP_ATTR_DATA_TYPE        constant PKG_STD.TSTRING := 'dataType';         -- Атрибут для типа данных
+  SRESP_ATTR_VISIBLE          constant PKG_STD.TSTRING := 'visible';          -- Атрибут для флага видимости
+  SRESP_ATTR_ORDER            constant PKG_STD.TSTRING := 'order';            -- Атрибут для флага сортировки
+  SRESP_ATTR_FILTER           constant PKG_STD.TSTRING := 'filter';           -- Атрибут для флага отбора
+  SRESP_ATTR_VALUES           constant PKG_STD.TSTRING := 'values';           -- Атрибут для значений
+  SRESP_ATTR_TITLE            constant PKG_STD.TSTRING := 'title';            -- Атрибут для заголовка
+  SRESP_ATTR_ZOOM             constant PKG_STD.TSTRING := 'zoom';             -- Атрибут для масштаба
+  SRESP_ATTR_ZOOM_BAR         constant PKG_STD.TSTRING := 'zoomBar';          -- Атрибут для флага отображения панели масштаба
+  SRESP_ATTR_ID               constant PKG_STD.TSTRING := 'id';               -- Атрибут для идентификатора
+  SRESP_ATTR_START            constant PKG_STD.TSTRING := 'start';            -- Атрибут для даты начала
+  SRESP_ATTR_END              constant PKG_STD.TSTRING := 'end';              -- Атрибут для даты окончания
+  SRESP_ATTR_PROGRESS         constant PKG_STD.TSTRING := 'progress';         -- Атрибут для прогресса
+  SRESP_ATTR_DEPENDENCIES     constant PKG_STD.TSTRING := 'dependencies';     -- Атрибут для записемостей
+  SRESP_ATTR_READ_ONLY        constant PKG_STD.TSTRING := 'readOnly';         -- Атрибут для флага "только для чтения"
+  SRESP_ATTR_READ_ONLY_PRGRS  constant PKG_STD.TSTRING := 'readOnlyProgress'; -- Атрибут для флага "прогресс только для чтения"
+  SRESP_ATTR_READ_ONLY_DATES  constant PKG_STD.TSTRING := 'readOnlyDates';    -- Атрибут для флага "даты только для чтения"
+  SRESP_ATTR_BG_COLOR         constant PKG_STD.TSTRING := 'bgColor';          -- Атрибут для цвета заголовка
+  SRESP_ATTR_TEXT_COLOR       constant PKG_STD.TSTRING := 'textColor';        -- Атрибут для цвета текста
+  SRESP_ATTR_RN               constant PKG_STD.TSTRING := 'rn';               -- Атрибут для рег. номера
+  SRESP_ATTR_NUMB             constant PKG_STD.TSTRING := 'numb';             -- Атрибут для номера
+  SRESP_ATTR_FULL_NAME        constant PKG_STD.TSTRING := 'fullName';         -- Атрибут для полного наименования
+  SRESP_ATTR_TASK_ATTRIBUTES  constant PKG_STD.TSTRING := 'taskAttributes';   -- Атрибут для коллекции атрибутов задачи
+  SRESP_ATTR_TASK_COLORS      constant PKG_STD.TSTRING := 'taskColors';       -- Атрибут для коллекции цветов задачи
+  SRESP_ATTR_DESC             constant PKG_STD.TSTRING := 'desc';             -- Атрибут для описания
   
   /* Константы - параметры условий отбора */
-  SCOND_FROM_POSTFIX        constant PKG_STD.TSTRING := 'From'; -- Постфикс наименования нижней границы условия отбора
-  SCOND_TO_POSTFIX          constant PKG_STD.TSTRING := 'To';   -- Постфикс наименования верхней границы условия отбора
+  SCOND_FROM_POSTFIX          constant PKG_STD.TSTRING := 'From'; -- Постфикс наименования нижней границы условия отбора
+  SCOND_TO_POSTFIX            constant PKG_STD.TSTRING := 'To';   -- Постфикс наименования верхней границы условия отбора
 
   /* Расчет диапаона выдаваемых записей */
   procedure UTL_ROWS_LIMITS_CALC
@@ -672,7 +850,7 @@ create or replace package body PKG_P8PANELS_VISUAL as
     end if;
   end TROWS_TO_XML;
   
-  /* Формирование таблицы данныз */
+  /* Формирование таблицы данных */
   function TDATA_GRID_MAKE
   return                    TDATA_GRID  -- Результат работы
   is
@@ -763,7 +941,7 @@ create or replace package body PKG_P8PANELS_VISUAL as
       TCOL_DEFS_TO_XML(RCOL_DEFS => RDATA_GRID.RCOL_DEFS);
     end if;
     /* Формируем описание строк */
-    TROWS_TO_XML(RCOL_DEFS => RDATA_GRID.RCOL_DEFS,RROWS => RDATA_GRID.RROWS);
+    TROWS_TO_XML(RCOL_DEFS => RDATA_GRID.RCOL_DEFS, RROWS => RDATA_GRID.RROWS);
     /* Закрываем корень */
     PKG_XFAST.UP();
     /* Сериализуем */
@@ -1126,6 +1304,429 @@ create or replace package body PKG_P8PANELS_VISUAL as
     end if;
     CSQL := replace(CSQL, SPATTERN, CSQL_ORDERS);
   end TORDERS_SET_QUERY;
+  
+  /* Проверка корректности наименования дополнительного атрибута задачи диаграммы Ганта */
+  procedure TGANTT_TASK_ATTR_NAME_CHECK
+  (
+    SNAME                   in varchar2 -- Наименование
+  )
+  is
+  begin
+    if (SNAME in (SRESP_ATTR_ID,
+                  SRESP_ATTR_RN,
+                  SRESP_ATTR_NUMB,
+                  SRESP_ATTR_CAPTION,
+                  SRESP_ATTR_FULL_NAME,
+                  SRESP_ATTR_START,
+                  SRESP_ATTR_END,
+                  SRESP_ATTR_PROGRESS,
+                  SRESP_ATTR_BG_COLOR,
+                  SRESP_ATTR_TEXT_COLOR,                  
+                  SRESP_ATTR_READ_ONLY,
+                  SRESP_ATTR_READ_ONLY_PRGRS,
+                  SRESP_ATTR_READ_ONLY_DATES,
+                  SRESP_ATTR_DEPENDENCIES)) then
+      P_EXCEPTION(0,
+                  'Наименование атрибута "%s" является зарезервированным.',
+                  SNAME);
+    end if;
+  end TGANTT_TASK_ATTR_NAME_CHECK;
+  
+  /* Поиск атрибута задачи диаграммы Ганта по наименованию */
+  function TGANTT_TASK_ATTR_FIND
+  (
+    RTASK_ATTRS             in TGANTT_TASK_ATTRS, -- Описание атрибутов задачи диаграммы Ганта
+    SNAME                   in varchar2           -- Наименование
+  ) return                  TGANTT_TASK_ATTR      -- Найденное описание (null - если не нашли)
+  is
+  begin
+    /* Обходим атрибуты из описания */
+    if ((RTASK_ATTRS is not null) and (RTASK_ATTRS.COUNT > 0)) then
+      for I in RTASK_ATTRS.FIRST .. RTASK_ATTRS.LAST
+      loop
+        if (RTASK_ATTRS(I).SNAME = SNAME) then
+          return RTASK_ATTRS(I);
+        end if;
+      end loop;
+    end if;
+    /* Ничего не нашли */
+    return null;
+  end TGANTT_TASK_ATTR_FIND;
+  
+  /* Поиск цвета задачи диаграммы Ганта по параметрам */
+  function TGANTT_TASK_COLOR_FIND
+  (
+    RTASK_COLORS            in TGANTT_TASK_COLORS, -- Описание цветов задачи диаграммы Ганта
+    SBG_COLOR               in varchar2 := null,   -- Цвет заливки задачи
+    STEXT_COLOR             in varchar2 := null    -- Цвет текста заголовка задачи
+  ) return                  TGANTT_TASK_COLOR      -- Найденное описание цвета (null - если не нашли)
+  is
+  begin
+    /* Обходим цвета из описания */
+    if ((RTASK_COLORS is not null) and (RTASK_COLORS.COUNT > 0)) then
+      for I in RTASK_COLORS.FIRST .. RTASK_COLORS.LAST
+      loop
+        if ((CMP_VC2(V1 => RTASK_COLORS(I).SBG_COLOR, V2 => SBG_COLOR) = 1) and
+           (CMP_VC2(V1 => RTASK_COLORS(I).STEXT_COLOR, V2 => STEXT_COLOR) = 1)) then
+          return RTASK_COLORS(I);
+        end if;
+      end loop;
+    end if;
+    /* Ничего не нашли */
+    return null;
+  end TGANTT_TASK_COLOR_FIND;
+  
+  /* Формирование задачи для диаграммы Ганта */
+  function TGANTT_TASK_MAKE
+  (
+    NRN                     in number,           -- Рег. номер
+    SNUMB                   in varchar2,         -- Номер
+    SCAPTION                in varchar2,         -- Заголовок
+    SNAME                   in varchar2,         -- Наименование
+    DSTART                  in date,             -- Дата начала
+    DEND                    in date,             -- Дата окончания
+    NPROGRESS               in number := null,   -- Прогресс (% готовности) задачи (null - не определен)
+    SBG_COLOR               in varchar2 := null, -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей)
+    STEXT_COLOR             in varchar2 := null, -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей)
+    BREAD_ONLY              in boolean := null,  -- Сроки и прогресс задачи только для чтения (null - как указано в описании диаграммы)
+    BREAD_ONLY_DATES        in boolean := null,  -- Сроки задачи только для чтения (null - как указано в описании диаграммы)
+    BREAD_ONLY_PROGRESS     in boolean := null   -- Прогресс задачи только для чтения (null - как указано в описании диаграммы)
+  ) return                  TGANTT_TASK          -- Результат работы
+  is
+    RRES                    TGANTT_TASK;         -- Буфер для результата
+  begin
+    /* Проверим параметры */
+    if ((NRN is null) or (SNUMB is null) or (SCAPTION is null) or (SNAME is null) or (DSTART is null) or (DEND is null)) then
+      P_EXCEPTION(0,
+                  'Регистрационный номер, номер, заголовок, наименование, даты начала и окончания являются обязательными при создании задачи для диаграммы Ганта.');
+    end if;
+    if ((NPROGRESS is not null) and (not (NPROGRESS between 0 and 100))) then
+      P_EXCEPTION(0, 'Прогресс задачи должен быть значением от 0 до 100');
+    end if;
+    /* Формируем объект */
+    RRES.NRN                 := NRN;
+    RRES.SNUMB               := SNUMB;
+    RRES.SCAPTION            := SCAPTION;
+    RRES.SNAME               := SNAME;
+    RRES.DSTART              := DSTART;
+    RRES.DEND                := DEND;
+    RRES.NPROGRESS           := NPROGRESS;
+    RRES.SBG_COLOR           := SBG_COLOR;
+    RRES.STEXT_COLOR         := STEXT_COLOR;
+    RRES.BREAD_ONLY          := BREAD_ONLY;
+    RRES.BREAD_ONLY_DATES    := BREAD_ONLY_DATES;
+    RRES.BREAD_ONLY_PROGRESS := BREAD_ONLY_PROGRESS;
+    RRES.RATTR_VALS          := TGANTT_TASK_ATTR_VALS();
+    RRES.RDEPENDENCIES       := TGANTT_TASK_DEPENDENCIES();
+    /* Возвращаем результат */
+    return RRES;
+  end TGANTT_TASK_MAKE;
+  
+  /* Добавление значения атрибута к задаче диаграммы Ганта */
+  procedure TGANTT_TASK_ADD_ATTR_VAL
+  (
+    RGANTT                  in TGANTT,                 -- Описание диаграммы
+    RTASK                   in out nocopy TGANTT_TASK, -- Описание задачи
+    SNAME                   in varchar2,               -- Наименование
+    SVALUE                  in varchar2,               -- Значение
+    BCLEAR                  in boolean := false        -- Флаг очистки коллекции значений атрибутов (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Проверим наименование */
+    TGANTT_TASK_ATTR_NAME_CHECK(SNAME => SNAME);
+    /* Проверим, что такой атрибут зарегистрирован */
+    if (TGANTT_TASK_ATTR_FIND(RTASK_ATTRS => RGANTT.RTASK_ATTRS, SNAME => SNAME).SNAME is null) then
+      P_EXCEPTION(0,
+                  'Атрибут "%s" задачи диаграммы Ганта не зарегистрирован.',
+                  SNAME);
+    end if;
+    /* Инициализируем коллекцию если необходимо */
+    if ((RTASK.RATTR_VALS is null) or (BCLEAR)) then
+      RTASK.RATTR_VALS := TGANTT_TASK_ATTR_VALS();
+    end if;
+    /* Добавляем элемент */
+    RTASK.RATTR_VALS.EXTEND();
+    RTASK.RATTR_VALS(RTASK.RATTR_VALS.LAST).SNAME := SNAME;
+    RTASK.RATTR_VALS(RTASK.RATTR_VALS.LAST).SVALUE := SVALUE;
+  end TGANTT_TASK_ADD_ATTR_VAL;
+  
+  /* Добавление предшествующей задачи к задаче диаграммы Ганта */
+  procedure TGANTT_TASK_ADD_DEPENDENCY
+  (
+    RTASK                   in out nocopy TGANTT_TASK, -- Описание задачи
+    NDEPENDENCY             in number,                 -- Рег. номер предшествующей задачи
+    BCLEAR                  in boolean := false        -- Флаг очистки коллекции предшествущих задач (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Инициализируем коллекцию если необходимо */
+    if ((RTASK.RDEPENDENCIES is null) or (BCLEAR)) then
+      RTASK.RDEPENDENCIES := TGANTT_TASK_DEPENDENCIES();
+    end if;
+    /* Добавляем элемент */
+    RTASK.RDEPENDENCIES.EXTEND();
+    RTASK.RDEPENDENCIES(RTASK.RDEPENDENCIES.LAST) := NDEPENDENCY;
+  end TGANTT_TASK_ADD_DEPENDENCY;
+  
+  /* Сериализация описания задач диаграммы Ганта */
+  procedure TGANTT_TASKS_TO_XML
+  (
+    RTASKS                  in TGANTT_TASKS   -- Коллекция задач диаграммы Ганта
+  )
+  is
+    SDEPS                   PKG_STD.TLSTRING; -- Буфер для списка зависимых
+  begin
+    /* Обходим задачи из коллекции */
+    if ((RTASKS is not null) and (RTASKS.COUNT > 0)) then
+      for I in RTASKS.FIRST .. RTASKS.LAST
+      loop
+        /* Открываем строку */
+        PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XGANTT_TASKS);
+        /* Статические тарибуты */
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_ID, SVALUE => 'taskId' || RTASKS(I).NRN);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_RN, NVALUE => RTASKS(I).NRN);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_NUMB, SVALUE => RTASKS(I).SNUMB);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_NAME, SVALUE => RTASKS(I).SCAPTION);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_FULL_NAME, SVALUE => RTASKS(I).SNAME);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_START, DVALUE => RTASKS(I).DSTART);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_END, DVALUE => RTASKS(I).DEND);
+        if (RTASKS(I).NPROGRESS is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_PROGRESS, NVALUE => RTASKS(I).NPROGRESS);
+        end if;
+        if (RTASKS(I).SBG_COLOR is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_BG_COLOR, SVALUE => RTASKS(I).SBG_COLOR);
+        end if;
+        if (RTASKS(I).STEXT_COLOR is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TEXT_COLOR, SVALUE => RTASKS(I).STEXT_COLOR);
+        end if;
+        if (RTASKS(I).BREAD_ONLY is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY, BVALUE => RTASKS(I).BREAD_ONLY);
+        end if;
+        if (RTASKS(I).BREAD_ONLY_DATES is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY_DATES, BVALUE => RTASKS(I).BREAD_ONLY_DATES);
+        end if;
+        if (RTASKS(I).BREAD_ONLY_PROGRESS is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY_PRGRS, BVALUE => RTASKS(I).BREAD_ONLY_PROGRESS);
+        end if;
+        if ((RTASKS(I).RDEPENDENCIES is not null) and (RTASKS(I).RDEPENDENCIES.COUNT > 0)) then
+          SDEPS := null;
+          for J in RTASKS(I).RDEPENDENCIES.FIRST .. RTASKS(I).RDEPENDENCIES.LAST
+          loop
+            SDEPS := COALESCE(SDEPS, '') || 'taskId' || TO_CHAR(RTASKS(I).RDEPENDENCIES(J)) || ',';
+          end loop;
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DEPENDENCIES, SVALUE => RTRIM(SDEPS, ','));
+        end if;
+        /* Динамические атрибуты */
+        if ((RTASKS(I).RATTR_VALS is not null) and (RTASKS(I).RATTR_VALS.COUNT > 0)) then
+          for J in RTASKS(I).RATTR_VALS.FIRST .. RTASKS(I).RATTR_VALS.LAST
+          loop
+            PKG_XFAST.ATTR(SNAME => RTASKS(I).RATTR_VALS(J).SNAME, SVALUE => RTASKS(I).RATTR_VALS(J).SVALUE);
+          end loop;
+        end if;
+        /* Закрываем задачу */
+        PKG_XFAST.UP();
+      end loop;
+    end if;
+  end TGANTT_TASKS_TO_XML;
+
+  /* Формирование диаграммы Ганта */
+  function TGANTT_MAKE
+  (
+    STITLE                  in varchar2 := null,           -- Заголовок (null - не отображать)
+    NZOOM                   in number := NGANTT_ZOOM_WEEK, -- Текущий масштаб (см. константы NGANTT_ZOOM_*)
+    BZOOM_BAR               in boolean := true,            -- Обображать панель масштабирования
+    BREAD_ONLY              in boolean := false,           -- Сроки и прогресс задач только для чтения
+    BREAD_ONLY_DATES        in boolean := false,           -- Сроки задач только для чтения
+    BREAD_ONLY_PROGRESS     in boolean := false            -- Прогресс задач только для чтения
+  ) return                  TGANTT                         -- Результат работы
+  is
+    RRES                    TGANTT;                        -- Буфер для результата
+  begin
+    /* Формируем объект */
+    RRES.STITLE              := STITLE;
+    RRES.NZOOM               := COALESCE(NZOOM, NGANTT_ZOOM_WEEK);
+    RRES.BZOOM_BAR           := COALESCE(BZOOM_BAR, true);
+    RRES.BREAD_ONLY          := COALESCE(BREAD_ONLY, false);
+    RRES.BREAD_ONLY_DATES    := COALESCE(BREAD_ONLY_DATES, false);
+    RRES.BREAD_ONLY_PROGRESS := COALESCE(BREAD_ONLY_PROGRESS, false);
+    RRES.RTASK_ATTRS         := TGANTT_TASK_ATTRS();
+    RRES.RTASK_COLORS        := TGANTT_TASK_COLORS();
+    RRES.RTASKS              := TGANTT_TASKS();
+    /* Возвращаем результат */
+    return RRES;
+  end TGANTT_MAKE;
+  
+  /* Добавление описания атрибута карточки задачи диаграммы Ганта */
+  procedure TGANTT_ADD_TASK_ATTR
+  (
+    RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
+    SNAME                   in varchar2,          -- Наименование
+    SCAPTION                in varchar2,          -- Заголовок
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции атрибутов (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Проверим наименование */
+    TGANTT_TASK_ATTR_NAME_CHECK(SNAME => SNAME);
+    /* Проверим, что такого ещё нет */
+    if (TGANTT_TASK_ATTR_FIND(RTASK_ATTRS => RGANTT.RTASK_ATTRS, SNAME => SNAME).SNAME is not null) then
+      P_EXCEPTION(0,
+                  'Атрибут "%s" задачи диаграммы Ганта уже зарегистрирован.',
+                  SNAME);
+    end if;
+    /* Инициализируем коллекцию если необходимо */
+    if ((RGANTT.RTASK_ATTRS is null) or (BCLEAR)) then
+      RGANTT.RTASK_ATTRS := TGANTT_TASK_ATTRS();
+    end if;
+    /* Добавляем элемент */
+    RGANTT.RTASK_ATTRS.EXTEND();
+    RGANTT.RTASK_ATTRS(RGANTT.RTASK_ATTRS.LAST).SNAME := SNAME;
+    RGANTT.RTASK_ATTRS(RGANTT.RTASK_ATTRS.LAST).SCAPTION := SCAPTION;
+  end TGANTT_ADD_TASK_ATTR;
+
+  /* Добавление описания цвета задачи диаграммы Ганта */
+  procedure TGANTT_ADD_TASK_COLOR
+  (
+    RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
+    SBG_COLOR               in varchar2 := null,  -- Цвет заливки задачи
+    STEXT_COLOR             in varchar2 := null,  -- Цвет текста заголовка задачи
+    SDESC                   in varchar2,          -- Описание
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции атрибутов (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Проверим параметры */
+    if ((SBG_COLOR is null) and (STEXT_COLOR is null)) then
+      P_EXCEPTION(0,
+                  'Должен быть указан цвет заливки или цвет текста задачи.');
+    end if;
+    if (SDESC is null) then
+      P_EXCEPTION(0, 'Описание цвета должно быть задано.');
+    end if;
+    /* Проверим, что такого ещё нет */
+    if (TGANTT_TASK_COLOR_FIND(RTASK_COLORS => RGANTT.RTASK_COLORS, SBG_COLOR => SBG_COLOR, STEXT_COLOR => STEXT_COLOR)
+       .SDESC is not null) then
+      P_EXCEPTION(0,
+                  'Такое описание цвета для задачи диаграммы Ганта уже зарегистрировано.');
+    end if;
+    /* Инициализируем коллекцию если необходимо */
+    if ((RGANTT.RTASK_COLORS is null) or (BCLEAR)) then
+      RGANTT.RTASK_COLORS := TGANTT_TASK_COLORS();
+    end if;
+    /* Добавляем элемент */
+    RGANTT.RTASK_COLORS.EXTEND();
+    RGANTT.RTASK_COLORS(RGANTT.RTASK_COLORS.LAST).SBG_COLOR := SBG_COLOR;
+    RGANTT.RTASK_COLORS(RGANTT.RTASK_COLORS.LAST).STEXT_COLOR := STEXT_COLOR;
+    RGANTT.RTASK_COLORS(RGANTT.RTASK_COLORS.LAST).SDESC := SDESC;
+  end TGANTT_ADD_TASK_COLOR;
+
+  /* Добавление задачи к диаграмме Ганта */
+  procedure TGANTT_ADD_TASK
+  (
+    RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
+    RTASK                   in TGANTT_TASK,       -- Задача
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции задач диаграммы (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Инициализируем коллекцию если необходимо */
+    if ((RGANTT.RTASKS is null) or (BCLEAR)) then
+      RGANTT.RTASKS := TGANTT_TASKS();
+    end if;
+    /* Добавляем элемент */
+    RGANTT.RTASKS.EXTEND();
+    RGANTT.RTASKS(RGANTT.RTASKS.LAST) := RTASK;
+  end TGANTT_ADD_TASK;
+  
+  /* Сериализация описания заголовка диаграммы Ганта */
+  procedure TGANTT_DEF_TO_XML
+  (
+    RGANTT                  in TGANTT   -- Описание диаграммы Ганта
+  )
+  is    
+  begin
+    /* Открываем описание заголовка */
+    PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XGANTT_DEF);
+    /* Cтатические атрибуты заголовка */
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TITLE, SVALUE => RGANTT.STITLE);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_ZOOM, NVALUE => RGANTT.NZOOM);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_ZOOM_BAR, BVALUE => RGANTT.BZOOM_BAR);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY, BVALUE => RGANTT.BREAD_ONLY);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY_DATES, BVALUE => RGANTT.BREAD_ONLY_DATES);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY_PRGRS, BVALUE => RGANTT.BREAD_ONLY_PROGRESS);
+    /* Если есть динамические атрибуты */
+    if ((RGANTT.RTASK_ATTRS is not null) and (RGANTT.RTASK_ATTRS.COUNT > 0)) then
+      /* Обходим динамические атрибуты задачи */
+      for I in RGANTT.RTASK_ATTRS.FIRST .. RGANTT.RTASK_ATTRS.LAST
+      loop
+        /* Открываем динамический атрибут задачи */
+        PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_TASK_ATTRIBUTES);
+        /* Наполняем его атрибутами */
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_NAME, SVALUE => RGANTT.RTASK_ATTRS(I).SNAME);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_CAPTION, SVALUE => RGANTT.RTASK_ATTRS(I).SCAPTION);
+        /* Закрываем динамический атрибут задачи */
+        PKG_XFAST.UP();
+      end loop;
+    end if;
+    /* Если есть описание цветов */
+    if ((RGANTT.RTASK_COLORS is not null) and (RGANTT.RTASK_COLORS.COUNT > 0)) then
+      /* Обходим описание цветов задачи */
+      for I in RGANTT.RTASK_COLORS.FIRST .. RGANTT.RTASK_COLORS.LAST
+      loop
+        /* Открываем описание цвета задачи */
+        PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_TASK_COLORS);
+        /* Наполняем его атрибутами */
+        if (RGANTT.RTASK_COLORS(I).SBG_COLOR is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_BG_COLOR, SVALUE => RGANTT.RTASK_COLORS(I).SBG_COLOR);
+        end if;
+        if (RGANTT.RTASK_COLORS(I).STEXT_COLOR is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TEXT_COLOR, SVALUE => RGANTT.RTASK_COLORS(I).STEXT_COLOR);
+        end if;
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DESC, SVALUE => RGANTT.RTASK_COLORS(I).SDESC);
+        /* Закрываем описание цвета задачи */
+        PKG_XFAST.UP();
+      end loop;
+    end if;
+    /* Закрываем описание заголовка */
+    PKG_XFAST.UP();
+  end TGANTT_DEF_TO_XML;
+  
+  /* Сериализация диаграммы Ганта */
+  function TGANTT_TO_XML
+  (
+    RGANTT                  in TGANTT,     -- Описание диаграммы Ганта
+    NINCLUDE_DEF            in number := 1 -- Включить описание заголовка (0 - нет, 1 - да)
+  ) return                  clob           -- XML-описание
+  is
+    CRES                    clob;          -- Буфер для результата
+  begin
+    /* Начинаем формирование XML */
+    PKG_XFAST.PROLOGUE(ITYPE => PKG_XFAST.CONTENT_);
+    /* Открываем корень */
+    PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XDATA);
+    /* Если необходимо включить описание колонок */
+    if (NINCLUDE_DEF = 1) then
+      TGANTT_DEF_TO_XML(RGANTT => RGANTT);
+    end if;
+    /* Формируем описание задач */
+    TGANTT_TASKS_TO_XML(RTASKS => RGANTT.RTASKS);
+    /* Закрываем корень */
+    PKG_XFAST.UP();
+    /* Сериализуем */
+    CRES := PKG_XFAST.SERIALIZE_TO_CLOB();
+    /* Завершаем формирование XML */
+    PKG_XFAST.EPILOGUE();
+    /* Возвращаем полученное */
+    return CRES;
+  exception
+    when others then
+      /* Завершаем формирование XML */
+      PKG_XFAST.EPILOGUE();
+      /* Вернем ошибку */
+      PKG_STATE.DIAGNOSTICS_STACKED();
+      P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
+  end TGANTT_TO_XML;  
   
 end PKG_P8PANELS_VISUAL;
 /
