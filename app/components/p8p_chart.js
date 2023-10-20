@@ -96,7 +96,7 @@ const P8PChart = ({ type, title, legendPosition, options, labels, datasets, onCl
     //Генерация содержимого
     return (
         <div style={{ ...style }}>
-            <canvas id="myChart" ref={chartCanvasRef} />
+            <canvas ref={chartCanvasRef} />
         </div>
     );
 };
