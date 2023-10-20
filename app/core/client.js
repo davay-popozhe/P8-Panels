@@ -44,7 +44,9 @@ const XML_ALWAYS_ARRAY_PATHS = [
     "XRESPOND.XPAYLOAD.XGANTT_TASKS",
     "XRESPOND.XPAYLOAD.XGANTT_TASKS.dependencies",
     "XRESPOND.XPAYLOAD.XCHART.labels",
-    "XRESPOND.XPAYLOAD.XCHART.datasets"
+    "XRESPOND.XPAYLOAD.XCHART.datasets",
+    "XRESPOND.XPAYLOAD.XCHART.datasets.data",
+    "XRESPOND.XPAYLOAD.XCHART.datasets.items"
 ];
 
 //Типовой постфикс тега для массива (при переводе XML -> JSON)
