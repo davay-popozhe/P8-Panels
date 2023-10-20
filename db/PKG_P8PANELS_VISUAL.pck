@@ -50,7 +50,8 @@ create or replace package PKG_P8PANELS_VISUAL as
     BVISIBLE                boolean,         -- Разрешить отображение
     BORDER                  boolean,         -- Разрешить сортировку
     BFILTER                 boolean,         -- Разрешить отбор
-    RCOL_VALS               TCOL_VALS        -- Предопределённые значения
+    RCOL_VALS               TCOL_VALS,       -- Предопределённые значения
+    SHINT                   PKG_STD.TSTRING  -- Текст всплывающей подсказки
   );
   
   /* Типы данных - коллекция описателей колонок таблицы данных */
@@ -318,6 +319,7 @@ create or replace package PKG_P8PANELS_VISUAL as
     BORDER                  in boolean := false,           -- Разрешить сортировку по колонке
     BFILTER                 in boolean := false,           -- Разрешить отбор по колонке
     RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения колонки
+    SHINT                   in varchar2 := null,           -- Текст всплывающей подсказки    
     BCLEAR                  in boolean := false            -- Флаг очистки коллекции описаний колонок таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
   );
   
@@ -569,6 +571,7 @@ text="Формат data_grid и gant как в chart"
   SRESP_ATTR_FULL_NAME        constant PKG_STD.TSTRING := 'fullName'; -- Атрибут для полного наименования
   SRESP_ATTR_DESC             constant PKG_STD.TSTRING := 'desc';     -- Атрибут для описания
   SRESP_ATTR_TYPE             constant PKG_STD.TSTRING := 'type';     -- Атрибут для типа
+  SRESP_ATTR_HINT             constant PKG_STD.TSTRING := 'hint';     -- Атрибут для подсказки
 
   /* Константы - атрибуты ответов (таблица данных) */
   SRESP_ATTR_DT_ORDER         constant PKG_STD.TSTRING := 'order';  -- Атрибут для флага сортировки
@@ -691,7 +694,8 @@ text="Формат data_grid и gant как в chart"
     BVISIBLE                in boolean := true,            -- Разрешить отображение
     BORDER                  in boolean := false,           -- Разрешить сортировку
     BFILTER                 in boolean := false,           -- Разрешить отбор
-    RCOL_VALS               in TCOL_VALS := null           -- Предопределённые значения
+    RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения
+    SHINT                   in varchar2 := null            -- Текст всплывающей подсказки
   ) return                  TCOL_DEF                       -- Результат работы
   is
     RRES                    TCOL_DEF;                      -- Буфер для результата
@@ -706,6 +710,7 @@ text="Формат data_grid и gant как в chart"
     RRES.BORDER     := COALESCE(BORDER, false);
     RRES.BFILTER    := COALESCE(BFILTER, false);
     RRES.RCOL_VALS  := COALESCE(RCOL_VALS, TCOL_VALS());
+    RRES.SHINT      := SHINT;
     /* Возвращаем результат */
     return RRES;
   end TCOL_DEF_MAKE;
@@ -723,6 +728,7 @@ text="Формат data_grid и gant как в chart"
     BORDER                  in boolean := false,           -- Разрешить сортировку
     BFILTER                 in boolean := false,           -- Разрешить отбор
     RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения
+    SHINT                   in varchar2 := null,           -- Текст всплывающей подсказки
     BCLEAR                  in boolean := false            -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
@@ -741,6 +747,7 @@ text="Формат data_grid и gant как в chart"
                                                BVISIBLE   => BVISIBLE,
                                                BORDER     => BORDER,
                                                BFILTER    => BFILTER,
+                                               SHINT      => SHINT,
                                                RCOL_VALS  => RCOL_VALS);
   end TCOL_DEFS_ADD;
   
@@ -785,6 +792,7 @@ text="Формат data_grid и gant как в chart"
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_VISIBLE, BVALUE => RCOL_DEFS(I).BVISIBLE);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DT_ORDER, BVALUE => RCOL_DEFS(I).BORDER);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DT_FILTER, BVALUE => RCOL_DEFS(I).BFILTER);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_HINT, SVALUE => RCOL_DEFS(I).SHINT);
         /* Предопределённые значения */
         if (RCOL_DEFS(I).RCOL_VALS is not null) and (RCOL_DEFS(I).RCOL_VALS.COUNT > 0) then
           for V in RCOL_DEFS(I).RCOL_VALS.FIRST .. RCOL_DEFS(I).RCOL_VALS.LAST
@@ -1021,6 +1029,7 @@ text="Формат data_grid и gant как в chart"
     BORDER                  in boolean := false,           -- Разрешить сортировку по колонке
     BFILTER                 in boolean := false,           -- Разрешить отбор по колонке
     RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения колонки
+    SHINT                   in varchar2 := null,           -- Текст всплывающей подсказки
     BCLEAR                  in boolean := false            -- Флаг очистки коллекции описаний колонок таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
@@ -1036,6 +1045,7 @@ text="Формат data_grid и gant как в chart"
                   BORDER     => BORDER,
                   BFILTER    => BFILTER,
                   RCOL_VALS  => RCOL_VALS,
+                  SHINT      => SHINT,
                   BCLEAR     => BCLEAR);
   end TDATA_GRID_ADD_COL_DEF;
   
