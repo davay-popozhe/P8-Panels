@@ -30,7 +30,8 @@ import {
     Button,
     TextField,
     Chip,
-    Container
+    Container,
+    Link
 } from "@mui/material"; //Интерфейсные компоненты
 import { P8PAppInlineError } from "./p8p_app_message"; //Встраиваемое сообщение об ошибке
 
@@ -229,6 +230,28 @@ P8PTableColumnMenu.propTypes = {
     orderDescItemCaption: PropTypes.string.isRequired,
     filterItemCaption: PropTypes.string.isRequired,
     onItemClick: PropTypes.func
+};
+
+//Диалог подсказки
+const P8PTableColumnHintDialog = ({ columnDef, okBtnCaption, onOk }) => {
+    return (
+        <Dialog open={true} aria-labelledby="filter-dialog-title" aria-describedby="filter-dialog-description" onClose={() => (onOk ? onOk() : null)}>
+            <DialogTitle id="filter-dialog-title">{columnDef.caption}</DialogTitle>
+            <DialogContent>
+                <div dangerouslySetInnerHTML={{ __html: columnDef.hint }}></div>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => (onOk ? onOk() : null)}>{okBtnCaption}</Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
+
+//Контроль свойств - Диалог подсказки
+P8PTableColumnHintDialog.propTypes = {
+    columnDef: PropTypes.object.isRequired,
+    okBtnCaption: PropTypes.string.isRequired,
+    onOk: PropTypes.func
 };
 
 //Диалог фильтра
@@ -440,8 +463,14 @@ const P8PTable = ({
     //Собственное состояние - развёрнутые строки
     const [expanded, setExpanded] = useState({});
 
+    //Собственное состояние - колонка с отображаемой подсказкой
+    const [displayHintColumn, setDisplayHintColumn] = useState(null);
+
     //Описание фильтруемой колонки
     const filterColumnDef = filterColumn ? columnsDef.find(columnDef => columnDef.name == filterColumn) || null : null;
+
+    //Описание колонки с отображаемой подсказкой
+    const displayHintColumnDef = displayHintColumn ? columnsDef.find(columnDef => columnDef.name == displayHintColumn) || null : null;
 
     //Значения фильтра фильтруемой колонки
     const [filterColumnFrom, filterColumnTo] = filterColumn
@@ -528,6 +557,12 @@ const P8PTable = ({
         if (onPagesCountChanged) onPagesCountChanged();
     };
 
+    //Отработка нажатия на элемент отображения подсказки по колонке
+    const handleColumnShowHintClick = columnName => setDisplayHintColumn(columnName);
+
+    //Отработка сокрытия подсказки по колонке
+    const handleHintOk = () => setDisplayHintColumn(null);
+
     //Отработка нажатия на кнопку раскрытия элемента
     const handleExpandClick = rowIndex => {
         if (expanded[rowIndex] === true)
@@ -547,6 +582,9 @@ const P8PTable = ({
     //Генерация содержимого
     return (
         <>
+            {displayHintColumn ? (
+                <P8PTableColumnHintDialog columnDef={displayHintColumnDef} okBtnCaption={okFilterBtnCaption} onOk={handleHintOk} />
+            ) : null}
             {filterColumn ? (
                 <P8PTableColumnFilterDialog
                     columnDef={filterColumnDef}
@@ -596,7 +634,21 @@ const P8PTable = ({
                                             sx={{ ...STYLES.TABLE_COLUMN_STACK, ...customRender.stackStyle }}
                                             {...customRender.stackProps}
                                         >
-                                            {customRender.data ? customRender.data : columnDef.caption}
+                                            {customRender.data ? (
+                                                customRender.data
+                                            ) : columnDef.hint ? (
+                                                <Link
+                                                    component="button"
+                                                    variant="body2"
+                                                    align="left"
+                                                    underline="always"
+                                                    onClick={() => handleColumnShowHintClick(columnDef.name)}
+                                                >
+                                                    {columnDef.caption}
+                                                </Link>
+                                            ) : (
+                                                columnDef.caption
+                                            )}
                                             <P8PTableColumnToolBar
                                                 columnDef={columnDef}
                                                 orders={orders}
