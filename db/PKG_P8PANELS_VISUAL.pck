@@ -15,6 +15,18 @@ create or replace package PKG_P8PANELS_VISUAL as
   NGANTT_ZOOM_DAY           constant PKG_STD.TNUMBER := 2; -- День
   NGANTT_ZOOM_WEEK          constant PKG_STD.TNUMBER := 3; -- Неделя
   NGANTT_ZOOM_MONTH         constant PKG_STD.TNUMBER := 4; -- Месяц
+  
+  /* Константы - тип графика */
+  SCHART_TYPE_BAR           constant PKG_STD.TSTRING := 'bar';
+  SCHART_TYPE_LINE          constant PKG_STD.TSTRING := 'line';
+  SCHART_TYPE_PIE           constant PKG_STD.TSTRING := 'pie';
+  SCHART_TYPE_DOUGHNUT      constant PKG_STD.TSTRING := 'doughnut';
+
+  /* Константы - расположение легенды графика */  
+  SCHART_LGND_POS_LEFT      constant PKG_STD.TSTRING := 'left';
+  SCHART_LGND_POS_RIGHT     constant PKG_STD.TSTRING := 'right';
+  SCHART_LGND_POS_TOP       constant PKG_STD.TSTRING := 'top';
+  SCHART_LGND_POS_BOTTOM    constant PKG_STD.TSTRING := 'bottom';
 
   /* Типы данных - значение колонки таблицы данных */
   type TCOL_VAL is record
@@ -124,8 +136,8 @@ create or replace package PKG_P8PANELS_VISUAL as
     DSTART                  PKG_STD.TLDATE,                  -- Дата начала
     DEND                    PKG_STD.TLDATE,                  -- Дата окончания
     NPROGRESS               PKG_STD.TNUMBER := null,         -- Прогресс (% готовности) задачи (null - не определен)
-    SBG_COLOR               PKG_STD.TSTRING := null,         -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей)
-    STEXT_COLOR             PKG_STD.TSTRING := null,         -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей)
+    SBG_COLOR               PKG_STD.TSTRING := null,         -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+    STEXT_COLOR             PKG_STD.TSTRING := null,         -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     BREAD_ONLY              boolean := null,                 -- Сроки и прогресс задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_DATES        boolean := null,                 -- Сроки задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_PROGRESS     boolean := null,                 -- Прогресс задачи только для чтения (null - как указано в описании диаграммы)
@@ -139,8 +151,8 @@ create or replace package PKG_P8PANELS_VISUAL as
   /* Тип данных - описание цвета задач диаграммы Ганта */
   type TGANTT_TASK_COLOR is record
   (
-    SBG_COLOR               PKG_STD.TSTRING := null, -- Цвет заливки задачи
-    STEXT_COLOR             PKG_STD.TSTRING := null, -- Цвет текста заголовка задачи
+    SBG_COLOR               PKG_STD.TSTRING := null, -- Цвет заливки задачи (формат - HTML-цвет, #RRGGBBAA)
+    STEXT_COLOR             PKG_STD.TSTRING := null, -- Цвет текста заголовка задачи (формат - HTML-цвет, #RRGGBBAA)
     SDESC                   PKG_STD.TSTRING          -- Описание
   );
   
@@ -159,6 +171,51 @@ create or replace package PKG_P8PANELS_VISUAL as
     RTASK_ATTRS             TGANTT_TASK_ATTRS,                   -- Описание атрибутов карточки задачи
     RTASK_COLORS            TGANTT_TASK_COLORS,                  -- Описание цветов задач
     RTASKS                  TGANTT_TASKS                         -- Список задач
+  );
+  
+  /* Типы данных - значение атрибута элемента данных графика */
+  type TCHART_DATASET_ITEM_ATTR_VAL is record
+  (
+    SNAME                   PKG_STD.TSTRING, -- Наименование
+    SVALUE                  PKG_STD.TSTRING  -- Значение
+  );
+  
+  /* Типы данных - коллекция значений атрибутов элемента данных графика */
+  type TCHART_DATASET_ITEM_ATTR_VALS is table of TCHART_DATASET_ITEM_ATTR_VAL;  
+  
+  /* Тип данных - элемент данных графика */
+  type TCHART_DATASET_ITEM is record
+  (
+    NVALUE                  PKG_STD.TNUMBER,                      -- Значение элемента данных, отображаемое на графике
+    RATTR_VALS              TCHART_DATASET_ITEM_ATTR_VALS := null -- Значения дополнительных атрбутов (null - дополнительные атрибуты не определены)
+  );
+  
+  /* Тип данных - коллекция элементов данных */
+  type TCHART_DATASET_ITEMS is table of TCHART_DATASET_ITEM;
+  
+  /* Тип данных - набор данных графика */
+  type TCHART_DATASET is record
+  (
+    SCAPTION                PKG_STD.TSTRING,         -- Заголовок
+    SBORDER_COLOR           PKG_STD.TSTRING := null, -- Цвет границы элемента данных на графике (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+    SBG_COLOR               PKG_STD.TSTRING := null, -- Цвет заливки элемента данных на графике (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+    RITEMS                  TCHART_DATASET_ITEMS     -- Элементы данных
+  );
+  
+  /* Тип данных - коллекция наборов данных графика */
+  type TCHART_DATASETS is table of TCHART_DATASET;
+  
+  /* Тип данных - коллекция меток данных графика */
+  type TCHART_LABELS is table of PKG_STD.TSTRING;
+  
+  /* Типы данных - график */
+  type TCHART is record
+  (
+    STYPE                   PKG_STD.TSTRING,         -- Тип (см. константы SCHART_TYPE_*)
+    STITLE                  PKG_STD.TSTRING := null, -- Заголовок (null - не отображать)
+    SLGND_POS               PKG_STD.TSTRING := null, -- Расположение легенды (null - не отображать, см. константы SCHART_LGND_POS_*)
+    RLABELS                 TCHART_LABELS,           -- Метки значений
+    RDATASETS               TCHART_DATASETS          -- Наборы данных
   );
   
   /* Расчет диапаона выдаваемых записей */
@@ -346,8 +403,8 @@ create or replace package PKG_P8PANELS_VISUAL as
     DSTART                  in date,             -- Дата начала
     DEND                    in date,             -- Дата окончания
     NPROGRESS               in number := null,   -- Прогресс (% готовности) задачи (null - не определен)
-    SBG_COLOR               in varchar2 := null, -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей)
-    STEXT_COLOR             in varchar2 := null, -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей)
+    SBG_COLOR               in varchar2 := null, -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+    STEXT_COLOR             in varchar2 := null, -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     BREAD_ONLY              in boolean := null,  -- Сроки и прогресс задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_DATES        in boolean := null,  -- Сроки задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_PROGRESS     in boolean := null   -- Прогресс задачи только для чтения (null - как указано в описании диаграммы)
@@ -395,10 +452,10 @@ create or replace package PKG_P8PANELS_VISUAL as
   procedure TGANTT_ADD_TASK_COLOR
   (
     RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
-    SBG_COLOR               in varchar2 := null,  -- Цвет заливки задачи
-    STEXT_COLOR             in varchar2 := null,  -- Цвет текста заголовка задачи
+    SBG_COLOR               in varchar2 := null,  -- Цвет заливки задачи (формат - HTML-цвет, #RRGGBBAA)
+    STEXT_COLOR             in varchar2 := null,  -- Цвет текста заголовка задачи (формат - HTML-цвет, #RRGGBBAA)
     SDESC                   in varchar2,          -- Описание
-    BCLEAR                  in boolean := false   -- Флаг очистки коллекции атрибутов (false - не очищать, true - очистить коллекцию перед добавлением)
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции цветов (false - не очищать, true - очистить коллекцию перед добавлением)
   );
 
   /* Добавление задачи к диаграмме Ганта */
@@ -416,10 +473,70 @@ create or replace package PKG_P8PANELS_VISUAL as
     NINCLUDE_DEF            in number := 1 -- Включить описание заголовка (0 - нет, 1 - да)
   ) return                  clob;          -- XML-описание
 
+  /* Добавление дополнительного атрибута элемента данных графика */
+  procedure TCHART_DATASET_ITM_ATTR_VL_ADD
+  (
+    RATTR_VALS              in out nocopy TCHART_DATASET_ITEM_ATTR_VALS, -- Коллекция дополнительных атрибутов элемента данных графика
+    SNAME                   PKG_STD.TSTRING,                             -- Наименование
+    SVALUE                  PKG_STD.TSTRING,                             -- Значение
+    BCLEAR                  in boolean := false                          -- Флаг очистки коллекции дополнительных атрибутов элемента данных (false - не очищать, true - очистить коллекцию перед добавлением)
+  );
+
+  /* Формирование набора данных графика */
+  function TCHART_DATASET_MAKE
+  (
+    SCAPTION                in varchar2,         -- Заголовок
+    SBORDER_COLOR           in varchar2 := null, -- Цвет границы элемента данных на графике (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+    SBG_COLOR               in varchar2 := null  -- Цвет заливки элемента данных на графике (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+  ) return                  TCHART_DATASET;      -- Результат работы
+
+  /* Добавление элемента в набор данных графика */
+  procedure TCHART_DATASET_ADD_ITEM
+  (
+    RDATASET                in out nocopy TCHART_DATASET,             -- Описание набора данных графика
+    NVALUE                  in number,                                -- Значение элемента данных, отображаемое на графике
+    RATTR_VALS              in TCHART_DATASET_ITEM_ATTR_VALS := null, -- Значения дополнительных атрбутов (null - дополнительные атрибуты не определены)
+    BCLEAR                  in boolean := false                       -- Флаг очистки коллекции элементов набора данных (false - не очищать, true - очистить коллекцию перед добавлением)
+  );
+
+  /* Формирование графика */
+  function TCHART_MAKE
+  (
+    STYPE                   in varchar2,         -- Тип (см. константы SCHART_TYPE_*)
+    STITLE                  in varchar2 := null, -- Заголовок (null - не отображать)
+    SLGND_POS               in varchar2 := null  -- Расположение легенды (null - не отображать, см. константы SCHART_LGND_POS_*)
+  ) return                  TCHART;              -- Результат работы
+
+  /* Добавление метки значения графика */
+  procedure TCHART_ADD_LABEL
+  (
+    RCHART                  in out nocopy TCHART, -- Описание графика
+    SLABEL                  in varchar2,          -- Метка значения
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции меток (false - не очищать, true - очистить коллекцию перед добавлением)
+  );
+
+  /* Добавление набора данных графика */
+  procedure TCHART_ADD_DATASET
+  (
+    RCHART                  in out nocopy TCHART, -- Описание графика
+    RDATASET                in TCHART_DATASET,    -- Набор данных
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции наборов данных (false - не очищать, true - очистить коллекцию перед добавлением)
+  );
+
+  /* Сериализация графика */
+  function TCHART_TO_XML
+  (
+    RCHART                  in TCHART,     -- Описание графика
+    NINCLUDE_DEF            in number := 1 -- Включить описание заголовка (0 - нет, 1 - да)
+  ) return                  clob;          -- XML-описание
+
 end PKG_P8PANELS_VISUAL;
 /
 create or replace package body PKG_P8PANELS_VISUAL as
-
+/*
+TODO: owner="root" created="18.10.2023"
+text="Формат data_grid и gant как в chart"
+*/
   /* Константы - тэги запросов */
   SRQ_TAG_XROOT               constant PKG_STD.TSTRING := 'XROOT';     -- Тэг для корня данных запроса
   SRQ_TAG_XFILTERS            constant PKG_STD.TSTRING := 'filters';   -- Тэг для строк данных
@@ -430,39 +547,56 @@ create or replace package body PKG_P8PANELS_VISUAL as
   SRQ_TAG_STO                 constant PKG_STD.TSTRING := 'to';        -- Тэг для значения "по"
 
   /* Константы - тэги ответов */
-  SRESP_TAG_XDATA             constant PKG_STD.TSTRING := 'XDATA';             -- Тэг для корня описания данных
-  SRESP_TAG_XROWS             constant PKG_STD.TSTRING := 'XROWS';             -- Тэг для строк данных
-  SRESP_TAG_XCOLUMNS_DEF      constant PKG_STD.TSTRING := 'XCOLUMNS_DEF';      -- Тэг для описания колонок
-  SRESP_TAG_XGANTT_DEF        constant PKG_STD.TSTRING := 'XGANTT_DEF';        -- Тэг для описания заголовка диаграммы Ганта
-  SRESP_TAG_XGANTT_TASKS      constant PKG_STD.TSTRING := 'XGANTT_TASKS';      -- Тэг для описания коллекции задач диаграммы Ганта
+  SRESP_TAG_XDATA             constant PKG_STD.TSTRING := 'XDATA';           -- Тэг для корня описания данных
+  SRESP_TAG_XROWS             constant PKG_STD.TSTRING := 'XROWS';           -- Тэг для строк данных
+  SRESP_TAG_XCOLUMNS_DEF      constant PKG_STD.TSTRING := 'XCOLUMNS_DEF';    -- Тэг для описания колонок
+  SRESP_TAG_XGANTT_DEF        constant PKG_STD.TSTRING := 'XGANTT_DEF';      -- Тэг для описания заголовка диаграммы Ганта
+  SRESP_TAG_XGANTT_TASKS      constant PKG_STD.TSTRING := 'XGANTT_TASKS';    -- Тэг для описания коллекции задач диаграммы Ганта
+  SRESP_TAG_XCHART            constant PKG_STD.TSTRING := 'XCHART';          -- Тэг для описания графика
   
-  /* Константы - атрибуты ответов */
-  SRESP_ATTR_NAME             constant PKG_STD.TSTRING := 'name';             -- Атрибут для наименования
-  SRESP_ATTR_CAPTION          constant PKG_STD.TSTRING := 'caption';          -- Атрибут для подписи
-  SRESP_ATTR_DATA_TYPE        constant PKG_STD.TSTRING := 'dataType';         -- Атрибут для типа данных
-  SRESP_ATTR_VISIBLE          constant PKG_STD.TSTRING := 'visible';          -- Атрибут для флага видимости
-  SRESP_ATTR_ORDER            constant PKG_STD.TSTRING := 'order';            -- Атрибут для флага сортировки
-  SRESP_ATTR_FILTER           constant PKG_STD.TSTRING := 'filter';           -- Атрибут для флага отбора
-  SRESP_ATTR_VALUES           constant PKG_STD.TSTRING := 'values';           -- Атрибут для значений
-  SRESP_ATTR_TITLE            constant PKG_STD.TSTRING := 'title';            -- Атрибут для заголовка
-  SRESP_ATTR_ZOOM             constant PKG_STD.TSTRING := 'zoom';             -- Атрибут для масштаба
-  SRESP_ATTR_ZOOM_BAR         constant PKG_STD.TSTRING := 'zoomBar';          -- Атрибут для флага отображения панели масштаба
-  SRESP_ATTR_ID               constant PKG_STD.TSTRING := 'id';               -- Атрибут для идентификатора
-  SRESP_ATTR_START            constant PKG_STD.TSTRING := 'start';            -- Атрибут для даты начала
-  SRESP_ATTR_END              constant PKG_STD.TSTRING := 'end';              -- Атрибут для даты окончания
-  SRESP_ATTR_PROGRESS         constant PKG_STD.TSTRING := 'progress';         -- Атрибут для прогресса
-  SRESP_ATTR_DEPENDENCIES     constant PKG_STD.TSTRING := 'dependencies';     -- Атрибут для записемостей
-  SRESP_ATTR_READ_ONLY        constant PKG_STD.TSTRING := 'readOnly';         -- Атрибут для флага "только для чтения"
-  SRESP_ATTR_READ_ONLY_PRGRS  constant PKG_STD.TSTRING := 'readOnlyProgress'; -- Атрибут для флага "прогресс только для чтения"
-  SRESP_ATTR_READ_ONLY_DATES  constant PKG_STD.TSTRING := 'readOnlyDates';    -- Атрибут для флага "даты только для чтения"
-  SRESP_ATTR_BG_COLOR         constant PKG_STD.TSTRING := 'bgColor';          -- Атрибут для цвета заголовка
-  SRESP_ATTR_TEXT_COLOR       constant PKG_STD.TSTRING := 'textColor';        -- Атрибут для цвета текста
-  SRESP_ATTR_RN               constant PKG_STD.TSTRING := 'rn';               -- Атрибут для рег. номера
-  SRESP_ATTR_NUMB             constant PKG_STD.TSTRING := 'numb';             -- Атрибут для номера
-  SRESP_ATTR_FULL_NAME        constant PKG_STD.TSTRING := 'fullName';         -- Атрибут для полного наименования
+  /* Константы - атрибуты ответов (универсальные) */
+  SRESP_ATTR_NAME             constant PKG_STD.TSTRING := 'name';     -- Атрибут для наименования
+  SRESP_ATTR_CAPTION          constant PKG_STD.TSTRING := 'caption';  -- Атрибут для подписи
+  SRESP_ATTR_DATA_TYPE        constant PKG_STD.TSTRING := 'dataType'; -- Атрибут для типа данных
+  SRESP_ATTR_VISIBLE          constant PKG_STD.TSTRING := 'visible';  -- Атрибут для флага видимости
+  SRESP_ATTR_TITLE            constant PKG_STD.TSTRING := 'title';    -- Атрибут для заголовка
+  SRESP_ATTR_ZOOM             constant PKG_STD.TSTRING := 'zoom';     -- Атрибут для масштаба
+  SRESP_ATTR_ID               constant PKG_STD.TSTRING := 'id';       -- Атрибут для идентификатора
+  SRESP_ATTR_START            constant PKG_STD.TSTRING := 'start';    -- Атрибут для даты начала
+  SRESP_ATTR_END              constant PKG_STD.TSTRING := 'end';      -- Атрибут для даты окончания
+  SRESP_ATTR_RN               constant PKG_STD.TSTRING := 'rn';       -- Атрибут для рег. номера
+  SRESP_ATTR_NUMB             constant PKG_STD.TSTRING := 'numb';     -- Атрибут для номера
+  SRESP_ATTR_FULL_NAME        constant PKG_STD.TSTRING := 'fullName'; -- Атрибут для полного наименования
+  SRESP_ATTR_DESC             constant PKG_STD.TSTRING := 'desc';     -- Атрибут для описания
+  SRESP_ATTR_TYPE             constant PKG_STD.TSTRING := 'type';     -- Атрибут для типа
+
+  /* Константы - атрибуты ответов (таблица данных) */
+  SRESP_ATTR_DT_ORDER         constant PKG_STD.TSTRING := 'order';  -- Атрибут для флага сортировки
+  SRESP_ATTR_DT_FILTER        constant PKG_STD.TSTRING := 'filter'; -- Атрибут для флага отбора
+  SRESP_ATTR_DT_COLUMN_VALUES constant PKG_STD.TSTRING := 'values'; -- Атрибут для предопределённых значений
+
+  /* Константы - атрибуты ответов (диаграмма Ганта) */  
+  SRESP_ATTR_GANTT_ZOOM_BAR   constant PKG_STD.TSTRING := 'zoomBar';          -- Атрибут для флага отображения панели масштаба диаграммы Ганта
+  SRESP_ATTR_TASK_PROGRESS    constant PKG_STD.TSTRING := 'progress';         -- Атрибут для прогресса задачи
+  SRESP_ATTR_TASK_DEPS        constant PKG_STD.TSTRING := 'dependencies';     -- Атрибут для зависимостей задачи
+  SRESP_ATTR_TASK_RO          constant PKG_STD.TSTRING := 'readOnly';         -- Атрибут для флага задачи "только для чтения"
+  SRESP_ATTR_TASK_RO_PRGRS    constant PKG_STD.TSTRING := 'readOnlyProgress'; -- Атрибут для флага задачи "прогресс только для чтения"
+  SRESP_ATTR_TASK_RO_DATES    constant PKG_STD.TSTRING := 'readOnlyDates';    -- Атрибут для флага задачи "даты только для чтения"
+  SRESP_ATTR_TASK_BG_COLOR    constant PKG_STD.TSTRING := 'bgColor';          -- Атрибут для цвета заголовка задачи
+  SRESP_ATTR_TASK_TEXT_COLOR  constant PKG_STD.TSTRING := 'textColor';        -- Атрибут для цвета текста задачи
   SRESP_ATTR_TASK_ATTRIBUTES  constant PKG_STD.TSTRING := 'taskAttributes';   -- Атрибут для коллекции атрибутов задачи
   SRESP_ATTR_TASK_COLORS      constant PKG_STD.TSTRING := 'taskColors';       -- Атрибут для коллекции цветов задачи
-  SRESP_ATTR_DESC             constant PKG_STD.TSTRING := 'desc';             -- Атрибут для описания
+
+  /* Константы - атрибуты ответов (графики) */  
+  SRESP_ATTR_CHART_LGND_POS   constant PKG_STD.TSTRING := 'legendPosition';  -- Атрибут для места размешения легенды графика
+  SRESP_ATTR_CHART_LABELS     constant PKG_STD.TSTRING := 'labels';          -- Атрибут для меток графика
+  SRESP_ATTR_CHART_DATASETS   constant PKG_STD.TSTRING := 'datasets';        -- Атрибут для наборов данных графика
+  SRESP_ATTR_CHART_DS_LABEL   constant PKG_STD.TSTRING := 'label';           -- Атрибут для метки набора данных графика
+  SRESP_ATTR_CHART_DS_BR_CLR  constant PKG_STD.TSTRING := 'borderColor';     -- Атрибут для цвета границы элемента набора данных графика
+  SRESP_ATTR_CHART_DS_BG_CLR  constant PKG_STD.TSTRING := 'backgroundColor'; -- Атрибут для цвета заливки элемента набора данных графика
+  SRESP_ATTR_CHART_DS_DATA    constant PKG_STD.TSTRING := 'data';            -- Атрибут для коллекции значений элементов набора данных
+  SRESP_ATTR_CHART_DS_ITEMS   constant PKG_STD.TSTRING := 'items';           -- Атрибут для коллекции элементов набора данных
+  SRESP_ATTR_CHART_DS_I_VAL   constant PKG_STD.TSTRING := 'value';           -- Атрибут для значения элемента набора данных
   
   /* Константы - параметры условий отбора */
   SCOND_FROM_POSTFIX          constant PKG_STD.TSTRING := 'From'; -- Постфикс наименования нижней границы условия отбора
@@ -649,14 +783,14 @@ create or replace package body PKG_P8PANELS_VISUAL as
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_CAPTION, SVALUE => RCOL_DEFS(I).SCAPTION);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DATA_TYPE, SVALUE => RCOL_DEFS(I).SDATA_TYPE);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_VISIBLE, BVALUE => RCOL_DEFS(I).BVISIBLE);
-        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_ORDER, BVALUE => RCOL_DEFS(I).BORDER);
-        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_FILTER, BVALUE => RCOL_DEFS(I).BFILTER);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DT_ORDER, BVALUE => RCOL_DEFS(I).BORDER);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DT_FILTER, BVALUE => RCOL_DEFS(I).BFILTER);
         /* Предопределённые значения */
         if (RCOL_DEFS(I).RCOL_VALS is not null) and (RCOL_DEFS(I).RCOL_VALS.COUNT > 0) then
           for V in RCOL_DEFS(I).RCOL_VALS.FIRST .. RCOL_DEFS(I).RCOL_VALS.LAST
           loop
             /* Открываем описание предопределённого значения */
-            PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_VALUES);
+            PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_DT_COLUMN_VALUES);
             /* Значение */
             case RCOL_DEFS(I).SDATA_TYPE
               when SDATA_TYPE_STR then
@@ -1319,13 +1453,13 @@ create or replace package body PKG_P8PANELS_VISUAL as
                   SRESP_ATTR_FULL_NAME,
                   SRESP_ATTR_START,
                   SRESP_ATTR_END,
-                  SRESP_ATTR_PROGRESS,
-                  SRESP_ATTR_BG_COLOR,
-                  SRESP_ATTR_TEXT_COLOR,                  
-                  SRESP_ATTR_READ_ONLY,
-                  SRESP_ATTR_READ_ONLY_PRGRS,
-                  SRESP_ATTR_READ_ONLY_DATES,
-                  SRESP_ATTR_DEPENDENCIES)) then
+                  SRESP_ATTR_TASK_PROGRESS,
+                  SRESP_ATTR_TASK_BG_COLOR,
+                  SRESP_ATTR_TASK_TEXT_COLOR,                  
+                  SRESP_ATTR_TASK_RO,
+                  SRESP_ATTR_TASK_RO_PRGRS,
+                  SRESP_ATTR_TASK_RO_DATES,
+                  SRESP_ATTR_TASK_DEPS)) then
       P_EXCEPTION(0,
                   'Наименование атрибута "%s" является зарезервированным.',
                   SNAME);
@@ -1357,8 +1491,8 @@ create or replace package body PKG_P8PANELS_VISUAL as
   function TGANTT_TASK_COLOR_FIND
   (
     RTASK_COLORS            in TGANTT_TASK_COLORS, -- Описание цветов задачи диаграммы Ганта
-    SBG_COLOR               in varchar2 := null,   -- Цвет заливки задачи
-    STEXT_COLOR             in varchar2 := null    -- Цвет текста заголовка задачи
+    SBG_COLOR               in varchar2 := null,   -- Цвет заливки задачи (формат - HTML-цвет, #RRGGBBAA)
+    STEXT_COLOR             in varchar2 := null    -- Цвет текста заголовка задачи (формат - HTML-цвет, #RRGGBBAA)
   ) return                  TGANTT_TASK_COLOR      -- Найденное описание цвета (null - если не нашли)
   is
   begin
@@ -1386,8 +1520,8 @@ create or replace package body PKG_P8PANELS_VISUAL as
     DSTART                  in date,             -- Дата начала
     DEND                    in date,             -- Дата окончания
     NPROGRESS               in number := null,   -- Прогресс (% готовности) задачи (null - не определен)
-    SBG_COLOR               in varchar2 := null, -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей)
-    STEXT_COLOR             in varchar2 := null, -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей)
+    SBG_COLOR               in varchar2 := null, -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+    STEXT_COLOR             in varchar2 := null, -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     BREAD_ONLY              in boolean := null,  -- Сроки и прогресс задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_DATES        in boolean := null,  -- Сроки задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_PROGRESS     in boolean := null   -- Прогресс задачи только для чтения (null - как указано в описании диаграммы)
@@ -1492,22 +1626,22 @@ create or replace package body PKG_P8PANELS_VISUAL as
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_START, DVALUE => RTASKS(I).DSTART);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_END, DVALUE => RTASKS(I).DEND);
         if (RTASKS(I).NPROGRESS is not null) then
-          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_PROGRESS, NVALUE => RTASKS(I).NPROGRESS);
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_PROGRESS, NVALUE => RTASKS(I).NPROGRESS);
         end if;
         if (RTASKS(I).SBG_COLOR is not null) then
-          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_BG_COLOR, SVALUE => RTASKS(I).SBG_COLOR);
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_BG_COLOR, SVALUE => RTASKS(I).SBG_COLOR);
         end if;
         if (RTASKS(I).STEXT_COLOR is not null) then
-          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TEXT_COLOR, SVALUE => RTASKS(I).STEXT_COLOR);
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_TEXT_COLOR, SVALUE => RTASKS(I).STEXT_COLOR);
         end if;
         if (RTASKS(I).BREAD_ONLY is not null) then
-          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY, BVALUE => RTASKS(I).BREAD_ONLY);
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_RO, BVALUE => RTASKS(I).BREAD_ONLY);
         end if;
         if (RTASKS(I).BREAD_ONLY_DATES is not null) then
-          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY_DATES, BVALUE => RTASKS(I).BREAD_ONLY_DATES);
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_RO_DATES, BVALUE => RTASKS(I).BREAD_ONLY_DATES);
         end if;
         if (RTASKS(I).BREAD_ONLY_PROGRESS is not null) then
-          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY_PRGRS, BVALUE => RTASKS(I).BREAD_ONLY_PROGRESS);
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_RO_PRGRS, BVALUE => RTASKS(I).BREAD_ONLY_PROGRESS);
         end if;
         if ((RTASKS(I).RDEPENDENCIES is not null) and (RTASKS(I).RDEPENDENCIES.COUNT > 0)) then
           SDEPS := null;
@@ -1515,7 +1649,7 @@ create or replace package body PKG_P8PANELS_VISUAL as
           loop
             SDEPS := COALESCE(SDEPS, '') || 'taskId' || TO_CHAR(RTASKS(I).RDEPENDENCIES(J)) || ',';
           end loop;
-          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DEPENDENCIES, SVALUE => RTRIM(SDEPS, ','));
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_DEPS, SVALUE => RTRIM(SDEPS, ','));
         end if;
         /* Динамические атрибуты */
         if ((RTASKS(I).RATTR_VALS is not null) and (RTASKS(I).RATTR_VALS.COUNT > 0)) then
@@ -1589,10 +1723,10 @@ create or replace package body PKG_P8PANELS_VISUAL as
   procedure TGANTT_ADD_TASK_COLOR
   (
     RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
-    SBG_COLOR               in varchar2 := null,  -- Цвет заливки задачи
-    STEXT_COLOR             in varchar2 := null,  -- Цвет текста заголовка задачи
+    SBG_COLOR               in varchar2 := null,  -- Цвет заливки задачи (формат - HTML-цвет, #RRGGBBAA)
+    STEXT_COLOR             in varchar2 := null,  -- Цвет текста заголовка задачи (формат - HTML-цвет, #RRGGBBAA)
     SDESC                   in varchar2,          -- Описание
-    BCLEAR                  in boolean := false   -- Флаг очистки коллекции атрибутов (false - не очищать, true - очистить коллекцию перед добавлением)
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции цветов (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
   begin
@@ -1651,10 +1785,10 @@ create or replace package body PKG_P8PANELS_VISUAL as
     /* Cтатические атрибуты заголовка */
     PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TITLE, SVALUE => RGANTT.STITLE);
     PKG_XFAST.ATTR(SNAME => SRESP_ATTR_ZOOM, NVALUE => RGANTT.NZOOM);
-    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_ZOOM_BAR, BVALUE => RGANTT.BZOOM_BAR);
-    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY, BVALUE => RGANTT.BREAD_ONLY);
-    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY_DATES, BVALUE => RGANTT.BREAD_ONLY_DATES);
-    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_READ_ONLY_PRGRS, BVALUE => RGANTT.BREAD_ONLY_PROGRESS);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_GANTT_ZOOM_BAR, BVALUE => RGANTT.BZOOM_BAR);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_RO, BVALUE => RGANTT.BREAD_ONLY);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_RO_DATES, BVALUE => RGANTT.BREAD_ONLY_DATES);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_RO_PRGRS, BVALUE => RGANTT.BREAD_ONLY_PROGRESS);
     /* Если есть динамические атрибуты */
     if ((RGANTT.RTASK_ATTRS is not null) and (RGANTT.RTASK_ATTRS.COUNT > 0)) then
       /* Обходим динамические атрибуты задачи */
@@ -1678,10 +1812,10 @@ create or replace package body PKG_P8PANELS_VISUAL as
         PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_TASK_COLORS);
         /* Наполняем его атрибутами */
         if (RGANTT.RTASK_COLORS(I).SBG_COLOR is not null) then
-          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_BG_COLOR, SVALUE => RGANTT.RTASK_COLORS(I).SBG_COLOR);
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_BG_COLOR, SVALUE => RGANTT.RTASK_COLORS(I).SBG_COLOR);
         end if;
         if (RGANTT.RTASK_COLORS(I).STEXT_COLOR is not null) then
-          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TEXT_COLOR, SVALUE => RGANTT.RTASK_COLORS(I).STEXT_COLOR);
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_TEXT_COLOR, SVALUE => RGANTT.RTASK_COLORS(I).STEXT_COLOR);
         end if;
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DESC, SVALUE => RGANTT.RTASK_COLORS(I).SDESC);
         /* Закрываем описание цвета задачи */
@@ -1726,7 +1860,274 @@ create or replace package body PKG_P8PANELS_VISUAL as
       /* Вернем ошибку */
       PKG_STATE.DIAGNOSTICS_STACKED();
       P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
-  end TGANTT_TO_XML;  
+  end TGANTT_TO_XML;
+  
+  /* Проверка корректности наименования дополнительного атрибута элемента данных графика */
+  procedure TCHART_DATASET_ITEM_ATTR_NM_CH
+  (
+    SNAME                   in varchar2 -- Наименование
+  )
+  is
+  begin
+    if (SNAME in (SRESP_ATTR_CHART_DS_I_VAL)) then
+      P_EXCEPTION(0,
+                  'Наименование атрибута "%s" является зарезервированным.',
+                  SNAME);
+    end if;
+  end TCHART_DATASET_ITEM_ATTR_NM_CH;
+  
+  /* Сериализация меток графика */
+  procedure TCHART_LABELS_TO_XML
+  (
+    RLABELS                 in TCHART_LABELS -- Описание диаграммы Ганта
+  )
+  is    
+  begin
+    /* Если есть метки */
+    if ((RLABELS is not null) and (RLABELS.COUNT > 0)) then
+      /* Обходим метки */
+      for I in RLABELS.FIRST .. RLABELS.LAST
+      loop
+        /* Открываем описание метки */
+        PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_CHART_LABELS);
+        /* Добавляем значение */
+        PKG_XFAST.VALUE(SVALUE => RLABELS(I));
+        /* Закрываем описание метки */
+        PKG_XFAST.UP();
+      end loop;
+    end if;
+  end TCHART_LABELS_TO_XML;
+  
+  /* Добавление дополнительного атрибута элемента данных графика */
+  procedure TCHART_DATASET_ITM_ATTR_VL_ADD
+  (
+    RATTR_VALS              in out nocopy TCHART_DATASET_ITEM_ATTR_VALS, -- Коллекция дополнительных атрибутов элемента данных графика
+    SNAME                   PKG_STD.TSTRING,                             -- Наименование
+    SVALUE                  PKG_STD.TSTRING,                             -- Значение
+    BCLEAR                  in boolean := false                          -- Флаг очистки коллекции дополнительных атрибутов элемента данных (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Проверим корректность наименования */
+    TCHART_DATASET_ITEM_ATTR_NM_CH(SNAME => SNAME);
+    /* Инициализируем коллекцию если необходимо */
+    if ((RATTR_VALS is null) or (BCLEAR)) then
+      RATTR_VALS := TCHART_DATASET_ITEM_ATTR_VALS();
+    end if;
+    /* Добавляем элемент */
+    RATTR_VALS.EXTEND();
+    RATTR_VALS(RATTR_VALS.LAST).SNAME := SNAME;
+    RATTR_VALS(RATTR_VALS.LAST).SVALUE := SVALUE;
+  end TCHART_DATASET_ITM_ATTR_VL_ADD;
+  
+  /* Формирование набора данных графика */
+  function TCHART_DATASET_MAKE
+  (
+    SCAPTION                in varchar2,         -- Заголовок
+    SBORDER_COLOR           in varchar2 := null, -- Цвет границы элемента данных на графике (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+    SBG_COLOR               in varchar2 := null  -- Цвет заливки элемента данных на графике (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+  ) return                  TCHART_DATASET       -- Результат работы
+  is
+    RRES                    TCHART_DATASET;      -- Буфер для результата
+  begin
+    /* Формируем объект */
+    RRES.SCAPTION      := SCAPTION;
+    RRES.SBORDER_COLOR := SBORDER_COLOR;
+    RRES.SBG_COLOR     := SBG_COLOR;
+    RRES.RITEMS        := TCHART_DATASET_ITEMS();
+    /* Возвращаем результат */
+    return RRES;
+  end TCHART_DATASET_MAKE;
+  
+  /* Добавление элемента в набор данных графика */
+  procedure TCHART_DATASET_ADD_ITEM
+  (
+    RDATASET                in out nocopy TCHART_DATASET,             -- Описание набора данных графика
+    NVALUE                  in number,                                -- Значение элемента данных, отображаемое на графике
+    RATTR_VALS              in TCHART_DATASET_ITEM_ATTR_VALS := null, -- Значения дополнительных атрбутов (null - дополнительные атрибуты не определены)
+    BCLEAR                  in boolean := false                       -- Флаг очистки коллекции элементов набора данных (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Инициализируем коллекцию если необходимо */
+    if ((RDATASET.RITEMS is null) or (BCLEAR)) then
+      RDATASET.RITEMS := TCHART_DATASET_ITEMS();
+    end if;
+    /* Добавляем элемент */
+    RDATASET.RITEMS.EXTEND();
+    RDATASET.RITEMS(RDATASET.RITEMS.LAST).NVALUE := NVALUE;
+    RDATASET.RITEMS(RDATASET.RITEMS.LAST).RATTR_VALS := RATTR_VALS;
+  end TCHART_DATASET_ADD_ITEM;
+  
+  /* Сериализация коллекции наборов данных графика */
+  procedure TCHART_DATASETS_TO_XML
+  (
+    RDATASETS               in TCHART_DATASETS -- Наборы данных графика
+  )
+  is
+  begin
+    /* Если есть наборы данных */
+    if ((RDATASETS is not null) and (RDATASETS.COUNT > 0)) then
+      /* Обходим наборы данных */
+      for I in RDATASETS.FIRST .. RDATASETS.LAST
+      loop
+        /* Открываем набор данных */
+        PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_CHART_DATASETS);
+        /* Добавляем статические атрибуты */
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_CHART_DS_LABEL, SVALUE => RDATASETS(I).SCAPTION);
+        if (RDATASETS(I).SBORDER_COLOR is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_CHART_DS_BR_CLR, SVALUE => RDATASETS(I).SBORDER_COLOR);
+        end if;
+        if (RDATASETS(I).SBG_COLOR is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_CHART_DS_BG_CLR, SVALUE => RDATASETS(I).SBG_COLOR);
+        end if;
+        /* Если в наборе данных есть элементы */
+        if ((RDATASETS(I).RITEMS is not null) and (RDATASETS(I).RITEMS.COUNT > 0)) then
+          /* Обходим элементы набора данных для формирования отображаемых значений */
+          for J in RDATASETS(I).RITEMS.FIRST .. RDATASETS(I).RITEMS.LAST
+          loop
+            /* Открываем значение элемента набора данных */
+            PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_CHART_DS_DATA);
+            /* Формируем значение элемента */
+            PKG_XFAST.VALUE(NVALUE => RDATASETS(I).RITEMS(J).NVALUE);
+            /* Закрываем значение элемента набора данных */
+            PKG_XFAST.UP();
+          end loop;
+          /* Обходим элементы набора данных для формирования из самих */
+          for J in RDATASETS(I).RITEMS.FIRST .. RDATASETS(I).RITEMS.LAST
+          loop
+            /* Открываем элемент набора данных */
+            PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_CHART_DS_ITEMS);
+            /* Добавляем статические атрибуты */
+            PKG_XFAST.ATTR(SNAME => SRESP_ATTR_CHART_DS_I_VAL, NVALUE => RDATASETS(I).RITEMS(J).NVALUE);
+            /* Добавляем дополнительные атрибуты */
+            if ((RDATASETS(I).RITEMS(J).RATTR_VALS is not null) and (RDATASETS(I).RITEMS(J).RATTR_VALS.COUNT > 0)) then
+              for K in RDATASETS(I).RITEMS(J).RATTR_VALS.FIRST .. RDATASETS(I).RITEMS(J).RATTR_VALS.LAST
+              loop
+                PKG_XFAST.ATTR(SNAME  => RDATASETS(I).RITEMS(J).RATTR_VALS(K).SNAME,
+                               SVALUE => RDATASETS(I).RITEMS(J).RATTR_VALS(K).SVALUE);
+              end loop;
+            end if;
+            /* Закрываем элемент набора данных */
+            PKG_XFAST.UP();
+          end loop;
+        end if;
+        /* Закрываем набор данных */
+        PKG_XFAST.UP();
+      end loop;
+    end if;
+  end TCHART_DATASETS_TO_XML;
+  
+  /* Формирование графика */
+  function TCHART_MAKE
+  (
+    STYPE                   in varchar2,         -- Тип (см. константы SCHART_TYPE_*)
+    STITLE                  in varchar2 := null, -- Заголовок (null - не отображать)
+    SLGND_POS               in varchar2 := null  -- Расположение легенды (null - не отображать, см. константы SCHART_LGND_POS_*)
+  ) return                  TCHART               -- Результат работы
+  is
+    RRES                    TCHART;              -- Буфер для результата
+  begin
+    /* Формируем объект */
+    RRES.STYPE     := STYPE;
+    RRES.STITLE    := STITLE;
+    RRES.SLGND_POS := SLGND_POS;
+    RRES.RLABELS   := TCHART_LABELS();
+    RRES.RDATASETS := TCHART_DATASETS();
+    /* Возвращаем результат */
+    return RRES;
+  end TCHART_MAKE;
+  
+  /* Добавление метки значения графика */
+  procedure TCHART_ADD_LABEL
+  (
+    RCHART                  in out nocopy TCHART, -- Описание графика
+    SLABEL                  in varchar2,          -- Метка значения
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции меток (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Инициализируем коллекцию если необходимо */
+    if ((RCHART.RLABELS is null) or (BCLEAR)) then
+      RCHART.RLABELS := TCHART_LABELS();
+    end if;
+    /* Добавляем элемент */
+    RCHART.RLABELS.EXTEND();
+    RCHART.RLABELS(RCHART.RLABELS.LAST) := SLABEL;
+  end TCHART_ADD_LABEL;
+  
+  /* Добавление набора данных графика */
+  procedure TCHART_ADD_DATASET
+  (
+    RCHART                  in out nocopy TCHART, -- Описание графика
+    RDATASET                in TCHART_DATASET,    -- Набор данных
+    BCLEAR                  in boolean := false   -- Флаг очистки коллекции наборов данных (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Инициализируем коллекцию если необходимо */
+    if ((RCHART.RDATASETS is null) or (BCLEAR)) then
+      RCHART.RDATASETS := TCHART_DATASETS();
+    end if;
+    /* Добавляем элемент */
+    RCHART.RDATASETS.EXTEND();
+    RCHART.RDATASETS(RCHART.RDATASETS.LAST) := RDATASET;
+  end TCHART_ADD_DATASET;
+  
+  /* Сериализация описания заголовка графика */
+  procedure TCHART_DEF_TO_XML
+  (
+    RCHART                  in TCHART   -- Описание графика
+  )
+  is    
+  begin
+    /* Cтатические атрибуты заголовка */
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TYPE, SVALUE => RCHART.STYPE);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TITLE, SVALUE => RCHART.STITLE);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_CHART_LGND_POS, SVALUE => RCHART.SLGND_POS);
+  end TCHART_DEF_TO_XML;
+  
+  /* Сериализация графика */
+  function TCHART_TO_XML
+  (
+    RCHART                  in TCHART,     -- Описание графика
+    NINCLUDE_DEF            in number := 1 -- Включить описание заголовка (0 - нет, 1 - да)
+  ) return                  clob           -- XML-описание
+  is
+    CRES                    clob;          -- Буфер для результата
+  begin
+    /* Начинаем формирование XML */
+    PKG_XFAST.PROLOGUE(ITYPE => PKG_XFAST.CONTENT_);
+    /* Открываем корень */
+    PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XDATA);
+    /* Открываем график */
+    PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XCHART);
+    /* Если необходимо включить описание колонок */
+    if (NINCLUDE_DEF = 1) then
+      TCHART_DEF_TO_XML(RCHART => RCHART);
+    end if;
+    /* Формируем описание меток */
+    TCHART_LABELS_TO_XML(RLABELS => RCHART.RLABELS);
+    /* Формируем описание наборов данных */
+    TCHART_DATASETS_TO_XML(RDATASETS => RCHART.RDATASETS);
+    /* Закрываем график */
+    PKG_XFAST.UP();
+    /* Закрываем корень */
+    PKG_XFAST.UP();
+    /* Сериализуем */
+    CRES := PKG_XFAST.SERIALIZE_TO_CLOB();
+    /* Завершаем формирование XML */
+    PKG_XFAST.EPILOGUE();
+    /* Возвращаем полученное */
+    return CRES;
+  exception
+    when others then
+      /* Завершаем формирование XML */
+      PKG_XFAST.EPILOGUE();
+      /* Вернем ошибку */
+      PKG_STATE.DIAGNOSTICS_STACKED();
+      P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
+  end TCHART_TO_XML;
   
 end PKG_P8PANELS_VISUAL;
 /
