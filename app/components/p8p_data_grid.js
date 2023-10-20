@@ -7,7 +7,7 @@
 //Подключение библиотек
 //---------------------
 
-import React, { useState } from "react"; //Классы React
+import React, { useState, useEffect } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { P8PTable, P8P_TABLE_SIZE, P8P_TABLE_DATA_TYPE, P8P_TABLE_FILTER_SHAPE } from "./p8p_table"; //Таблица
 
@@ -92,6 +92,11 @@ const P8PDataGrid = ({
     const handlePagesCountChanged = () => {
         if (onPagesCountChanged) onPagesCountChanged();
     };
+
+    //При изменении списка установленных извне фильтров
+    useEffect(() => {
+        setFilters(filtersInitial || []);
+    }, [filtersInitial]);
 
     //Генерация содержимого
     return (
