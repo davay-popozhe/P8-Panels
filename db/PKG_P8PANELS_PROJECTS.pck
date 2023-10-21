@@ -83,6 +83,12 @@ create or replace package PKG_P8PANELS_PROJECTS as
     NRN                     in number   -- Рег. номер проекта
   ) return                  number;     -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
 
+  /* Получение % готовности проекта (по затратам) */
+  function GET_COST_READY
+  (
+    NRN                     in number   -- Рег. номер проекта
+  ) return                  number;     -- % готовности
+  
   /* Список проектов */
   procedure LIST
   (
@@ -94,6 +100,32 @@ create or replace package PKG_P8PANELS_PROJECTS as
     COUT                    out clob    -- Сериализованная таблица данных
   );
   
+  /* График по данным проектов - "Топ проблем" */
+  procedure CHART_PROBLEMS
+  (
+    COUT                    out clob    -- Сериализованный график
+  );
+
+  /* График по данным проектов - "Топ заказчиков" */
+  procedure CHART_CUSTOMERS
+  (
+    COUT                    out clob    -- Сериализованный график
+  );
+  
+  /* График по данным проектов - "Затраты на проекты" */
+  procedure CHART_FCCOSTNOTES
+  (
+    COUT                    out clob    -- Сериализованный график
+  );
+  
+  /* График по данным проектов - "Затраты на проекты" (подбор записей журнала затрат по точке графика) */
+  procedure CHART_FCCOSTNOTES_SELECT_COST
+  (
+    NYEAR                   in number,  -- Год
+    NMONTH                  in number,  -- Месяц
+    NIDENT                  out number  -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
+  );
+ 
   /* Отбор этапов проектов */
   procedure STAGES_COND;
   
@@ -164,7 +196,7 @@ create or replace package PKG_P8PANELS_PROJECTS as
   /* Подбор записей журнала затрат этапа проекта */
   procedure STAGES_SELECT_COST_FACT
   (
-    NRN                     in number,  -- Рег. номер этапа проекта (null - не отбирать по этапу)
+    NRN                     in number,  -- Рег. номер этапа проекта
     NIDENT                  out number  -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
   );
   
@@ -174,11 +206,24 @@ create or replace package PKG_P8PANELS_PROJECTS as
     NRN                     in number   -- Рег. номер этапа проекта
   ) return                  number;     -- Сумма фактических затрат
 
+  /* Подбор записей расходных накладных на отпуск потребителям этапа проекта */
+  procedure STAGES_SELECT_SUMM_REALIZ
+  (
+    NRN                     in number,  -- Рег. номер этапа проекта
+    NIDENT                  out number  -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
+  );
+  
   /* Получение суммы реализации этапа проекта */
   function STAGES_GET_SUMM_REALIZ
   (
     NRN                     in number,  -- Рег. номер этапа проекта
     NFPDARTCL_REALIZ        in number   -- Рег. номер статьи калькуляции для реализации
+  ) return                  number;     -- Сумма реализации
+  
+  /* Получение % готовности этапа проекта (по затратам) */
+  function STAGES_GET_COST_READY
+  (
+    NRN                     in number   -- Рег. номер этапа проекта
   ) return                  number;     -- Сумма реализации
   
   /* Список этапов */
@@ -221,10 +266,11 @@ create or replace package PKG_P8PANELS_PROJECTS as
   /* Получение списка статей этапа проекта */
   procedure STAGE_ARTS_GET
   (
-    NSTAGE                  in number,      -- Рег. номер этапа проекта  
-    NINC_COST               in number := 0, -- Включить сведения о затратах (0 - нет, 1 - да)
-    NINC_CONTR              in number := 0, -- Включить сведения о контрактации (0 - нет, 1 - да)
-    RSTAGE_ARTS             out TSTAGE_ARTS -- Список статей этапа проекта
+    NSTAGE                  in number,         -- Рег. номер этапа проекта
+    NFPDARTCL               in number := null, -- Рег. номер статьи затрат (null - брать все)
+    NINC_COST               in number := 0,    -- Включить сведения о затратах (0 - нет, 1 - да)
+    NINC_CONTR              in number := 0,    -- Включить сведения о контрактации (0 - нет, 1 - да)
+    RSTAGE_ARTS             out TSTAGE_ARTS    -- Список статей этапа проекта
   );
   
   /* Список статей калькуляции этапа проекта */
@@ -337,10 +383,11 @@ end PKG_P8PANELS_PROJECTS;
 create or replace package body PKG_P8PANELS_PROJECTS as
 
   /* Константы - предопределённые значения */
-  SYES                        constant PKG_STD.TSTRING := 'Да';              -- Да
-  NDAYS_LEFT_LIMIT            constant PKG_STD.TNUMBER := 30;                -- Лимит отстатка дней для контроля сроков
-  SFPDARTCL_REALIZ            constant PKG_STD.TSTRING := '14 Цена без НДС'; -- Мнемокод статьи калькуляции для учёта реализации
-  NGANTT_TASK_CAPTION_LEN     constant PKG_STD.TNUMBER := 50;                -- Предельная длина метки задачи при отображении диаграммы Ганта
+  SYES                        constant PKG_STD.TSTRING := 'Да';               -- Да
+  NDAYS_LEFT_LIMIT            constant PKG_STD.TNUMBER := 30;                 -- Лимит отстатка дней для контроля сроков
+  SFPDARTCL_REALIZ            constant PKG_STD.TSTRING := '14 Цена без НДС';  -- Мнемокод статьи калькуляции для учёта реализации
+  SFPDARTCL_SELF_COST         constant PKG_STD.TSTRING := '10 Себестоимость'; -- Мнемокод статьи калькуляции для учёта себестоимости
+  NGANTT_TASK_CAPTION_LEN     constant PKG_STD.TNUMBER := 50;                 -- Предельная длина (знаков) метки задачи при отображении диаграммы Ганта
 
   /* Константы - дополнительные свойства */
   SDP_SECON_RESP              constant PKG_STD.TSTRING := 'ПУП.SECON_RESP'; -- Ответственный экономист проекта
@@ -444,6 +491,27 @@ create or replace package body PKG_P8PANELS_PROJECTS as
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_ACT',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_ACT'));
     end if;
+    /* Готовность (%, по затратам) */
+    if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 1) and
+       (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 0)) then
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_COST_READY(RN) >= :EDCOST_READYFrom');
+      PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYFrom',
+                                    NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYFrom'));
+    end if;
+    if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 1) and
+       (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 0)) then
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_COST_READY(RN) <= :EDCOST_READYTo');
+      PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYTo',
+                                    NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYTo'));
+    end if;
+    if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 1) and
+       (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 1)) then
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_COST_READY(RN) between :EDCOST_READYFrom and :EDCOST_READYTo');
+      PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYFrom',
+                                    NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYFrom'));
+      PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYTo',
+                                    NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYTo'));
+    end if;    
   end COND;
   
   /* Получение рег. номера документа основания (договора) проекта */
@@ -786,6 +854,50 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     end if;
   end GET_CTRL_ACT;
   
+  /* Получение % готовности проекта (по затратам) */
+  function GET_COST_READY
+  (
+    NRN                     in number             -- Рег. номер проекта
+  ) return                  number                -- % готовности
+  is
+    RP                      PROJECT%rowtype;      -- Запись проекта
+    NFPDARTCL_SELF_COST     PKG_STD.TREF;         -- Рег. номер статьи себестоимости
+    NCOST_FACT              PKG_STD.TNUMBER := 0; -- Сумма фактических затрат по проекту
+    NSELF_COST_PLAN         PKG_STD.TNUMBER := 0; -- Плановая себестоимость проекта
+    RSTG_SELF_COST_PLAN     TSTAGE_ARTS;          -- Плановая себестоимость этапа
+    NRES                    PKG_STD.TNUMBER := 0; -- Буфер для результата
+  begin
+    /* Читаем проект */
+    RP := GET(NRN => NRN);
+    /* Определим рег. номер статьи калькуляции для учёта себестоимости */
+    FIND_FPDARTCL_CODE(NFLAG_SMART => 1,
+                       NCOMPANY    => RP.COMPANY,
+                       SCODE       => SFPDARTCL_SELF_COST,
+                       NRN         => NFPDARTCL_SELF_COST);
+    /* Обходим этапы */
+    for C in (select PS.RN from PROJECTSTAGE PS where PS.PRN = RP.RN)
+    loop
+      /* Накапливаем сумму фактических затрат */
+      NCOST_FACT := NCOST_FACT + STAGES_GET_COST_FACT(NRN => C.RN);
+      /* Накапливаем плановую себестоимость */
+      STAGE_ARTS_GET(NSTAGE => C.RN, NFPDARTCL => NFPDARTCL_SELF_COST, RSTAGE_ARTS => RSTG_SELF_COST_PLAN);
+      if ((RSTG_SELF_COST_PLAN.COUNT = 1) and (RSTG_SELF_COST_PLAN(RSTG_SELF_COST_PLAN.LAST).NPLAN <> 0)) then
+        NSELF_COST_PLAN := NSELF_COST_PLAN + RSTG_SELF_COST_PLAN(RSTG_SELF_COST_PLAN.LAST).NPLAN;
+      end if;
+    end loop;
+    /* Если есть и фактические затраты и плановая себестоимость */
+    if ((NCOST_FACT > 0) and (NSELF_COST_PLAN > 0)) then
+      /* Отношение фактических затрат к плановой себестоимость - искомый % готовности */
+      NRES := ROUND(NCOST_FACT / NSELF_COST_PLAN * 100, 0);
+      /* Если затраты превысили себестоимость, то % может быть > 100, но это бессмысленно, откорректируем ситуацию */
+      if (NRES > 100) then
+        NRES := 100;
+      end if;
+    end if;
+    /* Вернём рассчитанное */
+    return NRES;
+  end GET_COST_READY;
+  
   /* Список проектов */
   procedure LIST
   (
@@ -974,23 +1086,31 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 1);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_FIN',
-                                               SCAPTION   => 'Финансирование (исходящее)',
+                                               SCAPTION   => 'Фин-е (исх.)',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_FIN',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Финансирование (исходящее)</b> - контроль оплаты счетов, выставленных соисполнителями в рамках проекта.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, для которых не все выставленные соисполнителями счета оплачены<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет этапов, с отклонениями, описанными выше<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапов задана привязка к договорам с соисполнителями.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_CONTR',
-                                               SCAPTION   => 'Контрактация',
+                                               SCAPTION   => 'Контр-я',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_CONTR',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Контрактация</b> - контроль суммы договоров, заключеных с соисполнителями в рамках проекта.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, для которых сумма договоров с соисполнителями превышает заложенные в калькуляцию плановые показатели<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет этапов, с отклонениями, описанными выше<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для всех этапов заданы плановые калькуляции.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_COEXEC',
-                                               SCAPTION   => 'Соисполнители',
+                                               SCAPTION   => 'Соисп-е',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_COEXEC',
                                                BORDER     => true,
@@ -1014,12 +1134,20 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                RCOL_VALS  => RCOL_VALS);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_ACT',
-                                               SCAPTION   => 'Актирование',
+                                               SCAPTION   => 'Актир-е',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_ACT',
                                                BORDER     => true,
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NCOST_READY',
+                                               SCAPTION   => 'Готов (%, затраты)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               SCOND_FROM => 'EDCOST_READYFrom',
+                                               SCOND_TO   => 'EDCOST_READYTo',                                               
+                                               BORDER     => true,
+                                               BFILTER    => true);                                               
     /* Определим дополнительные свойства - ответственный экономист */
     FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1, NCOMPANY => NCOMPANY, SCODE => SDP_SECON_RESP, NRN => NECON_RESP_DP);
     /* Обходим данные */
@@ -1058,7 +1186,8 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                  PKG_P8PANELS_PROJECTS.GET_CTRL_COEXEC(P.RN) NCTRL_COEXEC,
                                  PKG_P8PANELS_PROJECTS.GET_CTRL_PERIOD(P.RN) NCTRL_PERIOD,
                                  PKG_P8PANELS_PROJECTS.GET_CTRL_COST(P.RN) NCTRL_COST,
-                                 PKG_P8PANELS_PROJECTS.GET_CTRL_ACT(P.RN) NCTRL_ACT
+                                 PKG_P8PANELS_PROJECTS.GET_CTRL_ACT(P.RN) NCTRL_ACT,
+                                 PKG_P8PANELS_PROJECTS.GET_COST_READY(P.RN) NCOST_READY
                             from PROJECT        P,
                                  PRJTYPE        PT,
                                  AGNLIST        EC,
@@ -1125,6 +1254,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 29);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 30);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 31);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 32);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
@@ -1236,6 +1366,10 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                               SNAME     => 'NCTRL_ACT',
                                               ICURSOR   => ICURSOR,
                                               NPOSITION => 31);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NCOST_READY',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 32);
         /* Добавляем строку в таблицу */
         PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
       end loop;
@@ -1249,6 +1383,272 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
   end LIST;
+  
+  /* График по данным проектов - "Топ проблем" */
+  procedure CHART_PROBLEMS
+  (
+    COUT                    out clob                                           -- Сериализованный график
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY();             -- Организация сеанса
+    RCH                     PKG_P8PANELS_VISUAL.TCHART;                        -- График
+    RCH_DS                  PKG_P8PANELS_VISUAL.TCHART_DATASET;                -- Набор данных
+    RATTR_VALS              PKG_P8PANELS_VISUAL.TCHART_DATASET_ITEM_ATTR_VALS; -- Атрибуты элемента набора данных
+  begin
+    /* Сформируем заголовок графика */
+    RCH := PKG_P8PANELS_VISUAL.TCHART_MAKE(STYPE     => PKG_P8PANELS_VISUAL.SCHART_TYPE_BAR,
+                                           STITLE    => 'Топ проблем',
+                                           SLGND_POS => PKG_P8PANELS_VISUAL.SCHART_LGND_POS_TOP);
+    /* Сформируем набор данных */
+    RCH_DS := PKG_P8PANELS_VISUAL.TCHART_DATASET_MAKE(SCAPTION => 'Кол-во проектов с проблемой');
+    /* Строим список проблем по убыванию количества */
+    for C in (select D.SFILTER,
+                     D.SNAME,
+                     D.NCOUNT
+                from (select 'NCTRL_FIN' SFILTER,
+                             'Финансирование' SNAME,
+                             count(P.RN) NCOUNT
+                        from PROJECT P
+                       where P.COMPANY = NCOMPANY 
+                         and PKG_P8PANELS_PROJECTS.GET_CTRL_FIN(P.RN) = 1
+                         and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
+                         and exists (select null
+                                from V_USERPRIV UP
+                               where UP.JUR_PERS = P.JUR_PERS
+                                 and UP.UNITCODE = 'Projects')
+                      union all
+                      select 'NCTRL_CONTR' SFILTER,
+                             'Контрактация' SNAME,
+                             count(P.RN) NCOUNT
+                        from PROJECT P
+                       where P.COMPANY = NCOMPANY 
+                         and PKG_P8PANELS_PROJECTS.GET_CTRL_CONTR(P.RN) = 1
+                         and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
+                         and exists (select null
+                                from V_USERPRIV UP
+                               where UP.JUR_PERS = P.JUR_PERS
+                                 and UP.UNITCODE = 'Projects')
+                      union all
+                      select 'NCTRL_COEXEC' SFILTER,
+                             'Соисполнение' SNAME,
+                             count(P.RN) NCOUNT
+                        from PROJECT P
+                       where P.COMPANY = NCOMPANY 
+                         and PKG_P8PANELS_PROJECTS.GET_CTRL_COEXEC(P.RN) = 1
+                         and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
+                         and exists (select null
+                                from V_USERPRIV UP
+                               where UP.JUR_PERS = P.JUR_PERS
+                                 and UP.UNITCODE = 'Projects')
+                      union all
+                      select 'NCTRL_PERIOD' SFILTER,
+                             'Сроки' SNAME,
+                             count(P.RN) NCOUNT
+                        from PROJECT P
+                       where P.COMPANY = NCOMPANY 
+                         and PKG_P8PANELS_PROJECTS.GET_CTRL_PERIOD(P.RN) = 1
+                         and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
+                         and exists (select null
+                                from V_USERPRIV UP
+                               where UP.JUR_PERS = P.JUR_PERS
+                                 and UP.UNITCODE = 'Projects')
+                      union all
+                      select 'NCTRL_COST' SFILTER,
+                             'Затраты' SNAME,
+                             count(P.RN) NCOUNT
+                        from PROJECT P
+                       where P.COMPANY = NCOMPANY 
+                         and PKG_P8PANELS_PROJECTS.GET_CTRL_COST(P.RN) = 1
+                         and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
+                         and exists (select null
+                                from V_USERPRIV UP
+                               where UP.JUR_PERS = P.JUR_PERS
+                                 and UP.UNITCODE = 'Projects')
+                      union all
+                      select 'NCTRL_ACT' SFILTER,
+                             'Актирование' SNAME,
+                             count(P.RN) NCOUNT
+                        from PROJECT P
+                       where P.COMPANY = NCOMPANY 
+                         and PKG_P8PANELS_PROJECTS.GET_CTRL_ACT(P.RN) = 1
+                         and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
+                         and exists (select null
+                                from V_USERPRIV UP
+                               where UP.JUR_PERS = P.JUR_PERS
+                                 and UP.UNITCODE = 'Projects')) D
+               order by D.NCOUNT desc)
+    loop
+      /* Если проблема выявлена */
+      if (C.NCOUNT > 0) then
+        /* Добавим метку для проблемы */
+        PKG_P8PANELS_VISUAL.TCHART_ADD_LABEL(RCHART => RCH, SLABEL => C.SNAME);
+        /* Добавим проблему в набор данных */
+        PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS,
+                                                           SNAME      => 'SFILTER',
+                                                           SVALUE     => C.SFILTER,
+                                                           BCLEAR     => true);
+        PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS,
+                                                           SNAME      => 'SFILTER_VALUE',
+                                                           SVALUE     => '1');
+        PKG_P8PANELS_VISUAL.TCHART_DATASET_ADD_ITEM(RDATASET => RCH_DS, NVALUE => C.NCOUNT, RATTR_VALS => RATTR_VALS);
+      end if;
+    end loop;
+    /* Добавим набор данных в график */
+    PKG_P8PANELS_VISUAL.TCHART_ADD_DATASET(RCHART => RCH, RDATASET => RCH_DS);
+    /* Сериализуем описание */
+    COUT := PKG_P8PANELS_VISUAL.TCHART_TO_XML(RCHART => RCH, NINCLUDE_DEF => 1);
+  end CHART_PROBLEMS;
+  
+  /* График по данным проектов - "Топ заказчиков" */
+  procedure CHART_CUSTOMERS
+  (
+    COUT                    out clob                                           -- Сериализованный график
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY();             -- Организация сеанса
+    RCH                     PKG_P8PANELS_VISUAL.TCHART;                        -- График
+    RCH_DS                  PKG_P8PANELS_VISUAL.TCHART_DATASET;                -- Набор данных
+    RATTR_VALS              PKG_P8PANELS_VISUAL.TCHART_DATASET_ITEM_ATTR_VALS; -- Атрибуты элемента набора данных
+  begin
+    /* Сформируем заголовок графика */
+    RCH := PKG_P8PANELS_VISUAL.TCHART_MAKE(STYPE     => PKG_P8PANELS_VISUAL.SCHART_TYPE_PIE,
+                                           STITLE    => 'Топ заказчиков',
+                                           SLGND_POS => PKG_P8PANELS_VISUAL.SCHART_LGND_POS_RIGHT);
+    /* Сформируем набор данных */
+    RCH_DS := PKG_P8PANELS_VISUAL.TCHART_DATASET_MAKE(SCAPTION => 'Стоимость проектов');
+    /* Обходим проекты, сгруппированные по внешним заказчикам */
+    for C in (select D.SEXT_CUST,
+                     D.NSUM
+                from (select EC.AGNABBR SEXT_CUST,
+                             sum(P.COST_SUM_BASECURR) NSUM
+                        from PROJECT P,
+                             AGNLIST EC
+                       where P.COMPANY = NCOMPANY
+                         and P.EXT_CUST = EC.RN
+                       group by EC.AGNABBR
+                       order by 2 desc) D
+               where ROWNUM <= 5)
+    loop
+      /* Добавим метку для контрагента */
+      PKG_P8PANELS_VISUAL.TCHART_ADD_LABEL(RCHART => RCH, SLABEL => C.SEXT_CUST);
+      /* Добавим контрагента в набор данных */
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS,
+                                                         SNAME      => 'SFILTER',
+                                                         SVALUE     => 'SEXT_CUST',
+                                                         BCLEAR     => true);
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS,
+                                                         SNAME      => 'SFILTER_VALUE',
+                                                         SVALUE     => C.SEXT_CUST);
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ADD_ITEM(RDATASET => RCH_DS, NVALUE => C.NSUM, RATTR_VALS => RATTR_VALS);
+    end loop;
+    /* Добавим набор данных в график */
+    PKG_P8PANELS_VISUAL.TCHART_ADD_DATASET(RCHART => RCH, RDATASET => RCH_DS);
+    /* Сериализуем описание */
+    COUT := PKG_P8PANELS_VISUAL.TCHART_TO_XML(RCHART => RCH, NINCLUDE_DEF => 1);
+  end CHART_CUSTOMERS;
+  
+  /* График по данным проектов - "Затраты на проекты" */
+  procedure CHART_FCCOSTNOTES
+  (
+    COUT                    out clob                                           -- Сериализованный график
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY();             -- Организация сеанса
+    RCH                     PKG_P8PANELS_VISUAL.TCHART;                        -- График
+    RCH_DS                  PKG_P8PANELS_VISUAL.TCHART_DATASET;                -- Набор данных
+    RATTR_VALS              PKG_P8PANELS_VISUAL.TCHART_DATASET_ITEM_ATTR_VALS; -- Атрибуты элемента набора данных
+    NYEAR                   PKG_STD.TNUMBER;                                   -- Текущий год
+    NSUM                    PKG_STD.TNUMBER;                                   -- Сумма затрат в текущем месяце
+  begin
+    NYEAR := TO_NUMBER(TO_CHAR(sysdate, 'yyyy'));
+    /* Сформируем заголовок графика */
+    RCH := PKG_P8PANELS_VISUAL.TCHART_MAKE(STYPE     => PKG_P8PANELS_VISUAL.SCHART_TYPE_LINE,
+                                           STITLE    => 'Затраты на проекты в ' || TO_CHAR(NYEAR) || ' году',
+                                           SLGND_POS => PKG_P8PANELS_VISUAL.SCHART_LGND_POS_TOP);
+    /* Сформируем набор данных */
+    RCH_DS := PKG_P8PANELS_VISUAL.TCHART_DATASET_MAKE(SCAPTION => 'Сумма затрат (тыс. руб.)');
+    /* Обходим месяцы года */
+    for I in 1 .. 12
+    loop
+      /* Суммируем затраты этого месяца, отнесённые на проекты */
+      select COALESCE(sum(CN.COST_BSUM) / 1000, 0)
+        into NSUM
+        from FCCOSTNOTES CN
+       where CN.COMPANY = NCOMPANY
+         and TO_NUMBER(TO_CHAR(CN.COST_DATE, 'mm')) = I
+         and TO_NUMBER(TO_CHAR(CN.COST_DATE, 'yyyy')) = NYEAR
+         and exists (select null from V_USERPRIV UP where UP.CATALOG = CN.CRN)
+         and CN.PROD_ORDER in (select PS.FACEACC
+                                 from PROJECTSTAGE PS
+                                where PS.COMPANY = CN.COMPANY
+                                  and exists (select null from V_USERPRIV UP where UP.CATALOG = PS.CRN)
+                                  and exists (select null
+                                         from V_USERPRIV UP
+                                        where UP.JUR_PERS = PS.JUR_PERS
+                                          and UP.UNITCODE = 'Projects'));
+      /* Добавим метку для месяца */
+      PKG_P8PANELS_VISUAL.TCHART_ADD_LABEL(RCHART => RCH, SLABEL => F_GET_MONTH(NVALUE => I));
+      /* Добавим месяц в набор данных */
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS,
+                                                         SNAME      => 'SUNITCODE',
+                                                         SVALUE     => 'CostNotes',
+                                                         BCLEAR     => true);
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS, SNAME => 'NYEAR', SVALUE => NYEAR);
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS, SNAME => 'NMONTH', SVALUE => I);
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ADD_ITEM(RDATASET => RCH_DS, NVALUE => NSUM, RATTR_VALS => RATTR_VALS);
+    end loop;
+    /* Добавим набор данных в график */
+    PKG_P8PANELS_VISUAL.TCHART_ADD_DATASET(RCHART => RCH, RDATASET => RCH_DS);
+    /* Сериализуем описание */
+    COUT := PKG_P8PANELS_VISUAL.TCHART_TO_XML(RCHART => RCH, NINCLUDE_DEF => 1);
+  end CHART_FCCOSTNOTES;
+  
+  /* График по данным проектов - "Затраты на проекты" (подбор записей журнала затрат по точке графика) */
+  procedure CHART_FCCOSTNOTES_SELECT_COST
+  (
+    NYEAR                   in number,                             -- Год
+    NMONTH                  in number,                             -- Месяц
+    NIDENT                  out number                             -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
+    NSELECTLIST             PKG_STD.TREF;                          -- Рег. номер добавленной записи буфера подобранных
+  begin
+    /* Подберём записи журнала затрат */
+    for C in (select CN.COMPANY,
+                     CN.RN
+                from FCCOSTNOTES CN
+               where CN.COMPANY = NCOMPANY
+                 and TO_NUMBER(TO_CHAR(CN.COST_DATE, 'mm')) = NMONTH
+                 and TO_NUMBER(TO_CHAR(CN.COST_DATE, 'yyyy')) = NYEAR
+                 and exists
+               (select null from V_USERPRIV UP where UP.CATALOG = CN.CRN)
+                 and CN.PROD_ORDER in (select PS.FACEACC
+                                         from PROJECTSTAGE PS
+                                        where PS.COMPANY = CN.COMPANY
+                                          and exists (select null from V_USERPRIV UP where UP.CATALOG = PS.CRN)
+                                          and exists (select null
+                                                 from V_USERPRIV UP
+                                                where UP.JUR_PERS = PS.JUR_PERS
+                                                  and UP.UNITCODE = 'Projects')))
+    loop
+      /* Сформируем идентификатор буфера */
+      if (NIDENT is null) then
+        NIDENT := GEN_IDENT();
+      end if;
+      /* Добавим подобранное в список отмеченных записей */
+      P_SELECTLIST_BASE_INSERT(NIDENT       => NIDENT,
+                               NCOMPANY     => C.COMPANY,
+                               NDOCUMENT    => C.RN,
+                               SUNITCODE    => 'CostNotes',
+                               SACTIONCODE  => null,
+                               NCRN         => null,
+                               NDOCUMENT1   => null,
+                               SUNITCODE1   => null,
+                               SACTIONCODE1 => null,
+                               NRN          => NSELECTLIST);
+    end loop;
+  end CHART_FCCOSTNOTES_SELECT_COST;
   
   /* Считывание записи этапа проекта */
   function STAGES_GET
@@ -1292,7 +1692,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
       PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_FIN(RN) = :EDCTRL_FIN');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_FIN',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_FIN'));
-    end if;  
+    end if;
     /* Контроль контрактации */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_CONTR') = 1) then
       PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_CONTR(RN) = :EDCTRL_CONTR');
@@ -1322,7 +1722,28 @@ create or replace package body PKG_P8PANELS_PROJECTS as
       PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_ACT(RN) = :EDCTRL_ACT');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_ACT',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_ACT'));
-    end if;   
+    end if;
+    /* Готовность (%, по затратам) */
+    if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 1) and
+       (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 0)) then
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY(RN) >= :EDCOST_READYFrom');
+      PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYFrom',
+                                    NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYFrom'));
+    end if;
+    if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 1) and
+       (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 0)) then
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY(RN) <= :EDCOST_READYTo');
+      PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYTo',
+                                    NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYTo'));
+    end if;
+    if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 1) and
+       (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 1)) then
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY(RN) between :EDCOST_READYFrom and :EDCOST_READYTo');
+      PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYFrom',
+                                    NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYFrom'));
+      PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYTo',
+                                    NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYTo'));
+    end if;
   end STAGES_COND;
   
   /* Подбор платежей финансирования этапа проекта */
@@ -1690,7 +2111,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
   /* Подбор записей журнала затрат этапа проекта */
   procedure STAGES_SELECT_COST_FACT
   (
-    NRN                     in number,  -- Рег. номер этапа проекта (null - не отбирать по этапу)
+    NRN                     in number,  -- Рег. номер этапа проекта
     NIDENT                  out number  -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
   )
   is
@@ -1708,6 +2129,69 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     return STAGE_ARTS_GET_COST_FACT(NSTAGE => NRN, NFINFLOW_TYPE => 2);
   end STAGES_GET_COST_FACT;
     
+  /* Подбор записей расходных накладных на отпуск потребителям этапа проекта */
+  procedure STAGES_SELECT_SUMM_REALIZ
+  (
+    NRN                     in number,            -- Рег. номер этапа проекта
+    NIDENT                  out number            -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
+  )
+  is
+    RSTG                    PROJECTSTAGE%rowtype; -- Запись этапа
+    NSELECTLIST             PKG_STD.TREF;         -- Рег. номер добавленной записи буфера подобранных
+  begin
+    /* Читаем этап */
+    RSTG := STAGES_GET(NRN => NRN);
+    /* Подберём расходные накладные на отпуск потребителям */
+    for C in (select T.COMPANY,
+                     T.RN
+                from TRANSINVCUST T
+               where T.STATUS = 1
+                 and T.COMPANY = RSTG.COMPANY
+                 and T.FACEACC = RSTG.FACEACCCUST
+                 and exists (select TC.RN
+                        from TRANSINVCUSTSPECS TS,
+                             TRINVCUSTCLC      TC
+                       where TS.PRN = T.RN
+                         and TC.PRN = TS.RN
+                         and TC.FACEACCOUNT = RSTG.FACEACC
+                         and exists (select null from V_USERPRIV UP where UP.CATALOG = RSTG.CRN)
+                         and exists (select null
+                                from V_USERPRIV UP
+                               where UP.JUR_PERS = RSTG.JUR_PERS
+                                 and UP.UNITCODE = 'Projects'))
+                 and exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */
+                       null
+                        from USERPRIV UP
+                       where UP.CATALOG = T.CRN
+                         and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                            UR.ROLEID
+                                             from USERROLES UR
+                                            where UR.AUTHID = UTILIZER)
+                      union all
+                      select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */
+                       null
+                        from USERPRIV UP
+                       where UP.CATALOG = T.CRN
+                         and UP.AUTHID = UTILIZER))
+    loop
+      /* Сформируем идентификатор буфера */
+      if (NIDENT is null) then
+        NIDENT := GEN_IDENT();
+      end if;
+      /* Добавим подобранное в список отмеченных записей */
+      P_SELECTLIST_BASE_INSERT(NIDENT       => NIDENT,
+                               NCOMPANY     => C.COMPANY,
+                               NDOCUMENT    => C.RN,
+                               SUNITCODE    => 'GoodsTransInvoicesToConsumers',
+                               SACTIONCODE  => null,
+                               NCRN         => null,
+                               NDOCUMENT1   => null,
+                               SUNITCODE1   => null,
+                               SACTIONCODE1 => null,
+                               NRN          => NSELECTLIST);
+    end loop;
+  end STAGES_SELECT_SUMM_REALIZ;
+  
   /* Получение суммы реализации этапа проекта */
   function STAGES_GET_SUMM_REALIZ
   (
@@ -1723,6 +2207,42 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     end if;
   end STAGES_GET_SUMM_REALIZ;
     
+  /* Получение % готовности этапа проекта (по затратам) */
+  function STAGES_GET_COST_READY
+  (
+    NRN                     in number             -- Рег. номер этапа проекта
+  ) return                  number                -- % готовности
+  is
+    RSTG                    PROJECTSTAGE%rowtype; -- Запись этапа
+    NFPDARTCL_SELF_COST     PKG_STD.TREF;         -- Рег. номер статьи себестоимости
+    NCOST_FACT              PKG_STD.TNUMBER;      -- Сумма фактических затрат
+    RSELF_COST_PLAN         TSTAGE_ARTS;          -- Плановая себестоимость
+    NRES                    PKG_STD.TNUMBER := 0; -- Буфер для результата
+  begin
+    /* Читаем этап */
+    RSTG := STAGES_GET(NRN => NRN);
+    /* Определим рег. номер статьи калькуляции для учёта себестоимости */
+    FIND_FPDARTCL_CODE(NFLAG_SMART => 1,
+                       NCOMPANY    => RSTG.COMPANY,
+                       SCODE       => SFPDARTCL_SELF_COST,
+                       NRN         => NFPDARTCL_SELF_COST);
+    /* Опеределим сумму фактических затрат */
+    NCOST_FACT := STAGES_GET_COST_FACT(NRN => RSTG.RN);
+    /* Определим плановую себестоимость */
+    STAGE_ARTS_GET(NSTAGE => RSTG.RN, NFPDARTCL => NFPDARTCL_SELF_COST, RSTAGE_ARTS => RSELF_COST_PLAN);
+    /* Если есть и фактические затраты и найдена плановая себестоимость */
+    if ((NCOST_FACT > 0) and (RSELF_COST_PLAN.COUNT = 1) and (RSELF_COST_PLAN(RSELF_COST_PLAN.LAST).NPLAN <> 0)) then
+      /* Отношение фактических затрат к плановой себестоимость - искомый % готовности */
+      NRES := ROUND(NCOST_FACT / RSELF_COST_PLAN(RSELF_COST_PLAN.LAST).NPLAN * 100, 0);
+      /* Если затраты превысили себестоимость, то % может быть > 100, но это бессмысленно, откорректируем ситуацию */
+      if (NRES > 100) then
+        NRES := 100;
+      end if;
+    end if;
+    /* Вернём рассчитанное */
+    return NRES;
+  end STAGES_GET_COST_READY;
+  
   /* Список этапов */
   procedure STAGES_LIST
   (
@@ -1869,7 +2389,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 1);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_FIN',
-                                               SCAPTION   => 'Финансирование (исходящее)',
+                                               SCAPTION   => 'Фин-е (исх.)',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_FIN',
                                                BORDER     => true,
@@ -1877,7 +2397,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                RCOL_VALS  => RCOL_VALS);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_CONTR',
-                                               SCAPTION   => 'Контрактация',
+                                               SCAPTION   => 'Контр-я',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_CONTR',
                                                BORDER     => true,
@@ -1885,7 +2405,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                RCOL_VALS  => RCOL_VALS);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_COEXEC',
-                                               SCAPTION   => 'Соисполнители',
+                                               SCAPTION   => 'Соисп-е',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_COEXEC',
                                                BORDER     => true,
@@ -1923,6 +2443,16 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SNAME      => 'NSUMM_REALIZ',
                                                SCAPTION   => 'Сумма реализации',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);                                              
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SLNK_UNIT_NSUMM_REALIZ',
+                                               SCAPTION   => 'Сумма реализации (код раздела ссылки)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NLNK_DOCUMENT_NSUMM_REALIZ',
+                                               SCAPTION   => 'Сумма реализации (документ ссылки)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                BVISIBLE   => false);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NSUMM_INCOME',
@@ -1944,12 +2474,20 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                RCOL_VALS  => RCOL_VALS);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_ACT',
-                                               SCAPTION   => 'Актирование',
+                                               SCAPTION   => 'Актир-е',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_ACT',
                                                BORDER     => true,
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NCOST_READY',
+                                               SCAPTION   => 'Готов (%, затраты)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               SCOND_FROM => 'EDCOST_READYFrom',
+                                               SCOND_TO   => 'EDCOST_READYTo',                                               
+                                               BORDER     => true,
+                                               BFILTER    => true);
     /* Обходим данные */
     begin
       /* Собираем запрос */
@@ -1981,8 +2519,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                  ''CostNotes'' SLNK_UNIT_NCOST_FACT,
                                  1 NLNK_DOCUMENT_NCOST_FACT,
                                  PKG_P8PANELS_PROJECTS.STAGES_GET_SUMM_REALIZ(PS.RN, :NFPDARTCL_REALIZ) NSUMM_REALIZ,
+                                 ''GoodsTransInvoicesToConsumers'' SLNK_UNIT_NSUMM_REALIZ,
+                                 1 NLNK_DOCUMENT_NSUMM_REALIZ,                                 
                                  PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_COST(PS.RN) NCTRL_COST,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_ACT(PS.RN) NCTRL_ACT
+                                 PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_ACT(PS.RN) NCTRL_ACT,
+                                 PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY(PS.RN) NCOST_READY
                             from PROJECTSTAGE   PS,
                                  PROJECT        P,
                                  FACEACC        FAC,
@@ -2038,8 +2579,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 23);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 24);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 25);
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 26);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 26);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 27);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 28);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 29);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 30);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
@@ -2131,16 +2675,28 @@ create or replace package body PKG_P8PANELS_PROJECTS as
           NINCOME_PRC  := NSUMM_INCOME / NCOST_FACT * 100;
         end if;
         PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NSUMM_REALIZ', NVALUE => NSUMM_REALIZ);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
+                                              SNAME     => 'SLNK_UNIT_NSUMM_REALIZ',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 26);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NLNK_DOCUMENT_NSUMM_REALIZ',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 27);
         PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NSUMM_INCOME', NVALUE => NSUMM_INCOME);
         PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NINCOME_PRC', NVALUE => NINCOME_PRC);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
                                               SNAME     => 'NCTRL_COST',
                                               ICURSOR   => ICURSOR,
-                                              NPOSITION => 26);
+                                              NPOSITION => 28);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
                                               SNAME     => 'NCTRL_ACT',
                                               ICURSOR   => ICURSOR,
-                                              NPOSITION => 27);
+                                              NPOSITION => 29);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NCOST_READY',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 30);
         /* Добавляем строку в таблицу */
         PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
       end loop;
@@ -2290,9 +2846,9 @@ create or replace package body PKG_P8PANELS_PROJECTS as
   begin
     /* Считаем запись этапа */
     begin
-      select PS.* into RSTG from PROJECTSTAGE PS where PS.RN = NSTAGE;
+      RSTG := STAGES_GET(NRN => NSTAGE);
     exception
-      when NO_DATA_FOUND then
+      when others then
         null;
     end;
     /* Если считано успешно - будем искать данные */
@@ -2331,6 +2887,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
   procedure STAGE_ARTS_GET
   (
     NSTAGE                  in number,            -- Рег. номер этапа проекта  
+    NFPDARTCL               in number := null,    -- Рег. номер статьи затрат (null - брать все)
     NINC_COST               in number := 0,       -- Включить сведения о затратах (0 - нет, 1 - да)
     NINC_CONTR              in number := 0,       -- Включить сведения о контрактации (0 - нет, 1 - да)
     RSTAGE_ARTS             out TSTAGE_ARTS       -- Список статей этапа проекта
@@ -2369,6 +2926,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                  and CSP.SIGN_ACT = 1
                  and CSPA.PRN = CSP.RN
                  and CSPA.COST_ARTICLE = A.RN
+                 and ((NFPDARTCL is null) or ((NFPDARTCL is not null) and (A.RN = NFPDARTCL)))
                  and exists (select null from V_USERPRIV UP where UP.CATALOG = PS.CRN)
                  and exists (select null from V_USERPRIV UP where UP.JUR_PERS = PS.JUR_PERS and UP.UNITCODE = 'Projects')
                  and exists (select null from V_USERPRIV UP where UP.CATALOG = CS.CRN)
@@ -3147,7 +3705,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 1);                                               
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_FIN',
-                                               SCAPTION   => 'Финансирование (исходящее)',
+                                               SCAPTION   => 'Фин-е (исх.)',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCTRL_FIN',                                               
                                                BORDER     => false,
