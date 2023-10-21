@@ -1,3 +1,4 @@
+/* eslint-disable */
 /*
     Парус 8 - Панели мониторинга
     Настройки упаковщика
@@ -39,6 +40,13 @@ module.exports = {
                     options: {
                         presets: ["@babel/preset-react"]
                     }
+                }
+            },
+            {
+                test: /\.(jpg|png|svg)$/,
+                loader: "file-loader",
+                options: {
+                    name: "[path][name].[hash].[ext]"
                 }
             }
         ]
