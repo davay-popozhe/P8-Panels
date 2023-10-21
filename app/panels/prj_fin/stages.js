@@ -110,6 +110,17 @@ const Stages = ({ project, projectName, filters }) => {
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 
+    //Отображение расходных накладных на отпуск потребителям по этапу проекта
+    const showGoodsTransInvoicesToConsumers = async ({ sender }) => {
+        const data = await executeStored({
+            stored: "PKG_P8PANELS_PROJECTS.STAGES_SELECT_SUMM_REALIZ",
+            args: { NRN: sender.NRN }
+        });
+        if (data.NIDENT)
+            pOnlineShowUnit({ unitCode: "GoodsTransInvoicesToConsumers", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+        else showMsgErr(TEXTS.NO_DATA_FOUND);
+    };
+
     //Отображение статей калькуляции по этапу проекта
     const showStageArts = ({ sender, filters = [] } = {}) =>
         setStagesDataGrid(pv => ({ ...pv, showStageArts: sender.NRN, selectedStageNumb: sender.SNUMB, stageArtsFilters: [...filters] }));
@@ -161,7 +172,8 @@ const Stages = ({ project, projectName, filters }) => {
                             showStageArts,
                             showContracts,
                             showPayNotes,
-                            showCostNotes
+                            showCostNotes,
+                            showGoodsTransInvoicesToConsumers
                         })
                     }
                     valueFormatter={prms => valueFormatter({ ...prms, panelUnit: PANEL_UNITS.PROJECT_STAGES })}

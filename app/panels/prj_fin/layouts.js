@@ -255,6 +255,7 @@ export const rowExpandRender = ({
     showCostNotes,
     showPaymentAccountsIn,
     showIncomingInvoices,
+    showGoodsTransInvoicesToConsumers,
     showStageArts,
     showContracts
 }) => {
@@ -333,6 +334,8 @@ export const rowExpandRender = ({
                                                             ? showPayNotes({ sender: row, direction: row[`NLNK_DOCUMENT_${cardColumn.name}`] })
                                                             : cardColumn.name == "NCOST_FACT"
                                                             ? showCostNotes({ sender: row })
+                                                            : cardColumn.name == "NSUMM_REALIZ"
+                                                            ? showGoodsTransInvoicesToConsumers({ sender: row })
                                                             : cardColumn.name == "NPAY_IN"
                                                             ? showPaymentAccountsIn({ sender: row })
                                                             : cardColumn.name == "NCOEXEC_IN"
