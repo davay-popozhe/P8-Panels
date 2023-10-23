@@ -1093,8 +1093,8 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS,
                                                SHINT      => '<b>Финансирование (исходящее)</b> - контроль оплаты счетов, выставленных соисполнителями в рамках проекта.<br>' ||
-                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, для которых не все выставленные соисполнителями счета оплачены<br>' ||
-                                                             '<b style="color:green">В норме</b> - нет этапов, с отклонениями, описанными выше<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, для которых не все выставленные соисполнителями счета оплачены.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет этапов с отклонениями, описанными выше.<br>' ||
                                                              '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапов задана привязка к договорам с соисполнителями.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_CONTR',
@@ -1105,8 +1105,8 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS,
                                                SHINT      => '<b>Контрактация</b> - контроль суммы договоров, заключеных с соисполнителями в рамках проекта.<br>' ||
-                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, для которых сумма договоров с соисполнителями превышает заложенные в калькуляцию плановые показатели<br>' ||
-                                                             '<b style="color:green">В норме</b> - нет этапов, с отклонениями, описанными выше<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, для которых сумма договоров с соисполнителями превышает заложенные в калькуляцию плановые показатели.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет этапов с отклонениями, описанными выше.<br>' ||
                                                              '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для всех этапов заданы плановые калькуляции.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_COEXEC',
@@ -1115,7 +1115,12 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_COEXEC',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Соисполнение</b> - контроль исполнения обязательств по договорам, заключеным с соисполнителями в рамках проекта.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, до окончания которых осталось менее ' || TO_CHAR(NDAYS_LEFT_LIMIT) ||
+                                                             ' дней, при этом зафиксирован положительный остаток к поставке/актированию по договорам соисполнителей данного этапа.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет этапов с отклонениями, описанными выше.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапов задана привязка к договорам с соисполнителями и плановые сроки окончания.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_PERIOD',
                                                SCAPTION   => 'Сроки',
@@ -1123,7 +1128,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_PERIOD',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Сроки</b> - контроль сроков исполнения работ по проекту.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, до окончания которых осталось менее ' || TO_CHAR(NDAYS_LEFT_LIMIT) || ' дней.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет этапов с отклонениями, описанными выше.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапов заданы плановые сроки окончания.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_COST',
                                                SCAPTION   => 'Затраты',
@@ -1131,7 +1140,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_COST',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Затраты</b> - контроль затрат, понесённых в ходе выполнения работ по проекту.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, для которых сумма фактических затрат по статьям калькуляции превысила плановую.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет этапов с отклонениями, описанными выше.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапов задана действующая калькуляция с указанием плановых значений по статьям, подлежащим контролю.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_ACT',
                                                SCAPTION   => 'Актир-е',
@@ -1139,7 +1152,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_ACT',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Актирование</b> - контроль актирования работ, выполненных по проекту, со стороны заказчика.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, в состоянии "Закрыт", но при этом в Системе отсутствует утверждённая "Расходная накладная на отпуск потребителю" для данного этапа.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет этапов с отклонениями, описанными выше.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что этапы, по которым завершены работы, переведены в состояние "Закрыт".');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCOST_READY',
                                                SCAPTION   => 'Готов (%, затраты)',
@@ -2394,7 +2411,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_FIN',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Финансирование (исходящее)</b> - контроль оплаты счетов, выставленных соисполнителями по этапу.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - к этапу привязаны договоры соисполнителей, для которых не все выставленные соисполнителями счета оплачены.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет договоров соисполнения с отклонениями, описанными выше.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапов задана привязка к договорам с соисполнителями.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_CONTR',
                                                SCAPTION   => 'Контр-я',
@@ -2402,7 +2423,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_CONTR',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Контрактация</b> - контроль суммы договоров, заключеных с соисполнителями в рамках этапа.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - сумма договоров с соисполнителями, привязанных к этапу, превышает заложенные в калькуляцию плановые показатели по сответствующим статьям.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет описанных выше отклонений.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапа задана калькуляция и для контрагентских статей указаны плановые показатели.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_COEXEC',
                                                SCAPTION   => 'Соисп-е',
@@ -2410,7 +2435,12 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_COEXEC',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Соисполнение</b> - контроль исполнения обязательств по договорам, заключеным с соисполнителями в рамках этапа.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - до окончания этапа осталось менее ' || TO_CHAR(NDAYS_LEFT_LIMIT) ||
+                                                             ' дней, при этом зафиксирован положительный остаток к поставке/актированию по привязанным к нему договорам соисполнителей.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет описанных выше отклонений.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапа задана привязка к договорам с соисполнителями и плановый срок окончания.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NDAYS_LEFT',
                                                SCAPTION   => 'Дней до окончания',
@@ -2423,7 +2453,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_PERIOD',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Сроки</b> - контроль сроков исполнения работ по этапу.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - до окончания этапа осталось менее ' || TO_CHAR(NDAYS_LEFT_LIMIT) || ' дней.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет описанных выше отклонений.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапа задан плановый срок окончания.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCOST_FACT',
                                                SCAPTION   => 'Сумма фактических затрат',
@@ -2471,7 +2505,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_COST',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Затраты</b> - контроль затрат, понесённых в ходе выполнения работ по этапу.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - сумма фактических затрат этапа по некоторым статьям калькуляции превысила плановую.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет описанных выше отклонений.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапа задана действующая калькуляция с указанием плановых значений по статьям, подлежащим контролю.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_ACT',
                                                SCAPTION   => 'Актир-е',
@@ -2479,7 +2517,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_ACT',
                                                BORDER     => true,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Актирование</b> - контроль актирования работ, выполненных по этапу, со стороны заказчика.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - этап в состоянии "Закрыт", но при этом в Системе отсутствует утверждённая "Расходная накладная на отпуск потребителю" для данного этапа.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет описанных выше отклонений.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что этап, если работы по нему завершены, переведен в состояние "Закрыт".');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCOST_READY',
                                                SCAPTION   => 'Готов (%, затраты)',
@@ -3710,7 +3752,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_FIN',                                               
                                                BORDER     => false,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Финансирование (исходящее)</b> - контроль оплаты счетов, выставленных соисполнителем в рамках договора.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - не все выставленные соисполнителем акцептованные счета оплачены.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет описанных выше отклонений.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для договора с соисполнителем аккуратно ведётся учёт первичных документов оперативного учёта (входящих счетов на оплату).');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NFIN_REST',
                                                SCAPTION   => 'Общий остаток к оплате по договору',
@@ -3733,7 +3779,13 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                                                SCOND_FROM => 'EDCTRL_COEXEC',
                                                BORDER     => false,
                                                BFILTER    => true,
-                                               RCOL_VALS  => RCOL_VALS);
+                                               RCOL_VALS  => RCOL_VALS,
+                                               SHINT      => '<b>Соисполнение</b> - контроль исполнения обязательств по договору с соисполнителем.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - до окончания этапа проекта, в рамках которого действует соисполнение, осталось менее ' || TO_CHAR(NDAYS_LEFT_LIMIT) ||
+                                                             ' дней, при этом зафиксирован положительный остаток к поставке/актированию по договору.<br>' ||
+                                                             '<b style="color:green">В норме</b> - нет описанных выше отклонений.<br>' ||
+                                                             '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для связанного этапа проекта задана плановая дата окончания, ' ||
+                                                             'а по договору с соисполнителем аккуратно ведётся учёт первичных документов оперативного учёта (приходных накладных).');
     /* Обходим данные */
     begin
       /* Собираем запрос */
