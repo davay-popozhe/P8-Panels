@@ -353,6 +353,16 @@ create or replace package PKG_P8PANELS_PROJECTS as
     COUT                    out clob    -- Список проектов
   );
   
+  /* Изменение сроков работы в буфере балансировки */
+  procedure JB_JOBS_MODIFY_PERIOD
+  (
+    NJB_JOBS                in number,  -- Рег. номер записи балансируемой работы/этапа
+    DDATE_FROM              in date,    -- Новая дата начала
+    DDATE_TO                in date,    -- Новая дата окончания
+    DBEGIN                  in date,    -- Дата начала периода мониторинга загрузки ресурсов
+    NRESOURCE_STATUS        out number  -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения)
+  );
+  
   /* Получение списка работ проектов для диаграммы Ганта */
   procedure JB_JOBS_LIST
   (
@@ -360,6 +370,48 @@ create or replace package PKG_P8PANELS_PROJECTS as
     NPRN                    in number,  -- Рег. номер родителя
     NINCLUDE_DEF            in number,  -- Признак включения описания диаграммы в ответ
     COUT                    out clob    -- Список проектов
+  );
+  
+    /* Получение списка для детализации трудоёмкости по ФОТ периода балансировки */
+  procedure JB_PERIODS_LIST_PLAN_FOT
+  (
+    NJB_PERIODS             in number,  -- Рег. номер записи периода в буфере балансировки
+    NPAGE_NUMBER            in number,  -- Номер страницы (игнорируется при NPAGE_SIZE=0)
+    NPAGE_SIZE              in number,  -- Количество записей на странице (0 - все)
+    CORDERS                 in clob,    -- Сортировки    
+    NINCLUDE_DEF            in number,  -- Признак включения описания колонок таблицы в ответ
+    COUT                    out clob    -- Сериализованная таблица данных
+  );
+  
+  /* Получение списка для детализации трудоёмкости периода балансировки по текущему состоянию графика */
+  procedure JB_PERIODS_LIST_PLAN_JOBS
+  (
+    NJB_PERIODS             in number,  -- Рег. номер записи периода в буфере балансировки
+    NPAGE_NUMBER            in number,  -- Номер страницы (игнорируется при NPAGE_SIZE=0)
+    NPAGE_SIZE              in number,  -- Количество записей на странице (0 - все)
+    CORDERS                 in clob,    -- Сортировки    
+    NINCLUDE_DEF            in number,  -- Признак включения описания колонок таблицы в ответ
+    COUT                    out clob    -- Сериализованная таблица данных
+  );
+  
+  /* Пересчёт периодов балансировки */
+  procedure JB_PERIODS_RECALC
+  (
+    NIDENT                  in number,  -- Идентификатор процесса
+    DBEGIN                  in date,    -- Дата начала периода мониторинга загрузки ресурсов
+    NINITIAL                in number,  -- Признак первоначального рассчёта (0 - пересчёт, 1 - первоначальный рассчёт)
+    NRESOURCE_STATUS        out number  -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения)
+  );
+  
+  /* Список периодов балансировки */
+  procedure JB_PERIODS_LIST
+  (
+    NIDENT                  in number,  -- Идентификатор процесса
+    NPAGE_NUMBER            in number,  -- Номер страницы (игнорируется при NPAGE_SIZE=0)
+    NPAGE_SIZE              in number,  -- Количество записей на странице (0 - все)
+    CORDERS                 in clob,    -- Сортировки    
+    NINCLUDE_DEF            in number,  -- Признак включения описания колонок таблицы в ответ
+    COUT                    out clob    -- Сериализованная таблица данных
   );
   
   /* Очистка данных балансировки */
@@ -371,16 +423,48 @@ create or replace package PKG_P8PANELS_PROJECTS as
   /* Формирование исходных данных для балансировки планов-графиков работ */
   procedure JB_INIT
   (
-    DBEGIN                  in date,      -- Дата начала периода мониторинга загрузки ресурсов
-    DFACT                   in date,      -- Факт по состоянию на
-    NDURATION_MEAS          in number,    -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
-    SLAB_MEAS               in varchar2,  -- Единица измерения трудоёмкости
-    NIDENT                  in out number -- Идентификатор буфера сформированных данных (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
+    DBEGIN                  in out date,     -- Дата начала периода мониторинга загрузки ресурсов
+    DFACT                   in out date,     -- Факт по состоянию на
+    NDURATION_MEAS          in out number,   -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
+    SLAB_MEAS               in out varchar2, -- Единица измерения трудоёмкости
+    NIDENT                  in out number,   -- Идентификатор буфера сформированных данных (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
+    NRESOURCE_STATUS        out number       -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения)    
   );
 
 end PKG_P8PANELS_PROJECTS;
 /
 create or replace package body PKG_P8PANELS_PROJECTS as
+
+/*
+TODO: owner="root" created="25.10.2023"
+text="Пересчёт единиц измерения в мониторе плана-графика"
+*/
+
+/*
+TODO: owner="root" created="25.10.2023"
+text="Буфер для хранения параметров балансировки и читать их оттуда для вызовов JB_JOBS_MODIFY_PERIOD, JB_JOBS_PERIODS_RECALC"
+*/
+
+/*
+TODO: owner="root" created="25.10.2023"
+text="Права доступа в мониторе ресурвов при балансировке планов-графиков"
+*/
+
+/*
+TODO: owner="root" created="25.10.2023"
+text="Признак измененности на работах, чтобы удобнее было переносить в проект"
+*/
+
+/*
+TODO: owner="root" created="25.10.2023"
+text="Вынести расчте плановой трудоёмкости по графику (и всех её причендалов) в отдельную функцию (и), чтобы можно было включить её в динамический запрос и вернуть сортировку по полям трудоёмкости в JB_PERIODS_LIST_PLAN_JOBS"
+*/
+
+/*
+TODO: owner="root" created="25.10.2023"
+text="Проверить, что для расчётных полей дата-гридов отключена сортировка - иначе получается ошибка, т.к. поля нет в SQL-запросе"
+*/
+
 
   /* Константы - предопределённые значения */
   SYES                        constant PKG_STD.TSTRING := 'Да';               -- Да
@@ -388,6 +472,8 @@ create or replace package body PKG_P8PANELS_PROJECTS as
   SFPDARTCL_REALIZ            constant PKG_STD.TSTRING := '14 Цена без НДС';  -- Мнемокод статьи калькуляции для учёта реализации
   SFPDARTCL_SELF_COST         constant PKG_STD.TSTRING := '10 Себестоимость'; -- Мнемокод статьи калькуляции для учёта себестоимости
   NGANTT_TASK_CAPTION_LEN     constant PKG_STD.TNUMBER := 50;                 -- Предельная длина (знаков) метки задачи при отображении диаграммы Ганта
+  NJB_DURATION_MEAS           constant PKG_STD.TNUMBER := 0;                  -- Единица измерения длительности по умолчанию для интерфейса балансировки работ (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
+  SJB_LAB_MEAS                constant PKG_STD.TSTRING := 'Ч/Ч';              -- Единица измерения трудоёмкости по умолчанию для интерфейса балансировки работ
 
   /* Константы - дополнительные свойства */
   SDP_SECON_RESP              constant PKG_STD.TSTRING := 'ПУП.SECON_RESP'; -- Ответственный экономист проекта
@@ -3976,7 +4062,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
   end STAGE_CONTRACTS_LIST;
   
-    /* Считывание записи работы проекта */
+  /* Считывание записи работы проекта */
   function JOBS_GET
   (
     NRN                     in number           -- Рег. номер работы проекта
@@ -3990,6 +4076,66 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     when NO_DATA_FOUND then
       PKG_MSG.RECORD_NOT_FOUND(NFLAG_SMART => 0, NDOCUMENT => NRN, SUNIT_TABLE => 'PROJECTJOB');
   end JOBS_GET;
+  
+  /* Получение даты начала периода балансировки */
+  function JB_GET_BEG
+  (
+    NIDENT                  in number       -- Идентификатор процесса
+  ) return                  date            -- Дата начала периода балансировки
+  is
+    DRES                    PKG_STD.TLDATE; -- Буфер для результата
+  begin
+    select min(D.DMIN_BEG_PLAN)
+      into DRES
+      from (select min(P.BEGPLAN) DMIN_BEG_PLAN
+              from PROJECT P
+             where P.RN in (select T.PROJECT from P8PNL_JB_PRJCTS T where T.IDENT = NIDENT)
+            union all
+            select min(PS.BEGPLAN) DMIN_BEG_PLAN
+              from PROJECTSTAGE PS
+             where PS.PRN in (select T.PROJECT from P8PNL_JB_PRJCTS T where T.IDENT = NIDENT)
+            union all
+            select min(PJ.BEGPLAN) DMIN_BEG_PLAN
+              from PROJECTJOB PJ
+             where PJ.PRN in (select T.PROJECT from P8PNL_JB_PRJCTS T where T.IDENT = NIDENT)) D;
+    /* Проверим, что хоть что-то нашли */
+    if (DRES is null) then
+      P_EXCEPTION(0,
+                  'Не удалось определить дату начала периода балансировки. Убедитесь, что для проектов, этапов и работ заданы плановые сроки начала.');
+    end if;
+    /* Вернём результат - первый день минимального месяца */
+    return TRUNC(DRES, 'mm');
+  end JB_GET_BEG;
+  
+  /* Получение даты окончания периода балансировки */
+  function JB_GET_END
+  (
+    NIDENT                  in number       -- Идентификатор процесса
+  ) return                  date            -- Дата окончания периода балансировки
+  is
+    DRES                    PKG_STD.TLDATE; -- Буфер для результата
+  begin
+    select max(D.DMAX_END_PLAN)
+      into DRES
+      from (select max(P.ENDPLAN) DMAX_END_PLAN
+              from PROJECT P
+             where P.RN in (select T.PROJECT from P8PNL_JB_PRJCTS T where T.IDENT = NIDENT)
+            union all
+            select max(PS.ENDPLAN) DMAX_END_PLAN
+              from PROJECTSTAGE PS
+             where PS.PRN in (select T.PROJECT from P8PNL_JB_PRJCTS T where T.IDENT = NIDENT)
+            union all
+            select max(PJ.ENDPLAN) DMAX_END_PLAN
+              from PROJECTJOB PJ
+             where PJ.PRN in (select T.PROJECT from P8PNL_JB_PRJCTS T where T.IDENT = NIDENT)) D;
+    /* Проверим, что хоть что-то нашли */
+    if (DRES is null) then
+      P_EXCEPTION(0,
+                  'Не удалось определить дату окончания периода балансировки. Убедитесь, что для проектов, этапов и работ заданы плановые сроки окончания.');
+    end if;
+    /* Вернём результат - последний день максимального месяца */
+    return LAST_DAY(DRES);
+  end JB_GET_END;  
   
   /* Считывание записи проекта из буфера балансировки работ */
   function JB_PRJCTS_GET
@@ -4005,7 +4151,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     when NO_DATA_FOUND then
       PKG_MSG.RECORD_NOT_FOUND(NFLAG_SMART => 0, NDOCUMENT => NJB_PRJCTS, SUNIT_TABLE => 'P8PNL_JB_PRJCTS');
   end JB_PRJCTS_GET;
-  
+
   /* Базовое добавление проекта для балансировки работ */
   procedure JB_PRJCTS_BASE_INSERT
   (
@@ -4096,6 +4242,21 @@ create or replace package body PKG_P8PANELS_PROJECTS as
       P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
   end JB_PRJCTS_LIST;
   
+  /* Считывание записи работы/этапа из буфера балансировки работ */
+  function JB_JOBS_GET
+  (
+    NJB_JOBS                in number              -- Рег. номер записи работы/этапа в буфере балансировки работ
+  ) return                  P8PNL_JB_JOBS%rowtype  -- Найденная запись
+  is
+    RRES                    P8PNL_JB_JOBS%rowtype; -- Буфер для результата
+  begin
+    select P.* into RRES from P8PNL_JB_JOBS P where P.RN = NJB_JOBS;
+    return RRES;
+  exception
+    when NO_DATA_FOUND then
+      PKG_MSG.RECORD_NOT_FOUND(NFLAG_SMART => 0, NDOCUMENT => NJB_JOBS, SUNIT_TABLE => 'P8PNL_JB_JOBS');
+  end JB_JOBS_GET;
+  
   /* Поиск записи работы/этапа в списке балансировки по этапу/работе проекта */
   function JB_JOBS_GET_BY_SOURCE
   (
@@ -4133,7 +4294,8 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     DDATE_TO                in date,     -- Окончание
     NDURATION               in number,   -- Длительность
     SEXECUTOR               in varchar2, -- Исполнитель
-    NSTAGE                  in number,   -- Признак этапа (0 - нет, 1 - да)  
+    NSTAGE                  in number,   -- Признак этапа (0 - нет, 1 - да)
+    NEDITABLE               in number,   -- Признак возможности редактирования (0 - нет, 1 - да)
     NJB_JOBS                out number   -- Рег. номер записи балансируемой работы/этапа
   )
   is
@@ -4142,10 +4304,38 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     NJB_JOBS := GEN_ID();
     /* Добавим запись */
     insert into P8PNL_JB_JOBS
-      (RN, IDENT, PRN, HRN, source, NUMB, name, DATE_FROM, DATE_TO, DURATION, EXECUTOR, STAGE)
+      (RN, IDENT, PRN, HRN, source, NUMB, name, DATE_FROM, DATE_TO, DURATION, EXECUTOR, STAGE, EDITABLE)
     values
-      (NJB_JOBS, NIDENT, NPRN, NHRN, NSOURCE, SNUMB, SNAME, DDATE_FROM, DDATE_TO, NDURATION, SEXECUTOR, NSTAGE);
+      (NJB_JOBS, NIDENT, NPRN, NHRN, NSOURCE, SNUMB, SNAME, DDATE_FROM, DDATE_TO, NDURATION, SEXECUTOR, NSTAGE, NEDITABLE);
   end JB_JOBS_BASE_INSERT;
+  
+  /* Изменение сроков работы в буфере балансировки */
+  procedure JB_JOBS_MODIFY_PERIOD
+  (
+    NJB_JOBS                in number,               -- Рег. номер записи балансируемой работы/этапа
+    DDATE_FROM              in date,                 -- Новая дата начала
+    DDATE_TO                in date,                 -- Новая дата окончания
+    DBEGIN                  in date,                 -- Дата начала периода мониторинга загрузки ресурсов
+    NRESOURCE_STATUS        out number               -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения)
+  )
+  is
+    RJB_J                   P8PNL_JB_JOBS%rowtype;   -- Запись работы в буфере балансировки
+    RJB_P                   P8PNL_JB_PRJCTS%rowtype; -- Запись родительского проекта в буфере балансировки
+  begin
+    /* Считаем работу из буфера */
+    RJB_J := JB_JOBS_GET(NJB_JOBS => NJB_JOBS);
+    /* Считаем проект из буфера */
+    RJB_P := JB_PRJCTS_GET(NJB_PRJCTS => RJB_J.PRN);
+    /* Изменим работу */
+    update P8PNL_JB_JOBS T
+       set T.DATE_FROM = DDATE_FROM,
+           T.DATE_TO   = DDATE_TO
+     where T.RN = RJB_J.RN;
+    /* Выставим признак изменений в проекте */
+    JB_PRJCTS_SET_CHANGED(NJB_PRJCTS => RJB_P.RN, NCHANGED => 1);
+    /* Выполним пересчёт монитора */
+    JB_PERIODS_RECALC(NIDENT => RJB_P.IDENT, DBEGIN => DBEGIN, NINITIAL => 0, NRESOURCE_STATUS => NRESOURCE_STATUS);
+  end JB_JOBS_MODIFY_PERIOD;
   
   /* Получение списка работ проектов для диаграммы Ганта */
   procedure JB_JOBS_LIST
@@ -4271,8 +4461,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
       end if;
       /* Определимся с форматированием */
       if (C.STAGE = 1) then
-        /* Этапы всегда одинаково красим и всегда "только для чтения" */
-        BTASK_READ_ONLY := true;
+        /* Этапы всегда одинаково красим */        
         STASK_BG_COLOR  := SBG_COLOR_STAGE;
       else
         /* Сбросим цвета от предыдущей работы (на всякий случай) */
@@ -4305,8 +4494,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
           /* Всегда тёмные */
           STASK_BG_COLOR := SBG_COLOR_DISABLED;
         end if;
-        /* Состояние "только для чтения" наследуем от заголовка */
-        BTASK_READ_ONLY := BREAD_ONLY;
+      end if;
+      /* Определимся с возможностью редактирования */
+      BTASK_READ_ONLY := false;
+      if (C.EDITABLE = 0) then
+        BTASK_READ_ONLY := true;
       end if;
       /* Сформируем заголовок для выдачи в диаграмме */
       STASK_CAPTION := trim(C.NUMB) || ' - ' || C.NAME;
@@ -4369,6 +4561,796 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     insert into P8PNL_JB_JOBSPREV (RN, IDENT, PRN, JB_JOBS) values (NJB_JOBSPREV, NIDENT, NPRN, NJB_JOBS);
   end JB_JOBSPREV_BASE_INSERT;
   
+  /* Считывание записи периода из буфера балансировки работ */
+  function JB_PERIODS_GET
+  (
+    NJB_PERIODS             in number                 -- Рег. номер записи периода в буфере балансировки
+  ) return                  P8PNL_JB_PERIODS%rowtype  -- Запись периода
+  is
+    RRES                    P8PNL_JB_PERIODS%rowtype; -- Буфер для результата
+  begin
+    select P.* into RRES from P8PNL_JB_PERIODS P where P.RN = NJB_PERIODS;
+    return RRES;
+  exception
+    when NO_DATA_FOUND then
+      PKG_MSG.RECORD_NOT_FOUND(NFLAG_SMART => 0, NDOCUMENT => NJB_PERIODS, SUNIT_TABLE => 'P8PNL_JB_PERIODS');
+  end JB_PERIODS_GET;
+  
+  /* Получение списка для детализации трудоёмкости по ФОТ периода балансировки */
+  procedure JB_PERIODS_LIST_PLAN_FOT
+  (
+    NJB_PERIODS             in number,                             -- Рег. номер записи периода в буфере балансировки
+    NPAGE_NUMBER            in number,                             -- Номер страницы (игнорируется при NPAGE_SIZE=0)
+    NPAGE_SIZE              in number,                             -- Количество записей на странице (0 - все)
+    CORDERS                 in clob,                               -- Сортировки    
+    NINCLUDE_DEF            in number,                             -- Признак включения описания колонок таблицы в ответ
+    COUT                    out clob                               -- Сериализованная таблица данных
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
+    RPRD                    P8PNL_JB_PERIODS%rowtype;              -- Запись детализируемого периода
+    RO                      PKG_P8PANELS_VISUAL.TORDERS;           -- Сортировки
+    RDG                     PKG_P8PANELS_VISUAL.TDATA_GRID;        -- Описание таблицы
+    RDG_ROW                 PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы
+    CSQL                    clob;                                  -- Буфер для запроса
+    ICURSOR                 integer;                               -- Курсор для исполнения запроса
+    NROW_FROM               PKG_STD.TREF;                          -- Номер строки с
+    NROW_TO                 PKG_STD.TREF;                          -- Номер строки по    
+  begin
+    /* Считаем детализируемую запись периода */
+    RPRD := JB_PERIODS_GET(NJB_PERIODS => NJB_PERIODS);
+    /* Читем сортировки */
+    RO := PKG_P8PANELS_VISUAL.TORDERS_FROM_XML(CORDERS => CORDERS);
+    /* Преобразуем номер и размер страницы в номер строк с и по */
+    PKG_P8PANELS_VISUAL.UTL_ROWS_LIMITS_CALC(NPAGE_NUMBER => NPAGE_NUMBER,
+                                             NPAGE_SIZE   => NPAGE_SIZE,
+                                             NROW_FROM    => NROW_FROM,
+                                             NROW_TO      => NROW_TO);
+    /* Инициализируем таблицу данных */
+    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE();
+    /* Добавляем в таблицу описание колонок */
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NRN',
+                                               SCAPTION   => 'Рег. номер',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SPERSON',
+                                               SCAPTION   => 'Сотрудник',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NLAB_PLAN_FOT',
+                                               SCAPTION   => 'Трудоёмкость',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BORDER     => false,
+                                               BFILTER    => false);
+    /* Обходим данные */
+    begin
+      /* Собираем запрос */
+      CSQL := 'select *
+                 from (select D.*,
+                              ROWNUM NROW
+                         from (select FM.RN NRN,
+                                      PERS.CODE SPERSON,
+                                      SH.AVG_HOURS NLAB_PLAN_FOT
+                                 from CLNPSPFM   FM,
+                                      CLNPERSONS PERS,
+                                      CLNPSDEP   PSD,
+                                      PRPROF     PROF,
+                                      CLNPSPFMHS FMH,
+                                      SLSCHEDULE SH
+                                where FM.COMPANY = :NCOMPANY
+                                  and FM.PERSRN = PERS.RN
+                                  and FM.DEPTRN = :NINS_DEPARTMENT
+                                  and FM.PSDEPRN = PSD.RN
+                                  and PSD.PRPROF = PROF.RN
+                                  and PROF.RN in (select MP.PRPROF from FCMANPOWER MP where MP.RN = :NFCMANPOWER)
+                                  and ((FM.BEGENG between :DDATE_FROM and :DDATE_TO) or (FM.ENDENG between :DDATE_FROM and :DDATE_TO) or
+                                      ((FM.BEGENG < :DDATE_FROM) and (COALESCE(FM.ENDENG, :DDATE_TO + 1) > :DDATE_TO)))
+                                  and FM.RN = FMH.PRN
+                                  and ((FMH.DO_ACT_FROM between :DDATE_FROM and :DDATE_TO) or (FMH.DO_ACT_TO between :DDATE_FROM and :DDATE_TO) or
+                                      ((FMH.DO_ACT_FROM < :DDATE_FROM) and (COALESCE(FMH.DO_ACT_TO, :DDATE_TO + 1) > :DDATE_TO)))
+                                  and FMH.SCHEDULE = SH.RN %ORDER_BY%) D) F
+                where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Учтём сортировки */
+      PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
+      /* Разбираем его */
+      ICURSOR := PKG_SQL_DML.OPEN_CURSOR(SWHAT => 'SELECT');
+      PKG_SQL_DML.PARSE(ICURSOR => ICURSOR, SQUERY => CSQL);
+      /* Делаем подстановку параметров */
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NCOMPANY', NVALUE => NCOMPANY);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NINS_DEPARTMENT', NVALUE => RPRD.INS_DEPARTMENT);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NFCMANPOWER', NVALUE => RPRD.FCMANPOWER);      
+      PKG_SQL_DML.BIND_VARIABLE_DATE(ICURSOR => ICURSOR, SNAME => 'DDATE_FROM', DVALUE => RPRD.DATE_FROM);
+      PKG_SQL_DML.BIND_VARIABLE_DATE(ICURSOR => ICURSOR, SNAME => 'DDATE_TO', DVALUE => RPRD.DATE_TO);      
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_FROM', NVALUE => NROW_FROM);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_TO', NVALUE => NROW_TO);      
+      /* Описываем структуру записи курсора */
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 1);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 2);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 3);
+      /* Делаем выборку */
+      if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
+        null;
+      end if;
+      /* Обходим выбранные записи */
+      while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
+      loop
+        /* Добавляем колонки с данными */
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NRN',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 1,
+                                              BCLEAR    => true);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SPERSON', ICURSOR => ICURSOR, NPOSITION => 2);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NLAB_PLAN_FOT',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 3);
+        /* Добавляем строку в таблицу */
+        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
+      end loop;
+      /* Освобождаем курсор */
+      PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
+    exception
+      when others then
+        PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
+        raise;
+    end;
+    /* Сериализуем описание */
+    COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
+  end JB_PERIODS_LIST_PLAN_FOT;
+  
+  /* Получение плановой трудоёмкости по ФОТ для периода балансировки (в часах) */
+  function JB_PERIODS_GET_PLAN_FOT
+  (
+    NCOMPANY                in number,       -- Рег. номер организации
+    DDATE_FROM              in date,         -- Начало
+    DDATE_TO                in date,         -- Окончание
+    NINS_DEPARTMENT         in number,       -- Рег. номер штатного подразделения
+    NFCMANPOWER             in number        -- Рег. номер трудового ресурса
+  ) return                  number           -- Плановая трудоёмкость по ФОТ (в часах)
+  is
+    NRES                    PKG_STD.TNUMBER; -- Плановая трудоёмкость по ФОТ
+  begin
+    /* Обойдем подходящие исполнения и просуммируем среднемесячную численность часов */
+    select sum(SH.AVG_HOURS)
+      into NRES
+      from CLNPSPFM   FM,
+           CLNPSDEP   PSD,
+           PRPROF     PROF,
+           CLNPSPFMHS FMH,
+           SLSCHEDULE SH
+     where FM.COMPANY = NCOMPANY
+       and FM.DEPTRN = NINS_DEPARTMENT
+       and FM.PSDEPRN = PSD.RN
+       and PSD.PRPROF = PROF.RN
+       and PROF.RN in (select MP.PRPROF from FCMANPOWER MP where MP.RN = NFCMANPOWER)
+       and ((FM.BEGENG between DDATE_FROM and DDATE_TO) or (FM.ENDENG between DDATE_FROM and DDATE_TO) or
+           ((FM.BEGENG < DDATE_FROM) and (COALESCE(FM.ENDENG, DDATE_TO + 1) > DDATE_TO)))
+       and FM.RN = FMH.PRN
+       and ((FMH.DO_ACT_FROM between DDATE_FROM and DDATE_TO) or (FMH.DO_ACT_TO between DDATE_FROM and DDATE_TO) or
+           ((FMH.DO_ACT_FROM < DDATE_FROM) and (COALESCE(FMH.DO_ACT_TO, DDATE_TO + 1) > DDATE_TO)))
+       and FMH.SCHEDULE = SH.RN;
+    /* Вернём собранный результат */
+    return COALESCE(NRES, 0);
+  end JB_PERIODS_GET_PLAN_FOT;
+  
+  /* Получение списка для детализации трудоёмкости периода балансировки по текущему состоянию графика */
+  procedure JB_PERIODS_LIST_PLAN_JOBS
+  (
+    NJB_PERIODS             in number,                             -- Рег. номер записи периода в буфере балансировки
+    NPAGE_NUMBER            in number,                             -- Номер страницы (игнорируется при NPAGE_SIZE=0)
+    NPAGE_SIZE              in number,                             -- Количество записей на странице (0 - все)
+    CORDERS                 in clob,                               -- Сортировки    
+    NINCLUDE_DEF            in number,                             -- Признак включения описания колонок таблицы в ответ
+    COUT                    out clob                               -- Сериализованная таблица данных
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
+    RPRD                    P8PNL_JB_PERIODS%rowtype;              -- Запись детализируемого периода
+    RO                      PKG_P8PANELS_VISUAL.TORDERS;           -- Сортировки
+    RDG                     PKG_P8PANELS_VISUAL.TDATA_GRID;        -- Описание таблицы
+    RDG_ROW                 PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы
+    CSQL                    clob;                                  -- Буфер для запроса
+    ICURSOR                 integer;                               -- Курсор для исполнения запроса
+    NROW_FROM               PKG_STD.TREF;                          -- Номер строки с
+    NROW_TO                 PKG_STD.TREF;                          -- Номер строки по
+    DBEG                    PKG_STD.TLDATE;                        -- Дата начала для расчёта трудоёмкости текущей работы
+    DEND                    PKG_STD.TLDATE;                        -- Дата окончания для расчёта трудоёмкости текущей работы
+    DJOB_BEG                PKG_STD.TLDATE;                        -- Дата начала текущей работы согласно плану-груфику
+    DJOB_END                PKG_STD.TLDATE;                        -- Дата окончания текущей работы согласно плану-груфику
+    NJOB_DUR                PKG_STD.TNUMBER;                       -- Длительнось текущей работы согласно плану-груфику
+    NMP_LAB                 PKG_STD.TNUMBER;                       -- Трудоёмкость трудового ресурса в текущей работе согласно проекта
+    NMP_LAB_ONE             PKG_STD.TNUMBER;                       -- Трудоёмкость (за единицу длительности) трудового ресурса в текущей работе согласно проекта
+    NMP_LAB_PLAN            PKG_STD.TNUMBER;                       -- Трудоёмкость трудового ресурса в текущей работе согласно плана-графика
+  begin
+    /* Считаем детализируемую запись периода */
+    RPRD := JB_PERIODS_GET(NJB_PERIODS => NJB_PERIODS);
+    /* Читем сортировки */
+    RO := PKG_P8PANELS_VISUAL.TORDERS_FROM_XML(CORDERS => CORDERS);
+    /* Преобразуем номер и размер страницы в номер строк с и по */
+    PKG_P8PANELS_VISUAL.UTL_ROWS_LIMITS_CALC(NPAGE_NUMBER => NPAGE_NUMBER,
+                                             NPAGE_SIZE   => NPAGE_SIZE,
+                                             NROW_FROM    => NROW_FROM,
+                                             NROW_TO      => NROW_TO);
+    /* Инициализируем таблицу данных */
+    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE();
+    /* Добавляем в таблицу описание колонок */
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NRN',
+                                               SCAPTION   => 'Рег. номер',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NPROJECT',
+                                               SCAPTION   => 'Рег. номер проекта',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NJB_PRJCTS',
+                                               SCAPTION   => 'Рег. номер буфера балансировки проекта',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SPRJ',
+                                               SCAPTION   => 'Проект',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SSTG_JOB',
+                                               SCAPTION   => 'Этап-работа',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SJOB_NAME',
+                                               SCAPTION   => 'Наим. работы',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NJOB_STATE',
+                                               SCAPTION   => 'Сост. работы',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'DJOB_BEG',
+                                               SCAPTION   => 'Начало работы',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_DATE,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'DJOB_END',
+                                               SCAPTION   => 'Окончание работы',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_DATE,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NJOB_DUR',
+                                               SCAPTION   => 'Длительн. работы',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BORDER     => false,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NMP_LAB',
+                                               SCAPTION   => 'Труд.',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BORDER     => false,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NMP_LAB_ONE',
+                                               SCAPTION   => 'Труд. (в ед. длит.)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BORDER     => false,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NMP_LAB_PLAN',
+                                               SCAPTION   => 'Труд. (план, график)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BORDER     => false,
+                                               BFILTER    => false);
+    /* Обходим данные */
+    begin
+      /* Собираем запрос */
+      CSQL := 'select *
+                 from (select D.*,
+                              ROWNUM NROW
+                         from (select JB.RN NRN,                                      
+                                      P.RN NPROJECT,
+                                      JBP.RN NJB_PRJCTS,
+                                      P.CODE || ''-'' || P.NAME_USL SPRJ,
+                                      trim(PS.NUMB) || ''-'' || trim(PJ.NUMB) SSTG_JOB,
+                                      PJ.NAME SJOB_NAME,
+                                      PJ.STATE NJOB_STATE,
+                                      JB.DATE_FROM DJOB_BEG,
+                                      JB.DATE_TO DJOB_END,
+                                      PJMP.LABOUR_P NLABOUR_P                                      
+                                 from P8PNL_JB_JOBS    JB,
+                                      P8PNL_JB_PRJCTS  JBP,
+                                      PROJECTJOB       PJ,
+                                      PROJECTJOBMANPOW PJMP,
+                                      PROJECT          P,
+                                      PROJECTSTAGE     PS
+                                where JB.IDENT = :NIDENT
+                                  and JB.STAGE = 0
+                                  and JB.PRN = JBP.RN
+                                  and JB.SOURCE = PJ.RN                                  
+                                  and PJ.COMPANY = :NCOMPANY
+                                  and PJ.PRN = P.RN
+                                  and PJ.PROJECTSTAGE = PS.RN(+)
+                                  and PJ.RN = PJMP.PRN
+                                  and PJMP.FCMANPOWER = :NFCMANPOWER
+                                  and PJMP.SUBDIV = :NINS_DEPARTMENT
+                                  and ((JB.DATE_FROM between :DDATE_FROM and :DDATE_TO) or (JB.DATE_TO between :DDATE_FROM and :DDATE_TO) or
+                                      ((JB.DATE_FROM < :DDATE_FROM) and (JB.DATE_TO > :DDATE_TO))) %ORDER_BY%) D) F
+                where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Учтём сортировки */
+      PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
+      /* Разбираем его */
+      ICURSOR := PKG_SQL_DML.OPEN_CURSOR(SWHAT => 'SELECT');
+      PKG_SQL_DML.PARSE(ICURSOR => ICURSOR, SQUERY => CSQL);
+      /* Делаем подстановку параметров */
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NCOMPANY', NVALUE => NCOMPANY);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NIDENT', NVALUE => RPRD.IDENT);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NINS_DEPARTMENT', NVALUE => RPRD.INS_DEPARTMENT);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NFCMANPOWER', NVALUE => RPRD.FCMANPOWER);
+      PKG_SQL_DML.BIND_VARIABLE_DATE(ICURSOR => ICURSOR, SNAME => 'DDATE_FROM', DVALUE => RPRD.DATE_FROM);
+      PKG_SQL_DML.BIND_VARIABLE_DATE(ICURSOR => ICURSOR, SNAME => 'DDATE_TO', DVALUE => RPRD.DATE_TO);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_FROM', NVALUE => NROW_FROM);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_TO', NVALUE => NROW_TO);
+      /* Описываем структуру записи курсора */
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 1);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 2);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 3);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 4);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 5);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 6);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 7);
+      PKG_SQL_DML.DEFINE_COLUMN_DATE(ICURSOR => ICURSOR, IPOSITION => 8);
+      PKG_SQL_DML.DEFINE_COLUMN_DATE(ICURSOR => ICURSOR, IPOSITION => 9);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 10);
+      /* Делаем выборку */
+      if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
+        null;
+      end if;
+      /* Обходим выбранные записи */
+      while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
+      loop
+        /* Вычислим трудоёмкость в датлизируемом периоде по буферу балансировки */
+        PKG_SQL_DML.COLUMN_VALUE_DATE(ICURSOR => ICURSOR, IPOSITION => 8, DVALUE => DJOB_BEG);
+        PKG_SQL_DML.COLUMN_VALUE_DATE(ICURSOR => ICURSOR, IPOSITION => 9, DVALUE => DJOB_END);
+        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 10, NVALUE => NMP_LAB);
+        P_PROJECTJOB_GET_DURATION(NCOMPANY       => NCOMPANY,
+                                  DBEG_DATE      => DJOB_BEG,
+                                  DEND_DATE      => DJOB_END,
+                                  NDURATION_MEAS => NJB_DURATION_MEAS,
+                                  NDURATION      => NJOB_DUR);
+        DBEG := RPRD.DATE_FROM;
+        if (DJOB_BEG > RPRD.DATE_FROM) then
+          DBEG := DJOB_BEG;
+        end if;
+        DEND := RPRD.DATE_TO;
+        if (DJOB_END < RPRD.DATE_TO) then
+          DEND := DJOB_END;
+        end if;
+        if (DJOB_END - DJOB_BEG <> 0) then
+          NMP_LAB_ONE := NMP_LAB / (DJOB_END - DJOB_BEG);
+        else
+          NMP_LAB_ONE := NMP_LAB;
+        end if;
+      
+        NMP_LAB_PLAN := (DEND - DBEG) * NMP_LAB_ONE;
+        /* Добавляем колонки с данными */
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NRN',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 1,
+                                              BCLEAR    => true);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW => RDG_ROW, SNAME => 'NPROJECT', ICURSOR => ICURSOR, NPOSITION => 2);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NJB_PRJCTS',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 3);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SPRJ', ICURSOR => ICURSOR, NPOSITION => 4);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SSTG_JOB', ICURSOR => ICURSOR, NPOSITION => 5);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
+                                              SNAME     => 'SJOB_NAME',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 6);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NJOB_STATE',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 7);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'DJOB_BEG', DVALUE => DJOB_BEG);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'DJOB_END', DVALUE => DJOB_END);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NJOB_DUR', NVALUE => NJOB_DUR);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NMP_LAB', NVALUE => NMP_LAB);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NMP_LAB_ONE', NVALUE => NMP_LAB_ONE);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NMP_LAB_PLAN', NVALUE => NMP_LAB_PLAN);
+        /* Добавляем строку в таблицу */
+        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
+      end loop;
+      /* Освобождаем курсор */
+      PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
+    exception
+      when others then
+        PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
+        raise;
+    end;
+    /* Сериализуем описание */
+    COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
+  end JB_PERIODS_LIST_PLAN_JOBS;
+  
+  /* Получение плановой трудоёскости по текущему состоянию графиков в буфере балансировки для периода балансировки */
+  function JB_PERIODS_GET_PLAN_JOBS
+  (
+    NIDENT                  in number,       -- Идентификатор процесса
+    DDATE_FROM              in date,         -- Начало
+    DDATE_TO                in date,         -- Окончание
+    NINS_DEPARTMENT         in number,       -- Рег. номер штатного подразделения
+    NFCMANPOWER             in number        -- Рег. номер трудового ресурса
+  ) return                  number           -- Плановая трудоёмкость по текущему состоянию графиков в буфере балансировки
+  is
+    NRES                    PKG_STD.TNUMBER; -- Буфер для результата
+    NPLAN_JOB               PKG_STD.TNUMBER; -- Плановая трудоёмкость текущей работы согласно графика
+    DBEG                    PKG_STD.TLDATE;  -- Дата начала для расчёта трудоёмкости текущей работы
+    DEND                    PKG_STD.TLDATE;  -- Дата окончания для расчёта трудоёмкости текущей работы
+  begin
+    /* Обходим все работы в буфере подходящие по условиям */
+    for C in (select JB.*,
+                     PJMP.LABOUR_P
+                from P8PNL_JB_JOBS    JB,
+                     PROJECTJOB       PJ,
+                     PROJECTJOBMANPOW PJMP
+               where JB.IDENT = NIDENT
+                 and JB.STAGE = 0
+                 and JB.SOURCE = PJ.RN
+                 and PJ.RN = PJMP.PRN
+                 and PJMP.FCMANPOWER = NFCMANPOWER
+                 and PJMP.SUBDIV = NINS_DEPARTMENT
+                 and ((JB.DATE_FROM between DDATE_FROM and DDATE_TO) or (JB.DATE_TO between DDATE_FROM and DDATE_TO) or
+                     ((JB.DATE_FROM < DDATE_FROM) and (JB.DATE_TO > DDATE_TO))))
+    loop
+      /* Вычислим трудоёмкость по графику для попавшейся работы */
+      DBEG := DDATE_FROM;
+      if (C.DATE_FROM > DDATE_FROM) then
+        DBEG := C.DATE_FROM;
+      end if;
+      DEND := DDATE_TO;
+      if (C.DATE_TO < DDATE_TO) then
+        DEND := C.DATE_TO;
+      end if;
+      if (C.LABOUR_P <> 0) then
+        if (C.DATE_TO - C.DATE_FROM <> 0) then
+          NPLAN_JOB := (DEND - DBEG) * (C.LABOUR_P / (C.DATE_TO - C.DATE_FROM));
+        else
+          NPLAN_JOB := (DEND - DBEG) * C.LABOUR_P;
+        end if;
+      else
+        NPLAN_JOB := 0;
+      end if;
+      /* Накопим сумму в буфере результата */
+      NRES := COALESCE(NRES, 0) + NPLAN_JOB;
+    end loop;
+    /* Вернём собранный результат */
+    return COALESCE(NRES, 0);
+  end JB_PERIODS_GET_PLAN_JOBS;
+  
+  /* Базовое добавление периода балансировки работ */
+  procedure JB_PERIODS_BASE_INSERT
+  (
+    NIDENT                  in number,      -- Идентификатор процесса
+    DDATE_FROM              in date,        -- Начало
+    DDATE_TO                in date,        -- Окончание
+    NINS_DEPARTMENT         in number,      -- Рег. номер штатного подразделения
+    NFCMANPOWER             in number,      -- Рег. номер трудового ресурса
+    NLAB_PLAN_FOT           in number := 0, -- Трудоёмкость (план, по ФОТ)
+    NLAB_FACT_RPT           in number := 0, -- Трудоёмкость (факт, по отчёту)
+    NLAB_PLAN_JOBS          in number :=0,  -- Трудоёмкость (план, по графику)
+    NJB_PERIODS             out number      -- Рег. номер записи периода балансировки
+  )
+  is
+  begin
+    /* Сформируем рег. номер записи */
+    NJB_PERIODS := GEN_ID();
+    /* Добавим запись */
+    insert into P8PNL_JB_PERIODS
+      (RN,
+       IDENT,
+       DATE_FROM,
+       DATE_TO,
+       INS_DEPARTMENT,
+       FCMANPOWER,
+       LAB_PLAN_FOT,
+       LAB_FACT_RPT,
+       LAB_PLAN_JOBS)
+    values
+      (NJB_PERIODS,
+       NIDENT,
+       DDATE_FROM,
+       DDATE_TO,
+       NINS_DEPARTMENT,
+       NFCMANPOWER,
+       NLAB_PLAN_FOT,
+       NLAB_FACT_RPT,
+       NLAB_PLAN_JOBS);
+  end JB_PERIODS_BASE_INSERT;
+  
+  /* Очистка периодов балансировки */
+  procedure JB_PERIODS_CLEAN
+  (
+    NIDENT                  in number   -- Идентификатор процесса
+  )
+  is
+  begin
+    /* Удаляем периоды балансировки */
+    delete from P8PNL_JB_PERIODS T where T.IDENT = NIDENT;
+  end JB_PERIODS_CLEAN;
+  
+  /* Пересчёт периодов балансировки */
+  procedure JB_PERIODS_RECALC
+  (
+    NIDENT                  in number,                             -- Идентификатор процесса
+    DBEGIN                  in date,                               -- Дата начала периода мониторинга загрузки ресурсов
+    NINITIAL                in number,                             -- Признак первоначального рассчёта (0 - пересчёт, 1 - первоначальный рассчёт)
+    NRESOURCE_STATUS        out number                             -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения)
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
+    DJB_BEG                 PKG_STD.TLDATE;                        -- Дата начала периода балансировки
+    DJB_END                 PKG_STD.TLDATE;                        -- Дата окончания периода балансировки
+    DBEG                    PKG_STD.TLDATE;                        -- Дата начала текущего месяца периода балансировки
+    DEND                    PKG_STD.TLDATE;                        -- Дата окончания текущего месяца периода балансировки
+    NJB_PERIODS             PKG_STD.TREF;                          -- Рег. номер добавленного периода балансировки
+    NLAB_PLAN_FOT           PKG_STD.TNUMBER;                       -- Плановая трудоёмкость по ФОТ для текущего месяца периода балансировки
+    NLAB_PLAN_JOBS          PKG_STD.TNUMBER;                       -- Плановая трудоёмкость по плану-графику в буфере для текущего месяца периода балансировки
+  begin    
+    /* Подчистка при перерасчёте */
+    if (NINITIAL = 0) then
+      JB_PERIODS_CLEAN(NIDENT => NIDENT);
+    end if;
+    /* Скажем, что нет отклонений */
+    NRESOURCE_STATUS := 0;
+    /* Определим период балансировки */
+    DJB_BEG := DBEGIN;
+    DJB_END := JB_GET_END(NIDENT => NIDENT);
+    /* Сформируем записи периодов балансировки */
+    for I in 0 .. FLOOR(MONTHS_BETWEEN(DJB_END, DJB_BEG))
+    loop
+      DBEG := TRUNC(ADD_MONTHS(DJB_BEG, I), 'mm');
+      DEND := LAST_DAY(DBEG);
+      /* Определим подразделения, занятые в работах в этом месяце */
+      for D in (select JMP.FCMANPOWER,
+                       JMP.SUBDIV
+                  from P8PNL_JB_JOBS    JB,
+                       PROJECTJOB       J,
+                       PROJECTJOBMANPOW JMP
+                 where JB.IDENT = NIDENT
+                   and JB.STAGE = 0
+                   and ((JB.DATE_FROM between DBEG and DEND) or (JB.DATE_TO between DBEG and DEND) or
+                       ((JB.DATE_FROM < DBEG) and (JB.DATE_TO > DEND)))
+                   and JB.SOURCE = J.RN
+                   and J.RN = JMP.PRN
+                   and JMP.SUBDIV is not null
+                 group by JMP.FCMANPOWER,
+                          JMP.SUBDIV)
+      loop
+        /* Рассчитаем трудоёмкость по ФОТ (в часах) */
+        NLAB_PLAN_FOT := JB_PERIODS_GET_PLAN_FOT(NCOMPANY        => NCOMPANY,
+                                                 DDATE_FROM      => DBEG,
+                                                 DDATE_TO        => DEND,
+                                                 NINS_DEPARTMENT => D.SUBDIV,
+                                                 NFCMANPOWER     => D.FCMANPOWER);
+        /* Рассчитаем трудоёмкость по работам графика */
+        NLAB_PLAN_JOBS := JB_PERIODS_GET_PLAN_JOBS(NIDENT          => NIDENT,
+                                                   DDATE_FROM      => DBEG,
+                                                   DDATE_TO        => DEND,
+                                                   NINS_DEPARTMENT => D.SUBDIV,
+                                                   NFCMANPOWER     => D.FCMANPOWER);
+        /* Добавим запись периода балансировки */
+        JB_PERIODS_BASE_INSERT(NIDENT          => NIDENT,
+                               DDATE_FROM      => DBEG,
+                               DDATE_TO        => DEND,
+                               NINS_DEPARTMENT => D.SUBDIV,
+                               NFCMANPOWER     => D.FCMANPOWER,
+                               NLAB_PLAN_FOT   => NLAB_PLAN_FOT,
+                               NLAB_FACT_RPT   => 0,
+                               NLAB_PLAN_JOBS  => NLAB_PLAN_JOBS,
+                               NJB_PERIODS     => NJB_PERIODS);
+        /* Если плановая трудоёмкость по работам графика превысила ФОТ - значит с ресурсами всё плохо */
+        if (NLAB_PLAN_JOBS > NLAB_PLAN_FOT) then
+          NRESOURCE_STATUS := 1;
+        end if;
+      end loop;
+    end loop;
+  end JB_PERIODS_RECALC;
+  
+  /* Список периодов балансировки */
+  procedure JB_PERIODS_LIST
+  (
+    NIDENT                  in number,                      -- Идентификатор процесса
+    NPAGE_NUMBER            in number,                      -- Номер страницы (игнорируется при NPAGE_SIZE=0)
+    NPAGE_SIZE              in number,                      -- Количество записей на странице (0 - все)
+    CORDERS                 in clob,                        -- Сортировки    
+    NINCLUDE_DEF            in number,                      -- Признак включения описания колонок таблицы в ответ
+    COUT                    out clob                        -- Сериализованная таблица данных
+  )
+  is
+    RO                      PKG_P8PANELS_VISUAL.TORDERS;    -- Сортировки
+    RDG                     PKG_P8PANELS_VISUAL.TDATA_GRID; -- Описание таблицы
+    RDG_ROW                 PKG_P8PANELS_VISUAL.TROW;       -- Строка таблицы
+    CSQL                    clob;                           -- Буфер для запроса
+    ICURSOR                 integer;                        -- Курсор для исполнения запроса
+    NROW_FROM               PKG_STD.TREF;                   -- Номер строки с
+    NROW_TO                 PKG_STD.TREF;                   -- Номер строки по
+  begin
+    /* Читем сортировки */
+    RO := PKG_P8PANELS_VISUAL.TORDERS_FROM_XML(CORDERS => CORDERS);
+    /* Преобразуем номер и размер страницы в номер строк с и по */
+    PKG_P8PANELS_VISUAL.UTL_ROWS_LIMITS_CALC(NPAGE_NUMBER => NPAGE_NUMBER,
+                                             NPAGE_SIZE   => NPAGE_SIZE,
+                                             NROW_FROM    => NROW_FROM,
+                                             NROW_TO      => NROW_TO);
+    /* Инициализируем таблицу данных */
+    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE();
+    /* Добавляем в таблицу описание колонок */
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NRN',
+                                               SCAPTION   => 'Рег. номер',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SPERIOD',
+                                               SCAPTION   => 'Период',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SINS_DEPARTMENT',
+                                               SCAPTION   => 'Подразделение',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SFCMANPOWER',
+                                               SCAPTION   => 'Ресурс',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NLAB_PLAN_FOT',
+                                               SCAPTION   => 'Труд. (план, ФОТ)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NLAB_FACT_RPT',
+                                               SCAPTION   => 'Труд. (факт, отчёт)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NLAB_DIFF_RPT_FOT',
+                                               SCAPTION   => 'Отклон. (факт-план)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NLAB_PLAN_JOBS',
+                                               SCAPTION   => 'Труд. (план, график)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NLAB_DIFF_JOBS_FOT',
+                                               SCAPTION   => 'Отклон. (график-план)',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BORDER     => true,
+                                               BFILTER    => false);
+    /* Обходим данные */
+    begin
+      /* Собираем запрос */
+      CSQL := 'select *
+                 from (select D.*,
+                              ROWNUM NROW
+                         from (select P.RN NRN,
+                                      TO_CHAR(P.DATE_FROM, ''YYYY.MM'') SPERIOD,
+                                      INSD.CODE SINS_DEPARTMENT,
+                                      MP.CODE SFCMANPOWER,
+                                      P.LAB_PLAN_FOT NLAB_PLAN_FOT,
+                                      P.LAB_FACT_RPT NLAB_FACT_RPT,
+                                      P.LAB_FACT_RPT - P.LAB_PLAN_FOT NLAB_DIFF_RPT_FOT,
+                                      P.LAB_PLAN_JOBS NLAB_PLAN_JOBS,
+                                      P.LAB_PLAN_JOBS - P.LAB_PLAN_FOT NLAB_DIFF_JOBS_FOT
+                                 from P8PNL_JB_PERIODS P,
+                                      INS_DEPARTMENT   INSD,
+                                      FCMANPOWER       MP
+                                where P.IDENT = :NIDENT
+                                  and P.INS_DEPARTMENT = INSD.RN
+                                  and P.FCMANPOWER = MP.RN %ORDER_BY%) D) F
+                where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Учтём сортировки */
+      PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
+      /* Разбираем его */
+      ICURSOR := PKG_SQL_DML.OPEN_CURSOR(SWHAT => 'SELECT');
+      PKG_SQL_DML.PARSE(ICURSOR => ICURSOR, SQUERY => CSQL);
+      /* Делаем подстановку параметров */
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NIDENT', NVALUE => NIDENT);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_FROM', NVALUE => NROW_FROM);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_TO', NVALUE => NROW_TO);
+      /* Описываем структуру записи курсора */
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 1);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 2);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 3);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 4);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 5);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 6);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 7);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 8);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 9);
+      /* Делаем выборку */
+      if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
+        null;
+      end if;
+      /* Обходим выбранные записи */
+      while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
+      loop
+        /* Добавляем колонки с данными */
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NRN',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 1,
+                                              BCLEAR    => true);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SPERIOD', ICURSOR => ICURSOR, NPOSITION => 2);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
+                                              SNAME     => 'SINS_DEPARTMENT',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 3);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
+                                              SNAME     => 'SFCMANPOWER',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 4);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NLAB_PLAN_FOT',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 5);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NLAB_FACT_RPT',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 6);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NLAB_DIFF_RPT_FOT',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 7);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NLAB_PLAN_JOBS',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 8);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NLAB_DIFF_JOBS_FOT',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 9);
+        /* Добавляем строку в таблицу */
+        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
+      end loop;
+      /* Освобождаем курсор */
+      PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
+    exception
+      when others then
+        PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
+        raise;
+    end;
+    /* Сериализуем описание */
+    COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
+  end JB_PERIODS_LIST;
+  
   /* Очистка данных балансировки */
   procedure JB_CLEAN
   (
@@ -4390,16 +5372,19 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     end loop;
     /* Удаляем список проектов */
     delete from P8PNL_JB_PRJCTS T where T.IDENT = NIDENT;
+    /* Удаляем периоды балансировки */
+    JB_PERIODS_CLEAN(NIDENT => NIDENT);
   end JB_CLEAN;
   
   /* Формирование исходных данных для балансировки планов-графиков работ */
   procedure JB_INIT
   (
-    DBEGIN                  in date,                               -- Дата начала периода мониторинга загрузки ресурсов
-    DFACT                   in date,                               -- Факт по состоянию на
-    NDURATION_MEAS          in number,                             -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
-    SLAB_MEAS               in varchar2,                           -- Единица измерения трудоёмкости
-    NIDENT                  in out number                          -- Идентификатор буфера сформированных данных (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
+    DBEGIN                  in out date,                           -- Дата начала периода мониторинга загрузки ресурсов
+    DFACT                   in out date,                           -- Факт по состоянию на
+    NDURATION_MEAS          in out number,                         -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
+    SLAB_MEAS               in out varchar2,                       -- Единица измерения трудоёмкости
+    NIDENT                  in out number,                         -- Идентификатор буфера сформированных данных (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
+    NRESOURCE_STATUS        out number                             -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения)
   )
   is
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
@@ -4412,7 +5397,20 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     RH_JB_JOBS              P8PNL_JB_JOBS%rowtype;                 -- Запись родительской работы/этапа в иехархии балансируемых
     RH_JB_JOBS_PREV         P8PNL_JB_JOBS%rowtype;                 -- Запись предшествующей работы в иехархии балансируемых    
     NDURATION               P8PNL_JB_JOBS.DURATION%type;           -- Длительност текущей работы/этапа
+    NEDITABLE               PKG_STD.TREF;                          -- Признак возможности редактирования работы
+    NLAB_MEAS               PKG_STD.TREF;                          -- Рег. номер выбранной для рассчётов единицы измерения трудоёмкости    
   begin
+    /* Обработаем дату начала периода мониторинга загрузки ресурсов */
+    if (DBEGIN is null) then
+      DBEGIN := TRUNC(sysdate, 'yyyy');
+    else
+      DBEGIN := TRUNC(DBEGIN, 'yyyy');
+    end if;
+    /* Обработаем единицу измерения длительности (пока - она всегда должна быть "день", по умолчанию) */
+    NDURATION_MEAS := NJB_DURATION_MEAS;
+    /* Обработаем единицу измерения трудоёмкости (пока - она всегда должна быть "ч/ч", по умолчанию) */
+    SLAB_MEAS := SJB_LAB_MEAS;
+    FIND_DICMUNTS_BY_MNEMO(NFLAG_SMART => 0, NCOMPANY => NCOMPANY, SMEAS_MNEMO => SLAB_MEAS, NRN => NLAB_MEAS);
     /* Отработаем идентификатор буфера */
     if (NIDENT is null) then
       NIDENT := GEN_IDENT();
@@ -4505,6 +5503,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                             NDURATION  => COALESCE(NDURATION, 0),
                             SEXECUTOR  => STG.SEXECUTOR,
                             NSTAGE     => 1,
+                            NEDITABLE  => 0,
                             NJB_JOBS   => NJB_JOBS_STAGE);
         /* Обходим работы этапа */
         for PJ in (select J.COMPANY NCOMPANY,
@@ -4513,7 +5512,8 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                           J.NAME SNAME,
                           J.BEGPLAN DBEGPLAN,
                           J.ENDPLAN DENDPLAN,
-                          COALESCE(COALESCE(DP.CODE, AG.AGNABBR), STG.SEXECUTOR) SEXECUTOR
+                          COALESCE(COALESCE(DP.CODE, AG.AGNABBR), STG.SEXECUTOR) SEXECUTOR,
+                          J.STATE NSTATE
                      from PROJECTJOB     J,
                           AGNLIST        AG,
                           INS_DEPARTMENT DP
@@ -4526,6 +5526,11 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                     order by J.NUMB,
                              J.BEGPLAN)
         loop
+          /* Определим возможность редактирования работы */
+          NEDITABLE := 1;
+          if ((PRJ.NEDITABLE = 0) or (PJ.NSTATE not in (0, 1))) then
+            NEDITABLE := 0;
+          end if;
           /* Определим длительность работы */
           P_PROJECTJOB_GET_DURATION(NCOMPANY       => PJ.NCOMPANY,
                                     DBEG_DATE      => PJ.DBEGPLAN,
@@ -4544,6 +5549,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                               NDURATION  => COALESCE(NDURATION, 0),
                               SEXECUTOR  => PJ.SEXECUTOR,
                               NSTAGE     => 0,
+                              NEDITABLE  => NEDITABLE,
                               NJB_JOBS   => NJB_JOBS_JOB);
         end loop;
       end loop;
@@ -4562,6 +5568,8 @@ create or replace package body PKG_P8PANELS_PROJECTS as
         end loop;
       end loop;
     end loop;
+    /* Сформируем данные монитора загрузки ресурсов */
+    JB_PERIODS_RECALC(NIDENT => NIDENT, DBEGIN => DBEGIN, NINITIAL => 1, NRESOURCE_STATUS => NRESOURCE_STATUS);
   end JB_INIT;
 
 end PKG_P8PANELS_PROJECTS;

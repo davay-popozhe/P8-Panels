@@ -16,9 +16,11 @@ create table P8PNL_JB_JOBS
   DURATION                  number(17,5) default 0 not null, -- Длительность
   EXECUTOR                  varchar2(2000) default null,     -- Исполнитель
   STAGE                     number(1) default 0 not null,    -- Признак этапа (0 - нет, 1 - да)  
+  EDITABLE                  number(1) default 0 not null,    -- Признак возможности редактирования (0 - нет, 1 - да)
   constraint C_P8PNL_JB_JOBS_RN_PK primary key (RN),
   constraint C_P8PNL_JB_JOBS_PRN_FK foreign key (PRN) references P8PNL_JB_PRJCTS (RN),
   constraint C_P8PNL_JB_JOBS_HRN_FK foreign key (HRN) references P8PNL_JB_JOBS (RN),
   constraint C_P8PNL_JB_JOBS_STAGE_VAL check (STAGE in (0, 1)),
+  constraint C_P8PNL_JB_JOBS_EDTBL_VAL check (EDITABLE in (0, 1)),
   constraint C_P8PNL_JB_JOBS_UN unique (IDENT, PRN, SOURCE)
 );
