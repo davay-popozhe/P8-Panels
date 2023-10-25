@@ -13,9 +13,10 @@ import { Drawer, Fab, Box, Grid, List, ListItemButton, ListItemText, ListItemIco
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
+import { formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
 import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { P8PGantt } from "../../components/p8p_gantt"; //Диаграмма Ганта
-import { formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
+import { ResMon } from "./res_mon"; //Монитор ресурсов
 
 //---------
 //Константы
@@ -29,6 +30,7 @@ const GANTT_WIDTH = "98vw";
 
 //Стили
 const STYLES = {
+    PROJECTS_LIST_SAVE_BUTTON: { backgroundColor: "orange" },
     PROJECTS_LIST_ITEM_NOJOBS: { backgroundColor: "#ff000045" },
     PROJECTS_LIST_ITEM_PRIMARY: { wordWrap: "break-word" },
     PROJECTS_LIST_ITEM_SECONDARY: { wordWrap: "break-word", fontSize: "0.5rem", textTransform: "uppercase" },
@@ -38,7 +40,9 @@ const STYLES = {
     PROJECTS_BUTTON: { position: "absolute" },
     PROJECTS_DRAWER: { width: "250px", flexShrink: 0, [`& .MuiDrawer-paper`]: { width: "250px", boxSizing: "border-box" } },
     GANTT_CONTAINER: { height: GANTT_HEIGHT, width: GANTT_WIDTH },
-    GANTT_TITLE: { paddingLeft: "100px", paddingRight: "100px" }
+    GANTT_TITLE: { paddingLeft: "100px", paddingRight: "120px" },
+    PERIODS_BUTTON: { position: "absolute", right: "20px" },
+    PERIODS_DRAWER: { width: "1000px", flexShrink: 0, [`& .MuiDrawer-paper`]: { width: "1000px", boxSizing: "border-box" } }
 };
 
 //------------------------------------
@@ -153,8 +157,15 @@ ProjectsList.propTypes = {
 const PrjJobs = () => {
     //Собственное состояние
     let [state, setState] = useState({
+        needSave: false,
         showProjectsList: false,
+        showPeriodsList: false,
         init: false,
+        dateBegin: null,
+        dateFact: null,
+        durationMeas: null,
+        labMeas: null,
+        resourceStatus: null,
         ident: null,
         projects: [],
         projectsLoaded: false,
@@ -175,18 +186,21 @@ const PrjJobs = () => {
     const { executeStored } = useContext(BackEndСtx);
 
     //Загрузка списка проектов
-    const loadProjects = useCallback(async () => {
-        if (!state.projectsLoaded) {
-            const data = await executeStored({
-                stored: "PKG_P8PANELS_PROJECTS.JB_PRJCTS_LIST",
-                args: {
-                    NIDENT: state.ident
-                },
-                respArg: "COUT"
-            });
-            setState(pv => ({ ...pv, projectsLoaded: true, projects: [...(data?.XPROJECTS || [])] }));
-        }
-    }, [executeStored, state.ident, state.projectsLoaded]);
+    const loadProjects = useCallback(
+        async (force = false) => {
+            if (!state.projectsLoaded || force) {
+                const data = await executeStored({
+                    stored: "PKG_P8PANELS_PROJECTS.JB_PRJCTS_LIST",
+                    args: {
+                        NIDENT: state.ident
+                    },
+                    respArg: "COUT"
+                });
+                setState(pv => ({ ...pv, projectsLoaded: true, projects: [...(data?.XPROJECTS || [])] }));
+            }
+        },
+        [executeStored, state.ident, state.projectsLoaded]
+    );
 
     //Загрузка списка работ проекта
     const loadProjectJobs = useCallback(
@@ -212,25 +226,55 @@ const PrjJobs = () => {
         [executeStored, state.ident, state.selectedProject]
     );
 
+    //Изменение работы в графике
+    const modifyJob = useCallback(
+        async (job, dateFrom, dateTo) => {
+            try {
+                const data = await executeStored({
+                    stored: "PKG_P8PANELS_PROJECTS.JB_JOBS_MODIFY_PERIOD",
+                    args: {
+                        NJB_JOBS: job,
+                        DDATE_FROM: new Date(dateFrom),
+                        DDATE_TO: new Date(dateTo),
+                        DBEGIN: new Date(state.dateBegin)
+                    }
+                });
+                setState(pv => ({ ...pv, resourceStatus: data.NRESOURCE_STATUS, needSave: true }));
+                loadProjects(true);
+            } finally {
+                loadProjectJobs(true);
+            }
+        },
+        [executeStored, loadProjectJobs, loadProjects, state.dateBegin]
+    );
+
     //Инициализация данных балансировки
     const initJobs = useCallback(async () => {
         if (!state.init) {
             const data = await executeStored({
                 stored: "PKG_P8PANELS_PROJECTS.JB_INIT",
                 args: {
-                    DBEGIN: null,
-                    DFACT: null,
-                    NDURATION_MEAS: 0,
-                    SLAB_MEAS: null,
-                    NINCLUDE_DEF: null,
+                    DBEGIN: state.dateBegin ? new Date(state.dateBegin) : null,
+                    DFACT: state.dateFact ? new Date(state.dateFact) : null,
+                    NDURATION_MEAS: state.durationMeas,
+                    SLAB_MEAS: state.labMeas,
                     NIDENT: state.ident
                 }
             });
-            setState(pv => ({ ...pv, init: true, ident: data.NIDENT }));
+            setState(pv => ({
+                ...pv,
+                init: true,
+                dateBegin: data.DBEGIN,
+                dateFact: data.DFACT,
+                durationMeas: data.NDURATION_MEAS,
+                labMeas: data.SLAB_MEAS,
+                resourceStatus: data.NRESOURCE_STATUS,
+                ident: data.NIDENT
+            }));
         }
-    }, [state.init, state.ident, executeStored]);
+    }, [state.init, state.dateBegin, state.dateFact, state.durationMeas, state.labMeas, state.ident, executeStored]);
 
-    //При смене идентификатора процесса
+    //Грузим список проектов при смене идентификатора процесса
     useEffect(() => {
         if (state.ident) loadProjects();
     }, [state.ident, loadProjects]);
@@ -246,28 +290,35 @@ const PrjJobs = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    //Выбор проекта
+    const selectPoject = (project, projectDocRn) => {
+        setState(pv => ({
+            ...pv,
+            selectedProject: project,
+            selectedProjectDocRn: projectDocRn,
+            selectedProjectJobsLoaded: false,
+            selectedProjectTasks: [],
+            selectedProjectGanttDef: {},
+            showProjectsList: false
+        }));
+    };
+
+    //Сброс выбора проекта
+    const unselectProject = () =>
+        setState(pv => ({
+            ...pv,
+            selectedProjectJobsLoaded: false,
+            selectedProject: null,
+            selectedProjectDocRn: null,
+            selectedProjectTasks: [],
+            selectedProjectGanttDef: {},
+            showProjectsList: false
+        }));
+
     //Обработка нажатия на элемент в списке проектов
     const handleProjectClick = project => {
-        if (state.selectedProject != project.NRN) {
-            setState(pv => ({
-                ...pv,
-                selectedProject: project.NRN,
-                selectedProjectDocRn: project.NPROJECT,
-                selectedProjectJobsLoaded: false,
-                selectedProjectTasks: [],
-                selectedProjectGanttDef: {},
-                showProjectsList: false
-            }));
-        } else
-            setState(pv => ({
-                ...pv,
-                selectedProjectJobsLoaded: false,
-                selectedProject: null,
-                selectedProjectDocRn: null,
-                selectedProjectTasks: [],
-                selectedProjectGanttDef: {},
-                showProjectsList: false
-            }));
+        if (state.selectedProject != project.NRN) selectPoject(project.NRN, project.NPROJECT);
+        else unselectProject();
     };
 
     //Отработка нажатия на заголовок плана-графика
@@ -280,10 +331,7 @@ const PrjJobs = () => {
         console.log(task);
         console.log(start);
         console.log(end);
-        if (isMain) {
-            console.log("ЭТО - ГЛАВНОЕ. ПОЙДЁМ НА СЕРВЕР...");
-            loadProjectJobs(true);
-        }
+        if (isMain) modifyJob(task.rn, start, end);
     };
 
     //Обработка изменения прогресса задачи в диаграмме Гантта
@@ -305,11 +353,23 @@ const PrjJobs = () => {
         }
     };
 
+    //Обработка нажатия на проект в таблице детализации трудоёмкости по плану-графику монитора ресурсов
+    const handlePlanJobsDtlProjectClick = ({ sender }) => {
+        setState(pv => ({ ...pv, showPeriodsList: false }));
+        if (state.selectedProject != sender.NJB_PRJCTS) selectPoject(sender.NJB_PRJCTS, sender.NPROJECT);
+    };
+
     //Генерация содержимого
     return (
         <Box p={2}>
             <Fab variant="extended" sx={STYLES.PROJECTS_BUTTON} onClick={() => setState(pv => ({ ...pv, showProjectsList: !pv.showProjectsList }))}>
                 Проекты
+                {state.needSave ? (
+                    <>
+                        &nbsp;&nbsp;
+                        <Icon sx={{ color: "orange" }}>save</Icon>
+                    </>
+                ) : null}
             </Fab>
             <Drawer
                 anchor={"left"}
@@ -318,8 +378,37 @@ const PrjJobs = () => {
                 sx={STYLES.PROJECTS_DRAWER}
             >
                 {state.projectsLoaded ? (
-                    <ProjectsList projects={state.projects} selectedProject={state.selectedProject} onClick={handleProjectClick} />
+                    <>
+                        {state.needSave ? (
+                            <List>
+                                <ListItemButton sx={STYLES.PROJECTS_LIST_SAVE_BUTTON}>
+                                    <ListItemIcon>
+                                        <Icon>save</Icon>
+                                    </ListItemIcon>
+                                    <ListItemText primary="Сохранить" secondary="Перенсти изменения в проекты" />
+                                </ListItemButton>
+                            </List>
+                        ) : null}
+                        <ProjectsList projects={state.projects} selectedProject={state.selectedProject} onClick={handleProjectClick} />
+                    </>
                 ) : null}
+            </Drawer>
+            <Fab variant="extended" sx={STYLES.PERIODS_BUTTON} onClick={() => setState(pv => ({ ...pv, showPeriodsList: !pv.showPeriodsList }))}>
+                Ресурсы
+                {[0, 1].includes(state.resourceStatus) ? (
+                    <>
+                        &nbsp;&nbsp;
+                        <Icon sx={{ color: state.resourceStatus === 0 ? "green" : "red" }}>{state.resourceStatus === 0 ? "done" : "error"}</Icon>
+                    </>
+                ) : null}
+            </Fab>
+            <Drawer
+                anchor={"right"}
+                open={state.showPeriodsList}
+                onClose={() => setState(pv => ({ ...pv, showPeriodsList: false }))}
+                sx={STYLES.PERIODS_DRAWER}
+            >
+                {state.ident ? <ResMon ident={state.ident} onPlanJobsDtlProjectClick={handlePlanJobsDtlProjectClick} /> : null}
             </Drawer>
             {state.init == true ? (
                 <Grid container spacing={1}>
