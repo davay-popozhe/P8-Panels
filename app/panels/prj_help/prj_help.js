@@ -88,7 +88,8 @@ const CONTENT = [
 
 //Стили
 const STYLES = {
-    IMG: { textAlign: "center", padding: "10px" },
+    IMG_CONT: { textAlign: "center", padding: "10px" },
+    IMG: { maxWidth: "100%", height: "auto" },
     PRGF_TABLE: { paddingTop: "20px", paddingBottom: "20px", display: "flex", justifyContent: "center" },
     TABLE: { width: "80%" },
     TABLE_TITLE: { backgroundColor: "lightgray" },
@@ -157,8 +158,8 @@ Prgf.propTypes = {
 
 //Изображение
 const Img = ({ src }) => (
-    <div style={STYLES.IMG}>
-        <img src={`./${src}`} />
+    <div style={STYLES.IMG_CONT}>
+        <img src={`./${src}`} style={STYLES.IMG} />
     </div>
 );
 
