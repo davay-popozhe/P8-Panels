@@ -266,7 +266,7 @@ c:\inetpub\p8web20\WebClient\Modules\P8-Panels>npm run build
 <MenuItem parent="{GIUD_РОДИТЕЛЬСКОГО_ПУНКТА_МЕНЮ}" name="ShowSamples" caption="Примеры для разработчиков" panelName="Samples"/>
 ```
 
-### API для взаимодействия с сервером "ПАРУС 8 Предприятие"
+### API для взаимодействия с сервером БД "ПАРУС 8 Предприятие"
 
 Для исполнения хранимых процедур/функций БД Системы в составе расширения предусмотрен специальный API. Его подключение к компоненте панели осуществляется через контекст `BackEndСtx` ("app/context/backend.js").
 
@@ -594,6 +594,91 @@ const MyPanel = () => {
 `inputParameters` - необязательный, массив объектов вида `[{name: ИМЯ_ПАРАМЕТРА, value: ЗНАЧЕНИЕ_ПАРАМЕТРА},...]`, значения параметров пользовательского отчёта (имеют более высокий приоритет, чем значения инизиализации параметров в настройках отчёта, однако менее низкий, чем значения сохраненные на форме его вызова)
 
 **Результат:** функция не возвращает значимого результата
+
+Примеры (см. "app/panels/samples/p8online.js"):
+
+```
+import React, { useState, useContext } from "react"; //Классы React
+import { Typography, Button, Divider } from "@mui/material"; //Интерфейсные элементы
+import { ApplicationСtx } from "../../context/application"; //Контекст приложения
+
+//Стили
+const STYLES = {
+    CONTAINER: { textAlign: "center", paddingTop: "20px" },
+    TITLE: { paddingBottom: "15px" },
+    DIVIDER: { margin: "15px" }
+};
+
+//Пример: API для взаимодействия с "ПАРУС 8 Онлайн"
+const P8Online = ({ title }) => {
+    //Собственное состояние
+    const [agent, setAgent] = useState("");
+
+    //Подключение к контексту приложения
+    const { pOnlineShowUnit, pOnlineShowTab, pOnlineShowDocument, pOnlineShowDictionary } = useContext(ApplicationСtx);
+
+    //Генерация содержимого
+    return (
+        <div style={STYLES.CONTAINER}>
+            <Typography sx={STYLES.TITLE} variant={"h6"}>
+                {title}
+            </Typography>
+            {/* Открыть новую закладку */}
+            <Button variant="contained" onClick={() => pOnlineShowTab({ caption: "PARUS.COM", url: "https://www.parus.com" })}>
+                Открыть закладку
+            </Button>
+            <Divider sx={STYLES.DIVIDER} />
+            {/* Открыть раздел */}
+            <Button
+                variant="contained"
+                onClick={() => {
+                    pOnlineShowUnit({
+                        unitCode: "Contracts"
+                    });
+                }}
+            >
+                Открыть раздел Договоры
+            </Button>
+            <Divider sx={STYLES.DIVIDER} />
+            {/* Открыть раздел в режиме словаря */}
+            <Button
+                variant="contained"
+                onClick={() => {
+                    pOnlineShowDictionary({
+                        unitCode: "AGNLIST",
+                        inputParameters: [
+                            {
+                                name: "in_AGNABBR",
+                                value: agent
+                            }
+                        ],
+                        callBack: res => (res.success === true ? setAgent(res.outParameters.out_AGNABBR) : null)
+                    });
+                }}
+            >
+                Выбрать контрагента
+            </Button>
+            {/* Позиционирование/отбор документа */}
+            {agent ? (
+                <>
+                    <Divider sx={STYLES.DIVIDER} />
+                    <Button
+                        variant="contained"
+                        onClick={() => {
+                            pOnlineShowDocument({
+                                unitCode: "AGNLIST",
+                                document: agent,
+                                inRnParameter: "in_AGNABBR"
+                            });
+                        }}
+                    >{`Показать контрагента "${agent}"`}</Button>
+                </>
+            ) : null}
+        </div>
+    );
+};
+
+```
 
 ### Компоненты пользовательского интерфейса
 
