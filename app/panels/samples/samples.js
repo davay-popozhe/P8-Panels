@@ -14,6 +14,8 @@ import { P8Online } from "./p8online"; //Пример: API для взаимод
 import { Mui } from "./mui"; //Пример: Компоненты MUI
 import { Messages } from "./messages"; //Пример: Сообщения
 import { Loader } from "./loader"; //Пример: Индикатор процесса
+import { DataGrid } from "./data_grid"; //Пример: Таблица данных "P8PDataGrid"
+import { Chart } from "./chart"; //Пример: Графики "P8PChart"
 
 //---------
 //Константы
@@ -24,7 +26,9 @@ const MODES = {
     P8ONLINE: { name: "P8ONLINE", caption: 'API для взаимодействия с "ПАРУС 8 Онлайн"', component: P8Online },
     MUI: { name: "MUI", caption: "Компоненты MUI", component: Mui },
     MESSAGES: { name: "MESSAGES", caption: "Сообщения", component: Messages },
-    LOADER: { name: "LOADER", caption: "Индикатор процесса", component: Loader }
+    LOADER: { name: "LOADER", caption: "Индикатор процесса", component: Loader },
+    DATAGRID: { name: "DATAGRID", caption: 'Таблица данных "P8PDataGrid"', component: DataGrid },
+    CHART: { name: "CHART", caption: 'Графики "P8PChart"', component: Chart }
 };
 
 //Стили
