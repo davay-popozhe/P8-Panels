@@ -259,7 +259,7 @@ c:\inetpub\p8web20\WebClient\Modules\P8-Panels>npm run build
 
 Серверная часть любой из панелей - набор хранимых процедур/функций/пакетов БД Системы. Состав объектов, их алгоритмы, входные параметры и выходные данные зависят от специфики панели и специально не регламентируются. Необходимо понимать, что с помощью специального API из клиентской JS-функции панели можно обращаться к хранимым объектам БД - исполнять их, передавать значения входных параметров (например, считанные из форм ввода, размещённых на панели), получать и отображать на панели значения выходных параметров исполненного серверного объекта (в виде таблиц, карточек, графиков и прочими способами, отвечающими функциональным требованиям реализуемой панели).
 
-> **Обратите внимание:** некоторые из приведённых ниже примеров включены в специальную панель "Примеры для разработчиков", также доступную в поставке. Её описание можно увидеть в "p8panels.config" - `Panel.name="Samples"`. Панель сконфигурирована таким образом, чтобы не отображаться в галерее и главном меню панелей (`Panel.showInPanelsList=false`). Вы можете изменить это, или подключить её к пункту главного меню "ПАРУС 8 Онлайн", добавив в секцию `MenuItems` "p8panels.config", для любого из доступных приложений Системы, элементы `MenuItem`, обеспечивающие вызов панели с примерами:
+> **Обратите внимание:** некоторые из приведённых ниже примеров включены в специальную панель "Примеры для разработчиков", также доступную в поставке. Исходный код клиентской части панели доступен в "app/panels/samples", исходный код серверной части - в "db/PKG_P8PANELS_SAMPLES.pck" (для работы панели пакет должен быть откомпилирован в БД и на него должны быть выданы права на исполнение). Её описание можно увидеть в "p8panels.config" - `Panel.name="Samples"`. Панель сконфигурирована таким образом, чтобы не отображаться в галерее и главном меню панелей (`Panel.showInPanelsList=false`). Вы можете изменить это, или подключить её к пункту главного меню "ПАРУС 8 Онлайн", добавив в секцию `MenuItems` "p8panels.config", для любого из доступных приложений Системы, элементы `MenuItem`, обеспечивающие вызов панели с примерами:
 
 ```
 <MenuItem parent="{GIUD_РОДИТЕЛЬСКОГО_ПУНКТА_МЕНЮ}" separator="true"/>
@@ -686,9 +686,384 @@ const P8Online = ({ title }) => {
 
 ##### Компоненты MUI
 
+В состав фреймворка включена библиотека [MUI](https://mui.com/) версии 5. При разработке панелей могут быть использованы интерфейсные компоненты и разметка, поставляемые с ней.
+
+![Компоненты MUI](docs/img/61.png)
+
+Сочетая компоненты библиотеки [MUI](https://mui.com/) и описанный выше API для взаимодействия с Системой можно реализовать пользовательский интерфейс любой сложности. Для подключения компонента к панели достаточно импортировать его из модуля `"@mui/material"`.
+
+![Пример использования MUI](docs/img/62.png)
+
+Например, предложенный ниже компонент отображает список контрагентов (мнемокод и наименование последних 10 добавленных в Систему) с возможностью удаления (нажатие на элемент списка - открытие словаря "Контрагенты" с позиционированием на записи), форму добавления контрагента с указанным мнемокодом и наименованием (добавление производится в корневой каталог словаря "Контрагенты"):
+
+```
+import React, { useEffect, useContext, useCallback, useState } from "react"; //Классы React
+import { Typography, Grid, List, ListItemButton, ListItem, ListItemText, IconButton, Icon, Button, TextField, Box } from "@mui/material"; //Интерфейсные элементы MUI
+import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
+import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
+import { ApplicationСtx } from "../../context/application"; //Контекст приложения
+
+//Стили
+const STYLES = {
+    CONTAINER: { textAlign: "center", paddingTop: "20px" },
+    TITLE: { paddingBottom: "15px" },
+    LIST: { width: "100%", maxWidth: "600px", bgcolor: "background.paper" }
+};
+
+//Функциональный компонент с примером использования MUI
+const Mui = ({ title }) => {
+    //Собственное состояние - список контрагентов
+    const [agents, setAgents] = useState([]);
+
+    //Собственное состояние - форма добавления контрагента
+    const [agentForm, setAgentForm] = useState({ agnAbbr: "", agnName: "" });
+
+    //Подключение к контексту взаимодействия с сервером
+    const { executeStored } = useContext(BackEndСtx);
+
+    //Подключение к контексту сообщений
+    const { showMsgWarn } = useContext(MessagingСtx);
+
+    //Подключение к контексту приложения
+    const { pOnlineShowDocument } = useContext(ApplicationСtx);
+
+    //Загрузка списка контрагентов
+    const agentsGet = useCallback(async () => {
+        const data = await executeStored({
+            stored: "PKG_P8PANELS_SAMPLES.AGNLIST_GET",
+            respArg: "COUT"
+        });
+        setAgents([...data.AGENTS]);
+    }, [executeStored]);
+
+    //Добавление контрагента
+    const agentInsert = useCallback(
+        async (agnAbbr, agnName) => {
+            await executeStored({
+                stored: "PKG_P8PANELS_SAMPLES.AGNLIST_INSERT",
+                args: {
+                    SAGNABBR: agnAbbr,
+                    SAGNNAME: agnName
+                }
+            });
+            setAgentForm({ agnAbbr: "", agnName: "" });
+            agentsGet();
+        },
+        [executeStored, agentsGet]
+    );
+
+    //Удаление контрагента
+    const agentDelete = useCallback(
+        async rn => {
+            await executeStored({
+                stored: "PKG_P8PANELS_SAMPLES.AGNLIST_DELETE",
+                args: { NRN: rn }
+            });
+            agentsGet();
+        },
+        [executeStored, agentsGet]
+    );
+
+    //При нажатии на контрагента
+    const handleAgnetClick = id => pOnlineShowDocument({ unitCode: "AGNLIST", document: id });
+
+    //При добавлении контрагента
+    const handleAgentInsert = () => agentInsert(agentForm.agnAbbr, agentForm.agnName);
+
+    //При удалении контрагента
+    const handleAgnetDeleteClick = id => showMsgWarn("Удалить контрагента?", () => agentDelete(id));
+
+    //При вводе значения в форме
+    const handleAgentFormChanged = e => {
+        setAgentForm(pv => ({ ...pv, [e.target.name]: e.target.value }));
+    };
+
+    //При подключении компонента к странице
+    useEffect(() => {
+        agentsGet();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    //Генерация содержимого
+    return (
+        <div style={STYLES.CONTAINER}>
+            <Typography sx={STYLES.TITLE} variant={"h6"}>
+                {title}
+            </Typography>
+            <Grid container spacing={0} direction="column" alignItems="center" justifyContent="center">
+                <Grid item xs={3}>
+                    <TextField
+                        name="agnAbbr"
+                        label="Мнемокод"
+                        value={agentForm.agnAbbr}
+                        variant="standard"
+                        fullWidth
+                        onChange={handleAgentFormChanged}
+                    />
+                    <TextField
+                        name="agnName"
+                        label="Наименование"
+                        value={agentForm.agnName}
+                        variant="standard"
+                        fullWidth
+                        onChange={handleAgentFormChanged}
+                    />
+                    <Box pt="10px">
+                        <Button onClick={handleAgentInsert} variant="contained" fullWidth>
+                            Добавить контрагента
+                        </Button>
+                    </Box>
+                    <List sx={STYLES.LIST}>
+                        {agents.map(a => (
+                            <ListItem
+                                key={a.NRN}
+                                secondaryAction={
+                                    <IconButton edge="end" title="Удалить контрагента" onClick={() => handleAgnetDeleteClick(a.NRN)}>
+                                        <Icon>delete</Icon>
+                                    </IconButton>
+                                }
+                                disablePadding
+                            >
+                                <ListItemButton onClick={() => handleAgnetClick(a.NRN)}>
+                                    <ListItemText primary={a.SAGNABBR} secondary={a.SAGNNAME} />
+                                </ListItemButton>
+                            </ListItem>
+                        ))}
+                    </List>
+                </Grid>
+            </Grid>
+        </div>
+    );
+};
+
+```
+
+Более подробно ознакомиться с исходным кодом примера можно в "app/panels/samples/mui.js". Документация по интерфейсным компонентам, включённым в [MUI](https://mui.com/) доступна на официальном сайте библиотеки.
+
+> **Обратите внимание:** описываемые далее высокоуровневые компоненты фреймворка "Панели" построены, в том числе, с применением интерфейсных примитивов MUI. Как правило, они имеют префикс `P8P*` в имени: `P8PAppMessage`, `P8PAppInlineMessage`, `P8PAppProgress`, `P8PDataGrid` и т.д.
+
 ##### Сообщения "P8PAppMessage", "P8PAppInlineMessage"
 
-##### Индикатор загрузки "P8PAppProgress"
+При необходимости отображения сообщения пользователю панель может использовать компоненты `P8PAppMessage<TYPE>`, `P8PAppInlineMessage<TYPE>`, где `<TYPE> in ["Err", "Info", "Warn"]`, для сообщения об ошибке, информации или предупреждения соответственно. Их исходный код расположен в "app/components/p8p_app_message". Для подключения компонент к панели достаточно импортировать этот модуль.
+
+Для удобства применения компонент реализованы функции-обёртки и компоненты-обёртки (декораторы), доступные через специальный контекст приложения - `MessagingСtx` ("app/context/messaging"). Их описание дано ниже.
+
+![Примеры модальных сообщений](docs/img/63.png)
+
+###### `undefined showMsg(type, text, msgOnOk = null, msgOnCancel = null)`
+
+Отображает модальное окно сообщения заданного типа.
+
+**Входные параметры:**
+
+`type` - обязательный, строка, тип отображаемого сообщения, `information|warning|error` (см. константу `MSG_TYPE` в "app/context/messaging_reducer" и константу `P8P_APP_MESSAGE_VARIANT` в "app/components/p8p_app_message")\
+`text` - обязательный, строка, текст отображаемого сообщения\
+`msgOnOk` - необязательный, функция, будет вызвана при нажатии на "ОК"/"ЗАКРЫТЬ" в сообщении
+`msgOnCancel` - необязательный, функция, будет вызвана при нажатии на "ОТМЕНА" в сообщении (только для сообщений типа `warning`)
+
+**Результат:** функция не возвращает значимого результата
+
+###### `undefined showMsgErr(text, msgOnOk = null)`
+
+Декоратор для `showMsg`, отображает модальное окно сообщения типа "Ошибка" (`type="error"`).
+
+**Входные параметры:** аналогично `showMsg`
+
+**Результат:** аналогично `showMsg`
+
+###### `undefined showMsgInfo(text, msgOnOk = null)`
+
+Декоратор для `showMsg`, отображает модальное окно сообщения типа "Информация" (`type="information"`).
+
+**Входные параметры:** аналогично `showMsg`
+
+**Результат:** аналогично `showMsg`
+
+###### `undefined showMsgWarn(text, msgOnOk = null, msgOnCancel = null)`
+
+Декоратор для `showMsg`, отображает модальное окно сообщения типа "Предупреждение" (`type="warning"`).
+
+**Входные параметры:** аналогично `showMsg`
+
+**Результат:** аналогично `showMsg`
+
+![Примеры встраиваемых сообщений](docs/img/64.png)
+
+###### `React.FunctionComponent InlineMsg(Object)`
+
+Функциональный компонент React (применяется в JSX разметке: `<InlineMsg prop={value}.../>`) для отображения встраиваемого в разметку сообщения.
+
+**Свойства компонента:**\
+`variant` - строка, обязательное, вид сообщения (аналогично параметру `type` в `showMsg`)\
+`text` - строка, обязательное, текст сообщения\
+`onOk` - функция, необязательное, будет вызвана при нажатии на "ОК" в сообщении
+
+###### `React.FunctionComponent InlineMsgErr(Object)`
+
+Функциональный компонент React, декоратор для `InlineMsg`, формирует сообщение об ошибке (`variant="error"`).
+
+**Свойства компонента:**\
+`text` - строка, обязательное, текст сообщения\
+`onOk` - функция, необязательное, будет вызвана при нажатии на "ОК" в сообщении
+
+###### `React.FunctionComponent InlineMsgInfo(Object)`
+
+Функциональный компонент React, декоратор для `InlineMsg`, формирует иформационное сообщение (`variant="information"`).
+
+**Свойства компонента:**\
+`text` - строка, обязательное, текст сообщения\
+`onOk` - функция, необязательное, будет вызвана при нажатии на "ОК" в сообщении
+
+###### `React.FunctionComponent InlineMsgWarn(Object)`
+
+Функциональный компонент React, декоратор для `InlineMsg`, формирует предупредительное сообщение (`variant="warning"`).
+
+**Свойства компонента:**\
+`text` - строка, обязательное, текст сообщения\
+`onOk` - функция, необязательное, будет вызвана при нажатии на "ОК" в сообщении
+
+Ниже приведён пример использования описаных функций и компонент.
+
+```
+import React, { useContext, useState } from "react"; //Классы React
+import { Typography, Divider, Button } from "@mui/material"; //Интерфейсные элементы
+import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
+
+//Стили
+const STYLES = {
+    CONTAINER: { textAlign: "center", paddingTop: "20px" },
+    TITLE: { paddingBottom: "15px" },
+    DIVIDER: { margin: "15px" }
+};
+
+//Функциональный компонент с примером использования сообщений
+const Messages = ({ title }) => {
+    //Собственное состояние
+    const [state, setState] = useState({ inlineErr: true, inlineWarn: true, inlineInfo: true });
+
+    //Подключение к контексту сообщений
+    const { showMsgErr, showMsgWarn, showMsgInfo, InlineMsgErr, InlineMsgInfo, InlineMsgWarn } = useContext(MessagingСtx);
+
+    //Генерация содержимого
+    return (
+        <div style={STYLES.CONTAINER}>
+            <Typography sx={STYLES.TITLE} variant={"h6"}>
+                {title}
+            </Typography>
+            {/* Сообщение об ошибке (диалог) */}
+            <Button variant="contained" onClick={() => showMsgErr("Что-то пошло не так :(")}>
+                Ошибка
+            </Button>
+            <Divider sx={STYLES.DIVIDER} />
+            {/* Предупреждение (диалог) */}
+            <Button
+                variant="contained"
+                onClick={() =>
+                    showMsgWarn(
+                        "Вы уверены?",
+                        () => showMsgInfo("Делаем!"),
+                        () => showMsgErr("Не делаем :(")
+                    )
+                }
+            >
+                Предупреждение
+            </Button>
+            <Divider sx={STYLES.DIVIDER} />
+            {/* Информация (диалог) */}
+            <Button variant="contained" onClick={() => showMsgInfo("Ценная информация...")}>
+                Информация
+            </Button>
+            <Divider sx={STYLES.DIVIDER} />
+            {/* Ошибка (встраиваемое) */}
+            {state.inlineErr ? (
+                <>
+                    <InlineMsgErr text="Ошибка" onOk={() => setState(pv => ({ ...pv, inlineErr: false }))} />
+                    <Divider sx={STYLES.DIVIDER} />
+                </>
+            ) : null}
+            {/* Предупреждение (встраиваемое) */}
+            {state.inlineWarn ? (
+                <>
+                    <InlineMsgWarn text="Предупреждение" onOk={() => setState(pv => ({ ...pv, inlineWarn: false }))} />
+                    <Divider sx={STYLES.DIVIDER} />
+                </>
+            ) : null}
+            {/* Информация (встраиваемое) */}
+            {state.inlineInfo ? <InlineMsgInfo text="Информация" onOk={() => setState(pv => ({ ...pv, inlineInfo: false }))} /> : null}
+        </div>
+    );
+};
+```
+
+Более подробно ознакомиться с исходным кодом примера можно в "app/panels/samples/messages.js".
+
+##### Индикатор процесса "P8PAppProgress"
+
+Для информирования пользователя о выполнении панелью асинхронных действий (например, обращений к серверу Системы), как правило, используются различные индикаторы выполнения процессов. Для этих целей в фреймворк "Панели" включен типовой индикатор процесса `P8PAppProgress` (исходный код компонента доступен в "app/components/p8p_app_progress").
+
+Для удобства использования компонента в контексте приложения `MessagingСtx` ("app/context/messaging") реализованы декораторы `showLoader` и `hideLoader` (отображение и сокрытие индикатора процесса соответственно).
+
+![Пример индикатора процесса](docs/img/65.png)
+
+###### `undefined showMsg(message)`
+
+Отображает модальный индикатор процесса с указанным сообщением.
+
+**Входные параметры:**
+
+`message` - необязательный, строка, текст индикатора (если не указан - будет отображено сообщение по умолчанию)
+
+**Результат:** функция не возвращает значимого результата
+
+###### `undefined hideLoader()`
+
+Скрывает индикатора процесса.
+
+**Входные параметры:** отсутствуют
+
+**Результат:** функция не возвращает значимого результата
+
+Ниже приведён пример использования индикатора процесса.
+
+```
+import React, { useContext } from "react"; //Классы React
+import { Typography, Button } from "@mui/material"; //Интерфейсные элементы
+import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
+
+//Стили
+const STYLES = {
+    CONTAINER: { textAlign: "center", paddingTop: "20px" },
+    TITLE: { paddingBottom: "15px" }
+};
+
+//Функциональный компонент с примером использования индикатора процесса
+const Loader = ({ title }) => {
+    //Подключение к контексту сообщений
+    const { showLoader, hideLoader } = useContext(MessagingСtx);
+
+    //Генерация содержимого
+    return (
+        <div style={STYLES.CONTAINER}>
+            <Typography sx={STYLES.TITLE} variant={"h6"}>
+                {title}
+            </Typography>
+            <Button
+                onClick={() => {
+                    showLoader("Процесс идёт. Закончится автоматически через пару секунд...");
+                    setTimeout(hideLoader, 2000);
+                }}
+            >
+                Показать индикатор процесса
+            </Button>
+        </div>
+    );
+};
+
+```
+
+Более подробно ознакомиться с исходным кодом примера можно в "app/panels/samples/loader.js".
+
+> **Обратите внимание:** индикатор процесса применяется при выполнении `executeStored`, описанной выше. Индикатор автоматически появляется при начале обмена с сервером Системы и автоматически скрывается, после получения ответа. Это поведение можно изменить параметром `loader` вызова `executeStored` (параметр `loaderMessage` управляет отображаемым индикатором сообщения).
 
 #### Высокоуровневые компоненты
 
