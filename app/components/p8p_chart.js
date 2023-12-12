@@ -17,7 +17,7 @@ import Chart from "chart.js/auto"; //Диаграммы и графики
 
 //Виды графиков
 const P8P_CHART_TYPE = {
-    BAR: "small",
+    BAR: "bar",
     LINE: "line",
     PIE: "pie",
     DOUGHNUT: "doughnut"

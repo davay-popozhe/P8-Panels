@@ -49,7 +49,6 @@ const Chart = ({ title }) => {
 
     //Отработка нажатия на график
     const handleChartClick = ({ item }) => {
-        console.log(item);
         pOnlineShowUnit({
             unitCode: "Contracts",
             inputParameters: [{ name: item.SCOND, value: item.SCOND_VALUE }]
