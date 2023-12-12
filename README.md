@@ -52,7 +52,7 @@
 
 ## III. Требования к разработчику
 
-Для успешной разработки собственных панелей, с применением описываемого фреймворка потребуются знания следующих технологий:
+Для успешной разработки собственных панелей с применением описываемого фреймворка, потребуются знания следующих технологий:
 
 -   HTML, CSS, JS, JSX
 -   Разработка SPA WEB-приложений
@@ -267,6 +267,8 @@ c:\inetpub\p8web20\WebClient\Modules\P8-Panels>npm run build
 ```
 
 ### API для взаимодействия с сервером БД "ПАРУС 8 Предприятие"
+
+> **Обратите внимание:** Здесь и далее - описываемый API (как клиентский, так и серверный) не является финальным и может быть изменён с целью развития фреймворка. В этой связи, необходимо закладывать дополнительное время на обновления расширения "Панели", связанное с возможной необходимостью приведения разработанных самостоятельно интерфейсов (их клиентских и серверных частей) к доработанному API.
 
 Для исполнения хранимых процедур/функций БД Системы в составе расширения предусмотрен специальный API. Его подключение к компоненте панели осуществляется через контекст `BackEndСtx` ("app/context/backend.js").
 
@@ -1067,8 +1069,398 @@ const Loader = ({ title }) => {
 
 #### Высокоуровневые компоненты
 
+В отличие от рассмотренных выше, компоненты данного класса предназначены для решения специфических прикладных задач и, как правило:
+
+-   состоят из значительного числа интерфейсных примитивов
+-   имеют специальный API на стороне сервера БД Системы для управления их содержимым
+
+Необходимо понимать, что с одной стороны, наличие серверно API в БД значительно упрощает взаимодействие с компонентом, с другой стороны - ограничивает возможности его примерения только теми прикладными задачами и функциональными возможностями, которые заложены в него. При этом "примитивы" HTML и MUI, хоть и сложнее в применении, но позволяют "собирать" практически любые интерфейсные решения на вкус разработчика.
+
 ##### Таблица данных "P8PDataGrid"
+
+Предназначена для формирования табличных представлений данных с поддержкой постраничного вывода данных, сортировки и отбора данных по колонкам на строне сервера БД.
+
+![Пример P8PDataGrid](docs/img/66.png)
+
+**Подключение**
+
+Клиентская часть таблицы данных реализована в компоненте `P8PDataGrid`, объявленном в "app/components/p8p_data_grid". Для использования компонента на панели его необходимо импортировать:
+
+```
+import { P8PDataGrid } from "../../components/p8p_data_grid";
+
+const MyPanel = () => {
+    return (
+        <div>
+            <P8PDataGrid .../>
+        </div>
+    );
+}
+```
+
+**Свойства**
+
+`columnsDef` - обязательный, массив, описание колонок таблицы, содержит объекты вида `{caption: <ЗАГОЛОВОК_КОЛОНКИ>, dataType: <ТИП_ДАННЫХ - NUMB|STR|DATE>, filter: <ПРИЗНАК_ВОЗМОЖНОСТИ_ОТБОРА - trut|false>, hint: <ОПИСАНИЕ_КОЛОНКИ_МОЖЕТ_СОДЕРЖАТЬ_HTML_РАЗМЕТКУ>, name: <НАИМЕНОВАНИЕ_КОЛОНКИ>, order: <ПРИЗНАК_ВОЗМОЖНОСТИ_СОРТИРОВКИ - trut|false>, values: <МАССИВ_ПРЕДОПРЕДЕЛЁННЫХ_ЗНАЧЕНИЙ>, visible: <ПРИЗНАК_ВИДИМОСТИ_КОЛОНКИ - true|false>}`\
+`filtersInitial` - необязательныей, массив, начальное состояние фильтров таблицы, содержит объекты вида `{name: <НАИМЕНОВАНИЕ_КОЛОНКИ>, from: <НАЧАЛО_ДИАПАЗОНА_ЗНАЧЕНИЙ_ФИЛЬТРА>, to: <ОКОНЧАНИЕ_ДИАПАЗОНА_ЗНАЧЕНИЙ_ФИЛЬТРА>}`\
+`rows` - обязательный, массив, отображаемые таблицой строки данных, содержит объекты вида `{<ИМЯ_КОЛОНКИ>: <ЗНАЧЕНИЕ>}`\
+`size` - необязательный, строка, размер отступов при вёрстке таблицы, `small|medium` (см. константу `P8P_DATA_GRID_SIZE` в исходном коде компонента)\
+`morePages` - обязательный, логический, признак отображения кнопки догрузки данных\
+`reloading` - обязательный, логический, признак выполнения обновления данных таблицы (служит для корректной выдачи сообщения об отсуствии данных и корректного отображения "разворачивающихся" строк)\
+`expandable` - необязательный, логический, признак необходимости формирования "разворачивающихся" строк, по умолчанию - `false`\
+`orderAscMenuItemCaption` - обязательный, строка, текст для пункта меню сортировки колонки по возрастанию\
+`orderDescMenuItemCaption` - обязательный, строка, текст для пункта меню сортировки колонки по убыванию\
+`filterMenuItemCaption` - обязательный, строка, текст для пункта меню вызова фильтра по колонке\
+`valueFilterCaption` - обязательный, строка, текст подписи для элемента ввода значения фильтра по колонке\
+`valueFromFilterCaption` - обязательный, строка, текст подписи для элемента ввода значения начала диапазона фильтра по колонке\
+`valueToFilterCaption` - обязательный, строка, текст подписи для элемента ввода значения окончания диапазона фильтра по колонке\
+`okFilterBtnCaption` - обязательный, строка, текст кнопки сохранения введённого значения фильтра\
+`clearFilterBtnCaption` - обязательный, строка, текст кнопки очистки введённого значения фильтра\
+`cancelFilterBtnCaption` - обязательный, строка, текст кнопки отмены ввода значения фильтра\
+`morePagesBtnCaption` - обязательный, строка, текст кнопки догрузки данных\
+`noDataFoundText` - необязательный, строка, текст ошибки об отсутствии данных в таблице (если не указн - ошибка не отображается)\
+`headCellRender` - необязательный, функция формирования представления заголовка колонки (если не указана - отображение по умолчанию, согласно `columnsDef`). Сигнатура функции: `f({columnDef})`. Будет вызвана для каждой колонки таблицы, в функцию будет передан объект, поле `columnDef` которого будет содержать описание текущей генерируемой колонки. Должна возвращать объект вида `{cellStyle: <СТИЛИ_ДЛЯ_TableCell>, cellProps: <СВОЙСТВА_ДЛЯ_TableCell>, stackStyle: <СТИЛИ_ДЛЯ_КОНТЕЙНЕРА_Stack>, stackProps: <СВОЙСТВА_ДЛЯ_КОНТЕЙНЕРА_Stack>, data: <ЗНАЧЕНИЕ_ИЛИ_КОМПОНЕТ_Ract_ДЛЯ_СОДЕРЖИМОГО_ЗАГОЛОВКА_КОЛОНКИ>}` или `undefined`, если для заголовка колонки не предполагается специального представления.\
+`dataCellRender` - необязательный, функция формирования представления ячейки (если не указана - отображение по умолчанию, согласно `columnsDef` и текущему элементу `rows`). Сигнатура функции `f({row, columnDef})`. Будет вызвана для каждой ячейки таблицы, в функцию будет передан объект, поле `row` которого будет содержать данные текущей генерируемой строки таблицы, а поле `columnDef` - текущей генерируемой колонки. Должна возвращать объект вида `{cellStyle: <СТИЛИ_ДЛЯ_TableCell>, cellProps: <СВОЙСТВА_ДЛЯ_TableCell>, data: <ЗНАЧЕНИЕ_ИЛИ_КОМПОНЕТ_Ract_ДЛЯ_СОДЕРЖИМОГО_ЯЧЕЙКИ>}` или `undefined`, если для ячейки не предполагается специального представления.\
+`rowExpandRender` - необязательный, функция формирования представления развёрнутой строки таблицы (если не указана - интерфейсный элемент для "разворачивания" строки не будет отображён, даже при `expandable=true`). Сигнатура функции `f({row, columnsDef})`. Будет вызвана в момент "развёртывания" строки таблицы пользователем, в функцию будет передан объект, поле `row` которого будет содержать данные текущей "разворачиваемой" строки таблицы, а поле `columnsDef` - описание колонок таблицы. Должна возвращать представление "развёрнутой" строки таблицы в виде значения или Rect-компонента.\
+`valueFormatter` - необязательный, функция форматирования значений колонки (если не указана - форматирование согласно `columnsDef`). Сигнатура функции `f({value, columnDef})`. Будет вызвана в момент формирования ячейки таблицы (если ранее для ячейки `dataCellRender` не вернул специального представления) и в моммент формирования фильтра для ячейки. Должна возвращать отформатированное значение ячейки или React-компонент для её представления.\
+`onOrderChanged` - необязательный, функция, будет вызвана при изменении пользователем состояния сортировок таблицы. Сигнатура функции `f({orders})`, результат функции не интерпретируется. В функцию передаётся объект, поле `orders` которого, содержит текущее состояние сортировок таблицы. Объект `orders` - массив, содержащий элементы вида `{name: <НАИМЕНОВАНИЕ_КОЛОНКИ>, direction: <ASC|DESC>}`. Функция применяется для инициации обновления данных в таблице.\
+`onFilterChanged` - необязательный, функция, будет вызвана при изменении пользователем состояния фильтров таблицы. Сигнатура функции `f({filters})`, результат функции не интерпретируется. В функцию передаётся объект, поле `filters` которого, содержит текущее состояние фильтров таблицы. Объект `filters` - массив, содержащий элементы вида `{name: <НАИМЕНОВАНИЕ_КОЛОНКИ>, from: <ЗНАЧЕНИЕ_НАЧАЛА_ДИАПАЗОНА_ОТБОРА>, to: <ЗНАЧЕНИЕ_ОКОНЧАНИЯ_ДИАПАЗОНА_ОТБОРА>}`. Функция применяется для инициации обновления данных в таблице.\
+`onPagesCountChanged` - необязательный, функция, будет вызвана при изменении пользователем количества отображаемых страниц данных таблицы. Сигнатура функции `f()`, результат функции не интерпретируется. Функция применяется для инициации обновления данных в таблице.\
+`objectsCopier` - обязательный, функция глубокого копирования объектов (применяется при обслуживании собственного состояния таблицы данных). Сигнатура функции `f(Object)`, должна возвращать глубокую копию объекта.
+
+Некоторые параметры таблицы данных вынесены в свойства компонента `P8PDataGrid` для минимизации его связи с фреймворком и поддержания возможности стороннего использования (например, свойства `orderAscMenuItemCaption`, `okFilterBtnCaption`, `objectsCopier` и т.п.) . Тем не менее, в настройках фреймворка и его окружении уже есть реализации для данных свойств. Например, в "app.text.js" уже содержатся объявления типовых констант для текстов подписей кнопок и пунктов меню, в "app/core/utils.js" реализована элементарная функция глубокого копиования `deepCopyObject`. Поэтому, в "app/config_wrapper.js" для привязки свойств `P8PDataGrid` к контексту фреймворка реализованы специальные декораторы и объекты-шаблоны, облегчающие подключение экземпляра `P8PDataGrid` к панели и снимающие с разработчика необходимость указывать некоторые из перечисленных выше обязательных свойств. В предложенном ниже примере, из модуля "config_wrapper" в панель импортируется объект `P8P_DATA_GRID_CONFIG_PROPS`, который уже содержт преднастроенное описание свойств `orderAscMenuItemCaption`, `orderDescMenuItemCaption`, `filterMenuItemCaption`, `valueFilterCaption`, `valueFromFilterCaption`, `valueToFilterCaption`, `okFilterBtnCaption`, `clearFilterBtnCaption`, `cancelFilterBtnCaption`, `morePagesBtnCaption`, `noDataFoundText` и `objectsCopier`, полученное из окружения фреймворка. Таким образом, прикладной разработчик может не указывать их значения при использовании `P8PDataGrid` (если по каким-то причинам не хочет их переопределить, конечно).
+
+```
+import { P8PDataGrid } from "../../components/p8p_data_grid";
+import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
+
+const MyPanel = () => {
+    return (
+        <div>
+            <P8PDataGrid {...P8P_DATA_GRID_CONFIG_PROPS} .../>
+        </div>
+    );
+}
+```
+
+**API на сервере БД**
+
+Такие свойства как `columnsDef` и `rows` компонента `P8PDataGrid` требуют от разработчика передачи данных в определённом формате. Это не обязательно должна быть информация из БД Системы, можно, например, просто объявить переменные в коде панели, задать им соответствующие значения и передать в компонент. Но изначально, таблица данных задумывалась для отображения сведений, полученных их учётных регистров Системы. Такие сведения, как правило, собираются хранимым объектом БД, исполняемым из панели посредством вызова `executeStored`. С целью снижения трудозатрат на приведение собранных хранимым объектом данных к форматам, потребляемым `P8PDataGrid`, реализован специальный API на стороне сервера БД.
+
+Для таблицы данных это (см. детальные описания программных интерфейсов в пакете `PKG_P8PANELS_VISUAL`):
+`PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE` - функция, инициализация таблицы данных, возвращает объект для хранения описания таблицы\
+`PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF` - процедура, добавление описания колонки в таблицу, принимает на вход объект с описанием таблицы и параметры, описывающие добавляемую колонку (её имя, заголовок, тип данных, видимость, доступность отбора и сортировки, набор предопределённых значений и т.д.)\
+`PKG_P8PANELS_VISUAL.TCOL_VALS_ADD` - процедура, служит для формирования коллекции предопределённых значений колонки таблицы (подготовленная коллекция передаётся в `RCOL_VALS` вызова `TDATA_GRID_ADD_COL_DEF`, если необходимо)\
+`PKG_P8PANELS_VISUAL.TROW_ADD_COL` - процедура, добавляет значение колонки к строке таблицы (значение указывается явно в `[S|N|D]VALUE`)\
+`PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COL[S|N|D]` - процедура, добавляет значение колонки к строке таблицы (значение указывается через ссылку на номер колонки `NPOSITION` в курсоре `ICURSOR` динамического SQL)\
+`PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW` - процедура, добавляет сформированную строку со значениями колонок в таблицу данных, на вход принимает объект для хранения описания таблицы и описание строки, сформированное вызовами `TROW_ADD_COL` и `TROW_ADD_CUR_COL[S|N|D]`\
+`PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML` - функция, производит сериализацию объекта, описывающего таблицу данных, в специальный XML-формат, корректно интерпретируемый клиентским компонентом `P8PDataGrid` при передаче в WEB-приложение\
+`PKG_P8PANELS_VISUAL.TORDERS_FROM_XML` - функция, служит для десериализации (как правило, полученного от клиентского приложения) состояния сортировок в коллекцию формата `TORDERS`, на вход принимает `CLOB` с сериализованным состоянием сортировок таблицы в виде `BASE64(<orders><name>ИМЯ</name><direction>ASC|DESC</direction></orders>...)` (клиентское приложение должно обеспечить передачу состояния сортировок в этом формате, см. пример ниже)\
+`PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY` - процедура, вспомогательная утилита, производит в тексте SQL-запроса, поданного на вход, замену указанного шаблона на конструкцию `order by`, сформированную с учётом переданной коллекции `RORDERS`\
+`PKG_P8PANELS_VISUAL.TFILTERS_FROM_XML` - функция, служит для десериализации (как правило, полученного от клиентского приложения) состояния фильтров в коллекцию формата `TFILTERS`, на вход принимает `CLOB` с сериализованным состоянием фильтров таблицы в виде `BASE64(<filters><name>ИМЯ</name><from>ЗНАЧЕНИЕ</from><to>ЗНАЧЕНИЕ</to></filters>...)` (клиентское приложение должно обеспечить передачу состояния фильтров в этом формате, см. пример ниже)\
+`PKG_P8PANELS_VISUAL.TFILTERS_SET_QUERY` - процедура, вспомогательная утилита, производит вызов указанной серверной процедуры отбора с учётом переданных переменных окружения и значений в `RFILTERS`\
+`PKG_P8PANELS_VISUAL.UTL_ROWS_LIMITS_CALC` - процедура, вспомогательная утилита, служит для конвертации номера страницы данных и размера страницы данных в границы диапазона строк выборки (как правило, клиентскому приложению удобнее прислать на сервер текущий номер страницы и её размер, в то время к в запросах, для выборки, удобнее применять границы диапазонов строк)\
+
+**Пример**
+
+Код на стороне сервера БД (хранимая процедура в клиентском пакете `PKG_P8PANELS_SAMPLES`):
+
+```
+  procedure DATA_GRID
+  (
+    NPAGE_NUMBER            in number,                             -- Номер страницы (игнорируется при NPAGE_SIZE=0)
+    NPAGE_SIZE              in number,                             -- Количество записей на странице (0 - все)
+    CFILTERS                in clob,                               -- Фильтры
+    CORDERS                 in clob,                               -- Сортировки
+    NINCLUDE_DEF            in number,                             -- Признак включения описания колонок таблицы в ответ
+    COUT                    out clob                               -- Сериализованная таблица данных
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
+    NIDENT                  PKG_STD.TREF := GEN_IDENT();           -- Идентификатор отбора
+    RF                      PKG_P8PANELS_VISUAL.TFILTERS;          -- Фильтры
+    RO                      PKG_P8PANELS_VISUAL.TORDERS;           -- Сортировки
+    RDG                     PKG_P8PANELS_VISUAL.TDATA_GRID;        -- Описание таблицы
+    RAGN_TYPES              PKG_P8PANELS_VISUAL.TCOL_VALS;         -- Предопределенные значения "Типа контрагентов"
+    RDG_ROW                 PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы
+    NROW_FROM               PKG_STD.TREF;                          -- Номер строки с
+    NROW_TO                 PKG_STD.TREF;                          -- Номер строки по
+    CSQL                    clob;                                  -- Буфер для запроса
+    ICURSOR                 integer;                               -- Курсор для исполнения запроса
+  begin
+    /* Читаем фильтры */
+    RF := PKG_P8PANELS_VISUAL.TFILTERS_FROM_XML(CFILTERS => CFILTERS);
+    /* Читем сортировки */
+    RO := PKG_P8PANELS_VISUAL.TORDERS_FROM_XML(CORDERS => CORDERS);
+    /* Преобразуем номер и размер страницы в номер строк с и по */
+    PKG_P8PANELS_VISUAL.UTL_ROWS_LIMITS_CALC(NPAGE_NUMBER => NPAGE_NUMBER,
+                                             NPAGE_SIZE   => NPAGE_SIZE,
+                                             NROW_FROM    => NROW_FROM,
+                                             NROW_TO      => NROW_TO);
+    /* Инициализируем таблицу данных */
+    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE();
+    /* Описываем колонки таблицы данных */
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SAGNABBR',
+                                               SCAPTION   => 'Мнемокод',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               SCOND_FROM => 'AgentAbbr',
+                                               BVISIBLE   => true,
+                                               BORDER     => true,
+                                               BFILTER    => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SAGNNAME',
+                                               SCAPTION   => 'Наименование',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               SCOND_FROM => 'AgentName',
+                                               BVISIBLE   => true,
+                                               BORDER     => true,
+                                               BFILTER    => true);
+    PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RAGN_TYPES, NVALUE => 0);
+    PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RAGN_TYPES, NVALUE => 1);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NAGNTYPE',
+                                               SCAPTION   => 'Тип',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               SCOND_FROM => 'AgentType',
+                                               BVISIBLE   => true,
+                                               BORDER     => true,
+                                               BFILTER    => true,
+                                               RCOL_VALS  => RAGN_TYPES,
+                                               SHINT      => 'В Системе бывают контрагенты двух типов:<br>' ||
+                                                             '<b style="color:blue">Юридическое лицо</b> - организация, которая имеет в собственности, хозяйственном ведении ' ||
+                                                             'или оперативном управлении обособленное имущество, отвечает по своим обязательствам этим имуществом, может от своего ' ||
+                                                             'имени приобретать и осуществлять имущественные и личные неимущественные права, отвечать по своим обязанностям.<br>' ||
+                                                             '<b style="color:green">Физическое лицо</b> - субъект правовых отношений, представляющий собой одного человека.');
+    /* Обходим данные */
+    begin
+      /* Собираем запрос */
+      CSQL := 'select *
+            from (select D.*,
+                         ROWNUM NROW
+                    from (select AG.AGNABBR SAGNABBR,
+                                 AG.AGNNAME SAGNNAME,
+                                 AG.AGNTYPE NAGNTYPE
+                            from AGNLIST AG
+                           where exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */ null from USERPRIV UP where UP.CATALOG = AG.CRN and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */ UR.ROLEID from USERROLES UR where UR.AUTHID = UTILIZER)
+                                         union all
+                                         select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */ null from USERPRIV UP where UP.CATALOG = AG.CRN and UP.AUTHID = UTILIZER)
+                             and AG.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
+           where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Учтём сортировки */
+      PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
+      /* Учтём фильтры */
+      PKG_P8PANELS_VISUAL.TFILTERS_SET_QUERY(NIDENT     => NIDENT,
+                                             NCOMPANY   => NCOMPANY,
+                                             SUNIT      => 'AGNLIST',
+                                             SPROCEDURE => 'P_AGNLIST_BASE_COND',
+                                             RDATA_GRID => RDG,
+                                             RFILTERS   => RF);
+      /* Разбираем его */
+      ICURSOR := PKG_SQL_DML.OPEN_CURSOR(SWHAT => 'SELECT');
+      PKG_SQL_DML.PARSE(ICURSOR => ICURSOR, SQUERY => CSQL);
+      /* Делаем подстановку параметров */
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NIDENT', NVALUE => NIDENT);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_FROM', NVALUE => NROW_FROM);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_TO', NVALUE => NROW_TO);
+      /* Описываем структуру записи курсора */
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 1);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 2);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 3);
+      /* Делаем выборку */
+      if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
+        null;
+      end if;
+      /* Обходим выбранные записи */
+      while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
+      loop
+        /* Добавляем колонки с данными */
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SAGNABBR', ICURSOR => ICURSOR, NPOSITION => 1, BCLEAR => true);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SAGNNAME', ICURSOR => ICURSOR, NPOSITION => 2);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW => RDG_ROW, SNAME => 'NAGNTYPE', ICURSOR => ICURSOR, NPOSITION => 3);
+        /* Добавляем строку в таблицу */
+        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
+      end loop;
+      /* Освобождаем курсор */
+      PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
+    exception
+      when others then
+        PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
+        raise;
+    end;
+    /* Сериализуем описание */
+    COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
+  end DATA_GRID;
+```
+
+Код панели на стороне клиента (WEB-приложения):
+
+```
+import React, { useState, useContext, useCallback, useEffect } from "react"; //Классы React
+import { Typography, Grid, Stack, Icon, Box } from "@mui/material"; //Интерфейсные элементы
+import { object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
+import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
+import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
+import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
+
+//Размер страницы данных
+const DATA_GRID_PAGE_SIZE = 5;
+
+//Стили
+const STYLES = {
+    CONTAINER: { textAlign: "center", paddingTop: "20px" },
+    TITLE: { paddingBottom: "15px" }
+};
+
+//Формирование значения для колонки "Тип контрагента"
+const formatAgentTypeValue = (value, addText = false) => {
+    const [text, icon] = value == 0 ? ["Юридическое лицо", "business"] : ["Физическое лицо", "person"];
+    return (
+        <Stack direction="row" gap={0.5} alignItems="center" justifyContent="center">
+            <Icon title={text}>{icon}</Icon>
+            {addText == true ? text : null}
+        </Stack>
+    );
+};
+
+//Форматирование значений колонок
+const valueFormatter = ({ value, columnDef }) => {
+    switch (columnDef.name) {
+        case "NAGNTYPE":
+            return formatAgentTypeValue(value, true);
+    }
+    return value;
+};
+
+//Генерация представления ячейки c данными
+const dataCellRender = ({ row, columnDef }) => {
+    switch (columnDef.name) {
+        case "NAGNTYPE":
+            return {
+                cellProps: { align: "center" },
+                data: formatAgentTypeValue(row[columnDef.name], false)
+            };
+    }
+};
+
+//Генерация представления ячейки заголовка
+const headCellRender = ({ columnDef }) => {
+    switch (columnDef.name) {
+        case "NAGNTYPE":
+            return {
+                stackProps: { justifyContent: "center" },
+                cellProps: { align: "center" }
+            };
+    }
+};
+
+//Пример: Таблица данных "P8PDataGrid"
+const DataGrid = ({ title }) => {
+    //Собственное состояние - таблица данных
+    const [dataGrid, setdataGrid] = useState({
+        dataLoaded: false,
+        columnsDef: [],
+        filters: null,
+        orders: null,
+        rows: [],
+        reload: true,
+        pageNumber: 1,
+        morePages: true
+    });
+
+    //Подключение к контексту взаимодействия с сервером
+    const { executeStored, SERV_DATA_TYPE_CLOB } = useContext(BackEndСtx);
+
+    //Загрузка данных таблицы с сервера
+    const loadData = useCallback(async () => {
+        if (dataGrid.reload) {
+            const data = await executeStored({
+                stored: "PKG_P8PANELS_SAMPLES.DATA_GRID",
+                args: {
+                    CFILTERS: { VALUE: object2Base64XML(dataGrid.filters, { arrayNodeName: "filters" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
+                    CORDERS: { VALUE: object2Base64XML(dataGrid.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
+                    NPAGE_NUMBER: dataGrid.pageNumber,
+                    NPAGE_SIZE: DATA_GRID_PAGE_SIZE,
+                    NINCLUDE_DEF: dataGrid.dataLoaded ? 0 : 1
+                },
+                respArg: "COUT"
+            });
+            setdataGrid(pv => ({
+                ...pv,
+                columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
+                rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
+                dataLoaded: true,
+                reload: false,
+                morePages: (data.XROWS || []).length >= DATA_GRID_PAGE_SIZE
+            }));
+        }
+    }, [dataGrid.reload, dataGrid.filters, dataGrid.orders, dataGrid.dataLoaded, dataGrid.pageNumber, executeStored, SERV_DATA_TYPE_CLOB]);
+
+    //При изменении состояния фильтра
+    const handleFilterChanged = ({ filters }) => setdataGrid(pv => ({ ...pv, filters: [...filters], pageNumber: 1, reload: true }));
+
+    //При изменении состояния сортировки
+    const handleOrderChanged = ({ orders }) => setdataGrid(pv => ({ ...pv, orders: [...orders], pageNumber: 1, reload: true }));
+
+    //При изменении количества отображаемых страниц
+    const handlePagesCountChanged = () => setdataGrid(pv => ({ ...pv, pageNumber: pv.pageNumber + 1, reload: true }));
+
+    //При необходимости обновить данные таблицы
+    useEffect(() => {
+        loadData();
+    }, [dataGrid.reload, loadData]);
+
+    //Генерация содержимого
+    return (
+        <div style={STYLES.CONTAINER}>
+            <Typography sx={STYLES.TITLE} variant={"h6"}>
+                {title}
+            </Typography>
+            <Grid container spacing={1} pt={5}>
+                <Grid item xs={12}>
+                    <Box p={5}>
+                        {dataGrid.dataLoaded ? (
+                            <P8PDataGrid
+                                {...P8P_DATA_GRID_CONFIG_PROPS}
+                                columnsDef={dataGrid.columnsDef}
+                                rows={dataGrid.rows}
+                                size={P8P_DATA_GRID_SIZE.LARGE}
+                                filtersInitial={dataGrid.filters}
+                                morePages={dataGrid.morePages}
+                                reloading={dataGrid.reload}
+                                valueFormatter={valueFormatter}
+                                headCellRender={headCellRender}
+                                dataCellRender={dataCellRender}
+                                onOrderChanged={handleOrderChanged}
+                                onFilterChanged={handleFilterChanged}
+                                onPagesCountChanged={handlePagesCountChanged}
+                            />
+                        ) : null}
+                    </Box>
+                </Grid>
+            </Grid>
+        </div>
+    );
+};
+```
+
+Полные актуальные исходные коды примеров можно увидеть в "db/PKG_P8PANELS_SAMPLES.pck" и "app/panels/samples/data_grid.js" данного репозитория соответственно.
 
 ##### Графики "P8PChart"
 
+Предназначены для формирования графических представлений данных Системы в виде столбчатой, линейной или круговой диаграммы.
+
+![Пример P8PChart](docs/img/67.png)
+
+**Свойства**
+
+**API на сервере БД**
+
+**Пример**
+
 ##### Диаграмма ганта "P8PGantt"
+
+**Свойства**
+
+**API на сервере БД**
+
+**Пример**
