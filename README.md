@@ -1447,17 +1447,179 @@ const DataGrid = ({ title }) => {
 
 ##### Графики "P8PChart"
 
-Предназначены для формирования графических представлений данных Системы в виде столбчатой, линейной или круговой диаграммы.
+Предназначены для формирования графических представлений данных Системы в виде столбчатой, линейной или круговой диаграммы. Основан на библиотеке [ChartJS](https://www.chartjs.org/) версии 4.
 
 ![Пример P8PChart](docs/img/67.png)
 
+**Подключение**
+
+Клиентская часть графиков реализована в компоненте `P8PChart`, объявленном в "app/components/p8p_chart". Для использования компонента на панели его необходимо импортировать:
+
+```
+import { P8PChart } from "../../components/p8p_chart";
+
+const MyPanel = () => {
+    return (
+        <div>
+            <P8PChart .../>
+        </div>
+    );
+}
+```
+
 **Свойства**
+
+`type` - строка, обязательный, тип графика, может принимать значения `bar|line|pie|doughnut` для столбчатой, линейной, круговой диаграммы и диаграммы-пончика, соответственно (см. константу `P8P_CHART_TYPE` в исходном коде компонента)\
+`title` - необязательный, строка, заголовок графика, если не указано - заголовок не отображается\
+`legendPosition` - необязательный, строка, расположение легенды, может принимать значения `left|right|top|bottom`, если не указано - легенда не отображается\
+`options` - необязательный, объект, дополнительные параметры графика, формат и допустимый состав атрибутов определены в документации к библиотеке [ChartJS](https://www.chartjs.org/docs/latest/), будет объединён с параметрами графика уже зафиксированными в компоненте `P8PChart` (см. `useEffect` при подключении компонента к старице в его исходном коде, параметры графика, зафиксированные в компоненте, имеют более высокий приоритет по сравнению с данным свойством)
+`labels` - обязательный, массив строк, список меток для значений графика\
+`datasets` - необязательный, массив объектов, данные для отображения на диаграмме, каждый элемент массива - серия данных для отображения, содержит объекты вида `{label: <ЗАГОЛОВОК_СЕРИИ>, borderColor: <ЦВЕТ_ГРАНИЦЫ_СЕРИИ_НА_ГРАФИКЕ>, backgroundColor: <ЦВЕТ_ЗАЛИВКИ_СЕРИИ_НА_ГРАФИКЕ>, data: <МАССИВ_ЗНАЧЕНИЙ_СЕРИИ_ДАННЫХ>, items: <МАССИВ_ОБЪЕКТОВ_ПРОИЗВОЛЬНОЙ_СТРУКТУРЫ_ДЛЯ_ОПИСАНИЯ_СЕРИИ_ДАННЫХ>}`\
+`onClick` - необязательный, функция, будет вызвана при нажатии на элемент графика, сигнатура функции `f({datasetIndex, itemIndex, item})`, результат функции не интерпретируется. Функции будет передан объект, поле `datasetIndex` которого, будет содержать индекс серии данных, `itemIndex` - индекс элемента серии данных, а `item` - описание элмента данных серии, на котором было зафиксировано нажатие.\
+`style` - необязательный, объект, стили, которые будут применены к контейнеру `div` графика
 
 **API на сервере БД**
 
+Компонент `P8PChart` требует от разработчика передачи данных в определённом формате. С целью снижения трудозатрат на приведение собранных хранимым объектом данных Системы к форматам, потребляемым `P8PChart`, реализован специальный API на стороне сервера БД.
+
+Для диаграмм это (см. детальные описания программных интерфейсов в пакете `PKG_P8PANELS_VISUAL`):
+`PKG_P8PANELS_VISUAL.TCHART_MAKE` - функция, инициализация графика, возвращает объект для хранения описания графика\
+`PKG_P8PANELS_VISUAL.TCHART_ADD_LABEL` - процедура, добавляет к указанному объекту описания графика очередную метку для значений\
+`PKG_P8PANELS_VISUAL.TCHART_DATASET_MAKE` - функция, инициализирует новую серию данных для графика, возвращает объект для хранения описания серии\
+`PKG_P8PANELS_VISUAL.TCHART_DATASET_ADD_ITEM` - процедура, добавляет очередной элемент данных с указанным значением и набором дополнительных атрибутов описания в серию\
+`PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD` - процедура, добавляет произвольный атрибут описания элементу серии данных (подготовленная коллекция передаётся в `RATTR_VALS` вызова `TCHART_DATASET_ADD_ITEM`, если необходимо)\
+`PKG_P8PANELS_VISUAL.TCHART_ADD_DATASET` - процедура, добавляет переданное объектное представление серии данных в указанный объект описания графика\
+`PKG_P8PANELS_VISUAL.TCHART_TO_XML` - функция, производит сериализацию объекта, описывающего график, в специальный XML-формат, корректно интерпретируемый клиентским компонентом `P8PChart` при передаче в WEB-приложение
+
 **Пример**
 
+Код на стороне сервера БД (хранимая процедура в клиентском пакете `PKG_P8PANELS_SAMPLES`):
+
+```
+  procedure CHART
+  (
+    COUT                    out clob                                           -- Сериализованный график
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY();             -- Организация сеанса
+    RCH                     PKG_P8PANELS_VISUAL.TCHART;                        -- График
+    RCH_DS                  PKG_P8PANELS_VISUAL.TCHART_DATASET;                -- Набор данных
+    RATTR_VALS              PKG_P8PANELS_VISUAL.TCHART_DATASET_ITEM_ATTR_VALS; -- Атрибуты элемента набора данных
+  begin
+    /* Сформируем заголовок графика */
+    RCH := PKG_P8PANELS_VISUAL.TCHART_MAKE(STYPE     => PKG_P8PANELS_VISUAL.SCHART_TYPE_BAR,
+                                           STITLE    => 'Топ 5 контрагентов по сумме договоров',
+                                           SLGND_POS => PKG_P8PANELS_VISUAL.SCHART_LGND_POS_RIGHT);
+    /* Сформируем набор данных */
+    RCH_DS := PKG_P8PANELS_VISUAL.TCHART_DATASET_MAKE(SCAPTION => 'Сумма договоров');
+    /* Обходим договоры, сгруппированные по контрагентам */
+    for C in (select D.SAGENT,
+                     D.NSUM
+                from (select AG.AGNABBR SAGENT,
+                             sum(CN.DOC_SUMTAX * (CN.CURBASE / CN.CURCOURS)) NSUM
+                        from CONTRACTS CN,
+                             AGNLIST   AG
+                       where CN.COMPANY = NCOMPANY
+                         and CN.AGENT = AG.RN
+                       group by AG.AGNABBR
+                       order by 2 desc) D
+               where ROWNUM <= 5)
+    loop
+      /* Добавим метку для контрагента */
+      PKG_P8PANELS_VISUAL.TCHART_ADD_LABEL(RCHART => RCH, SLABEL => C.SAGENT);
+      /* Сформируем дополнительные атрибуты для клиентского приложения - будем использовать их при открытии раздела "Договоры" для отбора */
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS,
+                                                         SNAME      => 'SCOND',
+                                                         SVALUE     => 'in_SAGENT',
+                                                         BCLEAR     => true);
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS,
+                                                         SNAME      => 'SCOND_VALUE',
+                                                         SVALUE     => C.SAGENT);
+      /* Добавим контрагента в набор данных */
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ADD_ITEM(RDATASET => RCH_DS, NVALUE => C.NSUM, RATTR_VALS => RATTR_VALS);
+    end loop;
+    /* Добавим набор данных в график */
+    PKG_P8PANELS_VISUAL.TCHART_ADD_DATASET(RCHART => RCH, RDATASET => RCH_DS);
+    /* Сериализуем описание */
+    COUT := PKG_P8PANELS_VISUAL.TCHART_TO_XML(RCHART => RCH, NINCLUDE_DEF => 1);
+  end CHART;
+```
+
+Код панели на стороне клиента (WEB-приложения):
+
+```
+import React, { useState, useContext, useCallback, useEffect } from "react"; //Классы React
+import { Typography, Grid, Paper } from "@mui/material"; //Интерфейсные элементы
+import { P8PChart } from "../../components/p8p_chart"; //График
+import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
+import { ApplicationСtx } from "../../context/application"; //Контекст приложения
+
+//Стили
+const STYLES = {
+    CONTAINER: { textAlign: "center", paddingTop: "20px" },
+    TITLE: { paddingBottom: "15px" },
+    CHART: { maxHeight: "500px", display: "flex", justifyContent: "center" },
+    CHART_PAPER: { height: "100%", padding: "5px" }
+};
+
+//Пример: Графики "P8PChart"
+const Chart = ({ title }) => {
+    //Собственное состояние - график
+    const [chart, setChart] = useState({ loaded: false, labels: [], datasets: [] });
+
+    //Подключение к контексту взаимодействия с сервером
+    const { executeStored } = useContext(BackEndСtx);
+
+    //Подключение к контексту приложения
+    const { pOnlineShowUnit } = useContext(ApplicationСtx);
+
+    //Загрузка данных графика с сервера
+    const loadChart = useCallback(async () => {
+        const chart = await executeStored({ stored: "PKG_P8PANELS_SAMPLES.CHART", respArg: "COUT" });
+        setChart(pv => ({ ...pv, loaded: true, ...chart.XCHART }));
+    }, [executeStored]);
+
+    //Отработка нажатия на график
+    const handleChartClick = ({ item }) => {
+        pOnlineShowUnit({
+            unitCode: "Contracts",
+            inputParameters: [{ name: item.SCOND, value: item.SCOND_VALUE }]
+        });
+    };
+
+    //При подключении к странице
+    useEffect(() => {
+        loadChart();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    //Генерация содержимого
+    return (
+        <div style={STYLES.CONTAINER}>
+            <Typography sx={STYLES.TITLE} variant={"h6"}>
+                {title}
+            </Typography>
+            <Grid container spacing={1} pt={5}>
+                <Grid item xs={1}></Grid>
+                <Grid item xs={10}>
+                    <Paper elevation={3} sx={STYLES.CHART_PAPER}>
+                        {chart.loaded ? <P8PChart {...chart} onClick={handleChartClick} style={STYLES.CHART} /> : null}
+                    </Paper>
+                </Grid>
+                <Grid item xs={1}></Grid>
+            </Grid>
+        </div>
+    );
+};
+```
+
+Полные актуальные исходные коды примеров можно увидеть в "db/PKG_P8PANELS_SAMPLES.pck" и "app/panels/samples/data_grid.js" данного репозитория соответственно.
+
 ##### Диаграмма ганта "P8PGantt"
+
+Раздел в разработке.
+
+**Подключение**
 
 **Свойства**
 
