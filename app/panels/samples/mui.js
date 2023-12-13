@@ -109,8 +109,8 @@ const Mui = ({ title }) => {
             <Typography sx={STYLES.TITLE} variant={"h6"}>
                 {title}
             </Typography>
-            <Grid container spacing={0} direction="column" alignItems="center" justifyContent="center">
-                <Grid item xs={3}>
+            <Grid container spacing={0} direction="column" alignItems="center">
+                <Grid item xs={12}>
                     <TextField
                         name="agnAbbr"
                         label="Мнемокод"

@@ -22,8 +22,8 @@ import { ApplicationСtx } from "../../context/application"; //Контекст 
 const STYLES = {
     CONTAINER: { textAlign: "center", paddingTop: "20px" },
     TITLE: { paddingBottom: "15px" },
-    CHART: { maxHeight: "500px", display: "flex", justifyContent: "center" },
-    CHART_PAPER: { height: "100%", padding: "5px" }
+    CHART: { minWidth: "80vw", maxHeight: "80vw", display: "flex", justifyContent: "center" },
+    CHART_PAPER: { padding: "25px" }
 };
 
 //-----------
@@ -67,14 +67,12 @@ const Chart = ({ title }) => {
             <Typography sx={STYLES.TITLE} variant={"h6"}>
                 {title}
             </Typography>
-            <Grid container spacing={1} pt={5}>
-                <Grid item xs={1}></Grid>
-                <Grid item xs={10}>
-                    <Paper elevation={3} sx={STYLES.CHART_PAPER}>
+            <Grid container spacing={0} pt={5} direction="column" alignItems="center">
+                <Grid item xs={12}>
+                    <Paper elevation={6} sx={STYLES.CHART_PAPER}>
                         {chart.loaded ? <P8PChart {...chart} onClick={handleChartClick} style={STYLES.CHART} /> : null}
                     </Paper>
                 </Grid>
-                <Grid item xs={1}></Grid>
             </Grid>
         </div>
     );
