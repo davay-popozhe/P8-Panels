@@ -792,8 +792,8 @@ const Mui = ({ title }) => {
             <Typography sx={STYLES.TITLE} variant={"h6"}>
                 {title}
             </Typography>
-            <Grid container spacing={0} direction="column" alignItems="center" justifyContent="center">
-                <Grid item xs={3}>
+            <Grid container spacing={0} direction="column" alignItems="center">
+                <Grid item xs={12}>
                     <TextField
                         name="agnAbbr"
                         label="Мнемокод"
@@ -1131,7 +1131,7 @@ const MyPanel = () => {
 
 ```
 import { P8PDataGrid } from "../../components/p8p_data_grid";
-import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
+import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper";
 
 const MyPanel = () => {
     return (
@@ -1558,8 +1558,8 @@ import { ApplicationСtx } from "../../context/application"; //Контекст 
 const STYLES = {
     CONTAINER: { textAlign: "center", paddingTop: "20px" },
     TITLE: { paddingBottom: "15px" },
-    CHART: { maxHeight: "500px", display: "flex", justifyContent: "center" },
-    CHART_PAPER: { height: "100%", padding: "5px" }
+    CHART: { minWidth: "80vw", maxHeight: "80vw", display: "flex", justifyContent: "center" },
+    CHART_PAPER: { padding: "25px" }
 };
 
 //Пример: Графики "P8PChart"
@@ -1599,14 +1599,12 @@ const Chart = ({ title }) => {
             <Typography sx={STYLES.TITLE} variant={"h6"}>
                 {title}
             </Typography>
-            <Grid container spacing={1} pt={5}>
-                <Grid item xs={1}></Grid>
-                <Grid item xs={10}>
-                    <Paper elevation={3} sx={STYLES.CHART_PAPER}>
+            <Grid container spacing={0} pt={5} direction="column" alignItems="center">
+                <Grid item xs={12}>
+                    <Paper elevation={6} sx={STYLES.CHART_PAPER}>
                         {chart.loaded ? <P8PChart {...chart} onClick={handleChartClick} style={STYLES.CHART} /> : null}
                     </Paper>
                 </Grid>
-                <Grid item xs={1}></Grid>
             </Grid>
         </div>
     );
@@ -1617,12 +1615,273 @@ const Chart = ({ title }) => {
 
 ##### Диаграмма ганта "P8PGantt"
 
-Раздел в разработке.
+Компонент предназначен для отображения данных в виде диаграммы Ганта. Основан на библиотеке [Frappe-Gantt](https://frappe.io/gantt). Поддерживается:
+
+-   Редактирование сроков задачи перетаскиванием
+-   Отображение и редактирование прогресса задачи
+-   Установка признаков "только для чтения" для всей диаграммы и отдельной задачи (для сроков и прогресса задачи - независимо)
+-   Форматирование цвета заливки и текста задачи
+-   Дополнение задачи произвольными учётными атрибутами
+-   Диалоговый редактор задачи, отображающий её дополнительные атрибуты с возможностью настройки их форматирования
+
+![Пример P8PGantt](docs/img/68.png)
+![Пример P8PGantt (редактор)](docs/img/69.png)
 
 **Подключение**
 
+Клиентская часть диаграммы реализована в компоненте `P8PGantt`, объявленном в "app/components/p8p_gantt". Для использования компонента на панели его необходимо импортировать:
+
+```
+import { P8PGantt } from "../../components/p8p_gantt";
+
+const MyPanel = () => {
+    return (
+        <div>
+            <P8PGantt .../>
+        </div>
+    );
+}
+```
+
 **Свойства**
+
+`height` - обязательный, число\
+`title` - необязательный, строка\
+`titleStyle` - необязательный, объект\
+`onTitleClick` - необязательный, функция\
+`zoomBar` - необязательный, логический\
+`readOnly` - необязательный, логический\
+`readOnlyDates` - необязательный, логический\
+`readOnlyProgress` - необязательный, логический\
+`zoom` - необязательный, число\
+`tasks` - обязательный, массив\
+`taskAttributes` - необязательный, массив\
+`taskColors` - необязательный, массив\
+`onTaskDatesChange` - необязательный, функция\
+`onTaskProgressChange` - необязательный, функция\
+`taskAttributeRenderer` - необязательный, функция\
+`noDataFoundText` - обязательный, строка\
+`numbTaskEditorCaption` - обязательный, строка\
+`nameTaskEditorCaption` - обязательный, строка\
+`startTaskEditorCaption` - обязательный, строка\
+`endTaskEditorCaption` - обязательный, строка\
+`progressTaskEditorCaption` - обязательный, строка\
+`legendTaskEditorCaption` - обязательный, строка\
+`okTaskEditorBtnCaption` - обязательный, строка\
+`cancelTaskEditorBtnCaption` - обязательный, строка
+
+Некоторые параметры диаграммы Ганта вынесены в свойства компонента `P8PGantt` для минимизации его связи с фреймворком и поддержания возможности стороннего использования (например, свойства `noDataFoundText`, `okTaskEditorBtnCaption`, `cancelTaskEditorBtnCaption` и т.п.) . Тем не менее, в настройках фреймворка и его окружении уже есть реализации для данных свойств. Например, в "app.text.js" уже содержатся объявления типовых констант для текстов подписей кнопок и пунктов меню. Поэтому, в "app/config_wrapper.js" для привязки свойств `P8PGantt` к контексту фреймворка реализованы специальные декораторы и объекты-шаблоны, облегчающие подключение экземпляра `P8PGantt` к панели и снимающие с разработчика необходимость указывать некоторые из перечисленных выше обязательных свойств. В предложенном ниже примере, из модуля "config_wrapper" в панель импортируется объект `P8P_GANTT_CONFIG_PROPS`, который уже содержт преднастроенное описание свойств `noDataFoundText`, `numbTaskEditorCaption`, `nameTaskEditorCaption`, `startTaskEditorCaption`, `endTaskEditorCaption`, `progressTaskEditorCaption`, `legendTaskEditorCaption`, `okTaskEditorBtnCaption` и `cancelTaskEditorBtnCaption`, полученное из окружения фреймворка. Таким образом, прикладной разработчик может не указывать их значения при использовании `P8PGantt` (если по каким-то причинам не хочет их переопределить, конечно).
+
+```
+import { P8PGantt } from "../../components/p8p_gantt";
+import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper";
+
+const MyPanel = () => {
+    return (
+        <div>
+            <P8PGantt {...P8P_GANTT_CONFIG_PROPS} .../>
+        </div>
+    );
+}
+```
 
 **API на сервере БД**
 
 **Пример**
+
+Код на стороне сервера БД (хранимая процедура в клиентском пакете `PKG_P8PANELS_SAMPLES`, требует наличия таблицы `P8PNL_SMPL_GANTT`, см. "db/P8PNL_SMPL_GANTT.sql"):
+
+```
+  procedure GANTT
+  (
+    NIDENT                  in number,                                -- Идентификатор процесса
+    COUT                    out clob                                  -- Сериализованные данные для диаграммы Ганта
+  )
+  is
+    /* Константы */
+    SBG_COLOR_STAGE         constant PKG_STD.TSTRING := 'cadetblue';  -- Цвет заливки этапов
+    SBG_COLOR_JOB           constant PKG_STD.TSTRING := 'lightgreen'; -- Цвет заливки работ
+    /* Переменные */
+    RG                      PKG_P8PANELS_VISUAL.TGANTT;               -- Описание диаграммы Ганта
+    RGT                     PKG_P8PANELS_VISUAL.TGANTT_TASK;          -- Описание задачи для диаграммы
+    STASK_BG_COLOR          PKG_STD.TSTRING;                          -- Цвет фона задачи
+  begin
+    /* Инициализируем диаграмму Ганта */
+    RG := PKG_P8PANELS_VISUAL.TGANTT_MAKE(STITLE => 'Задачи на ' || TO_CHAR(EXTRACT(year from sysdate)) || ' год',
+                                          NZOOM  => PKG_P8PANELS_VISUAL.NGANTT_ZOOM_MONTH);
+    /* Добавим динамические атрибуты к задачам */
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'type', SCAPTION => 'Тип');
+    /* Добавим описание цветов задач */
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                              SBG_COLOR => SBG_COLOR_JOB,
+                                              SDESC     => 'Этот цвет для задач.');
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                              SBG_COLOR => SBG_COLOR_STAGE,
+                                              SDESC     => 'Этим цветом выделены этапы.');
+    /* Обходим буфер */
+    for C in (select T.* from P8PNL_SMPL_GANTT T where T.IDENT = NIDENT order by T.RN)
+    loop
+      /* Определимся с форматированием */
+      if (C.TYPE = 0) then
+        STASK_BG_COLOR := SBG_COLOR_STAGE;
+      else
+        STASK_BG_COLOR := SBG_COLOR_JOB;
+      end if;
+      /* Сформируем задачу */
+      RGT := PKG_P8PANELS_VISUAL.TGANTT_TASK_MAKE(NRN       => C.RN,
+                                                  SNUMB     => C.NUMB,
+                                                  SCAPTION  => C.NUMB || ' - ' || C.NAME,
+                                                  SNAME     => C.NAME,
+                                                  DSTART    => C.DATE_FROM,
+                                                  DEND      => C.DATE_TO,
+                                                  SBG_COLOR => STASK_BG_COLOR);
+      PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_ATTR_VAL(RGANTT => RG,
+                                                   RTASK  => RGT,
+                                                   SNAME  => 'type',
+                                                   SVALUE => C.TYPE,
+                                                   BCLEAR => true);
+      /* Добавляем задачу в диаграмму */
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK(RGANTT => RG, RTASK => RGT);
+    end loop;
+    /* Сериализуем собранные данные */
+    COUT := PKG_P8PANELS_VISUAL.TGANTT_TO_XML(RGANTT => RG);
+  end GANTT;
+```
+
+Код панели на стороне клиента (WEB-приложения):
+
+```
+import React, { useState, useContext, useCallback, useEffect } from "react"; //Классы React
+import { Typography, Grid, Stack, Icon, Box } from "@mui/material"; //Интерфейсные элементы
+import { formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
+import { P8PGantt } from "../../components/p8p_gantt"; //Диаграмма Ганта
+import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
+import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
+
+//Высота диаграммы Ганта
+const GANTT_HEIGHT = "600px";
+
+//Ширина диаграммы Ганта
+const GANTT_WIDTH = "98vw";
+
+//Стили
+const STYLES = {
+    CONTAINER: { textAlign: "center", paddingTop: "20px" },
+    TITLE: { paddingBottom: "15px" },
+    GANTT_CONTAINER: { height: GANTT_HEIGHT, width: GANTT_WIDTH }
+};
+
+//Формирование значения для колонки "Тип задачи"
+const formatTaskTypeValue = value => {
+    const [text, icon] = value == 0 ? ["Этап проекта", "check"] : ["Работа проекта", "work_outline"];
+    return (
+        <Stack direction="row" gap={0.5}>
+            <Icon title={text}>{icon}</Icon>
+            {text}
+        </Stack>
+    );
+};
+
+//Генерация кастомных представлений атрибутов задачи в редакторе
+const taskAttributeRenderer = ({ task, attribute }) => {
+    switch (attribute.name) {
+        case "type":
+            return formatTaskTypeValue(task.type);
+        default:
+            return null;
+    }
+};
+
+//Пример: Диаграмма Ганта "P8Gantt"
+const Gantt = ({ title }) => {
+    //Собственное состояние
+    const [state, setState] = useState({
+        init: false,
+        dataLoaded: false,
+        ident: null,
+        ganttDef: {},
+        ganttTasks: []
+    });
+
+    //Подключение к контексту взаимодействия с сервером
+    const { executeStored } = useContext(BackEndСtx);
+
+    //Загрузка данных диаграммы с сервера
+    const loadData = useCallback(async () => {
+        const data = await executeStored({
+            stored: "PKG_P8PANELS_SAMPLES.GANTT",
+            args: { NIDENT: state.ident },
+            attributeValueProcessor: (name, val) =>
+                name == "numb" ? undefined : ["start", "end"].includes(name) ? formatDateJSONDateOnly(val) : val,
+            respArg: "COUT"
+        });
+        setState(pv => ({ ...pv, dataLoaded: true, ganttDef: { ...data.XGANTT_DEF }, ganttTasks: [...data.XGANTT_TASKS] }));
+    }, [state.ident, executeStored]);
+
+    //Инициализация данных диаграммы
+    const initData = useCallback(async () => {
+        if (!state.init) {
+            const data = await executeStored({ stored: "PKG_P8PANELS_SAMPLES.GANTT_INIT", args: { NIDENT: state.ident } });
+            setState(pv => ({ ...pv, init: true, ident: data.NIDENT }));
+        }
+    }, [state.init, state.ident, executeStored]);
+
+    //Изменение данных диаграммы
+    const modifyData = useCallback(
+        async ({ rn, start, end }) => {
+            try {
+                await executeStored({
+                    stored: "PKG_P8PANELS_SAMPLES.GANTT_MODIFY",
+                    args: { NIDENT: state.ident, NRN: rn, DDATE_FROM: new Date(start), DDATE_TO: new Date(end) }
+                });
+            } finally {
+                loadData();
+            }
+        },
+        [state.ident, executeStored, loadData]
+    );
+
+    //Обработка измненения сроков задачи в диаграмме Гантта
+    const handleTaskDatesChange = ({ task, start, end, isMain }) => {
+        if (isMain) modifyData({ rn: task.rn, start, end });
+    };
+
+    //При необходимости обновить данные таблицы
+    useEffect(() => {
+        if (state.ident) loadData();
+    }, [state.ident, loadData]);
+
+    //При подключении компонента к странице
+    useEffect(() => {
+        initData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    //Генерация содержимого
+    return (
+        <div style={STYLES.CONTAINER}>
+            <Typography sx={STYLES.TITLE} variant={"h6"}>
+                {title}
+            </Typography>
+            <Grid container spacing={0} direction="column" alignItems="center">
+                <Grid item xs={12}>
+                    {state.dataLoaded ? (
+                        <Box sx={STYLES.GANTT_CONTAINER} p={1}>
+                            <P8PGantt
+                                {...P8P_GANTT_CONFIG_PROPS}
+                                {...state.ganttDef}
+                                height={GANTT_HEIGHT}
+                                tasks={state.ganttTasks}
+                                onTaskDatesChange={handleTaskDatesChange}
+                                taskAttributeRenderer={taskAttributeRenderer}
+                            />
+                        </Box>
+                    ) : null}
+                </Grid>
+            </Grid>
+        </div>
+    );
+};
+```
+
+Полные актуальные исходные коды примеров можно увидеть в "db/PKG_P8PANELS_SAMPLES.pck" и "app/panels/samples/gantt.js" данного репозитория соответственно.
