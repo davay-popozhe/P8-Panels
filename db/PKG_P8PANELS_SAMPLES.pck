@@ -36,7 +36,29 @@ create or replace package PKG_P8PANELS_SAMPLES as
   (
     COUT                    out clob    -- Сериализованный график
   );
-
+  
+  /* Инициализация буфера данных для диаграмма Ганта */
+  procedure GANTT_INIT
+  (
+    NIDENT                  in out number -- Идентификатор буфера сформированных данных (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
+  );
+  
+  /* Сбор данных для отображения диаграммы Ганта */
+  procedure GANTT
+  (
+    NIDENT                  in number,  -- Идентификатор процесса
+    COUT                    out clob    -- Сериализованные данные для диаграммы Ганта
+  );
+  
+  /* Исправление задачи в диаграмме Ганта */
+  procedure GANTT_MODIFY
+  (
+    NIDENT                  in number,  -- Идентификатор буфера
+    NRN                     in number,  -- Рег. номер записи
+    DDATE_FROM              in date,    -- Дата начала задачи
+    DDATE_TO                in date     -- Дата окончания задачи 
+  );
+  
 end PKG_P8PANELS_SAMPLES;
 /
 create or replace package body PKG_P8PANELS_SAMPLES as
@@ -320,13 +342,6 @@ create or replace package body PKG_P8PANELS_SAMPLES as
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
   end DATA_GRID;
   
-  /* Диаграмма Ганта */
-  procedure GANTT
-  is
-  begin
-    null;
-  end GANTT;
-  
   /* График */
   procedure CHART
   (
@@ -375,6 +390,190 @@ create or replace package body PKG_P8PANELS_SAMPLES as
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TCHART_TO_XML(RCHART => RCH, NINCLUDE_DEF => 1);
   end CHART;
+  
+  /* Очистка буфера данных для диаграммы Ганта */
+  procedure GANTT_BASE_CLEAN
+  (
+    NIDENT                  in number   -- Идентификатор буфера
+  )
+  is
+  begin
+    /* Удалим из буфера всё с указанным идентификатором */
+    delete from P8PNL_SMPL_GANTT T where T.IDENT = NIDENT;
+  end GANTT_BASE_CLEAN;
+
+  /* Добавление данных в буфер диаграммы Ганта */
+  procedure GANTT_BASE_INSERT
+  (
+    NIDENT                  in number,   -- Идентификатор буфера
+    NTYPE                   in number,   -- Тип задачи (0 - этап/веха, 1 - работа)
+    SNUMB                   in varchar2, -- Номер задачи
+    SNAME                   in varchar2, -- Наименование задачи
+    DDATE_FROM              in date,     -- Дата начала задачи
+    DDATE_TO                in date      -- Дата окончания задачи
+  )
+  is
+  begin
+    /* Добавим запись */
+    insert into P8PNL_SMPL_GANTT
+      (RN, IDENT, type, NUMB, name, DATE_FROM, DATE_TO)
+    values
+      (GEN_ID(), NIDENT, NTYPE, SNUMB, SNAME, DDATE_FROM, DDATE_TO);
+  end GANTT_BASE_INSERT;
+  
+  /* Исправление данных в буфере диаграммы Ганта */
+  procedure GANTT_BASE_UPDATE
+  (
+    NIDENT                  in number,   -- Идентификатор буфера
+    NRN                     in number,   -- Рег. номер записи
+    NTYPE                   in number,   -- Тип задачи (0 - этап/веха, 1 - работа)
+    SNUMB                   in varchar2, -- Номер задачи
+    SNAME                   in varchar2, -- Наименование задачи
+    DDATE_FROM              in date,     -- Дата начала задачи
+    DDATE_TO                in date      -- Дата окончания задачи
+  )
+  is
+  begin
+    /* Изменим запись */
+    update P8PNL_SMPL_GANTT T
+       set T.TYPE      = NTYPE,
+           T.NUMB      = SNUMB,
+           T.NAME      = SNAME,
+           T.DATE_FROM = DDATE_FROM,
+           T.DATE_TO   = DDATE_TO
+     where T.RN = NRN
+       and T.IDENT = NIDENT;
+  end GANTT_BASE_UPDATE;
+ 
+  /* Инициализация буфера данных для диаграммы Ганта */
+  procedure GANTT_INIT
+  (
+    NIDENT                  in out number                  -- Идентификатор буфера сформированных данных (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
+  )
+  is
+    /* Константы */
+    NSTAGE_LEN              constant PKG_STD.TNUMBER := 3; -- Длительность этапа (в месяцах)
+    /* Переменные */
+    NYEAR                   PKG_STD.TNUMBER;               -- Текущий год
+    NMONTH                  PKG_STD.TNUMBER;               -- Месяц начала этапа
+    DDATE_FROM              PKG_STD.TLDATE;                -- Дата начала этапа
+  begin
+    /* Удаляем старые данные из буфера */
+    if (NIDENT is not null) then
+      GANTT_BASE_CLEAN(NIDENT => NIDENT);
+    else
+      /* Илиформируем новый идентификатор, если не задан */
+      NIDENT := GEN_IDENT();
+    end if;
+    /* Фиксируем текущий год */
+    NYEAR := EXTRACT(year from sysdate);
+    /* Этапы */
+    for ST in 1 .. 12 / NSTAGE_LEN
+    loop
+      /* Сформируем период этапа */
+      NMONTH     := ST * NSTAGE_LEN - NSTAGE_LEN + 1;
+      DDATE_FROM := TO_DATE('01.' || NMONTH || '.' || TO_CHAR(NYEAR), 'dd.mm.yyyy');
+      /* Добавим его в буфер */
+      GANTT_BASE_INSERT(NIDENT     => NIDENT,
+                        NTYPE      => 0,
+                        SNUMB      => TO_CHAR(ST),
+                        SNAME      => 'Этап ' || TO_CHAR(ST),
+                        DDATE_FROM => DDATE_FROM,
+                        DDATE_TO   => LAST_DAY(ADD_MONTHS(DDATE_FROM, NSTAGE_LEN) - 1));
+      /* Работы */
+      for J in 0 .. NSTAGE_LEN - 1
+      loop
+        /* Добавим в буфер */
+        GANTT_BASE_INSERT(NIDENT     => NIDENT,
+                          NTYPE      => 1,
+                          SNUMB      => TO_CHAR(ST) || '.' || TO_CHAR(J + 1),
+                          SNAME      => 'Работа ' || TO_CHAR(J + 1) || ' этапа ' || TO_CHAR(ST),
+                          DDATE_FROM => ADD_MONTHS(DDATE_FROM, J),
+                          DDATE_TO   => LAST_DAY(ADD_MONTHS(DDATE_FROM, J + 1) - 1));
+      end loop;
+    end loop;
+  end GANTT_INIT;
+  
+  /* Сбор данных для отображения диаграммы Ганта */
+  procedure GANTT
+  (
+    NIDENT                  in number,                                -- Идентификатор процесса
+    COUT                    out clob                                  -- Сериализованные данные для диаграммы Ганта
+  )
+  is
+    /* Константы */
+    SBG_COLOR_STAGE         constant PKG_STD.TSTRING := 'cadetblue';  -- Цвет заливки этапов
+    SBG_COLOR_JOB           constant PKG_STD.TSTRING := 'lightgreen'; -- Цвет заливки работ
+    /* Переменные */
+    RG                      PKG_P8PANELS_VISUAL.TGANTT;               -- Описание диаграммы Ганта
+    RGT                     PKG_P8PANELS_VISUAL.TGANTT_TASK;          -- Описание задачи для диаграммы    
+    STASK_BG_COLOR          PKG_STD.TSTRING;                          -- Цвет фона задачи
+  begin
+    /* Инициализируем диаграмму Ганта */
+    RG := PKG_P8PANELS_VISUAL.TGANTT_MAKE(STITLE => 'Задачи на ' || TO_CHAR(EXTRACT(year from sysdate)) || ' год',
+                                          NZOOM  => PKG_P8PANELS_VISUAL.NGANTT_ZOOM_MONTH);
+    /* Добавим динамические атрибуты к задачам */
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'type', SCAPTION => 'Тип');
+    /* Добавим описание цветов задач */
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                              SBG_COLOR => SBG_COLOR_JOB,
+                                              SDESC     => 'Этот цвет для задач.');
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                              SBG_COLOR => SBG_COLOR_STAGE,
+                                              SDESC     => 'Этим цветом выделены этапы.');
+    /* Обходим буфер */
+    for C in (select T.* from P8PNL_SMPL_GANTT T where T.IDENT = NIDENT order by T.RN)
+    loop
+      /* Определимся с форматированием */
+      if (C.TYPE = 0) then
+        STASK_BG_COLOR := SBG_COLOR_STAGE;
+      else
+        STASK_BG_COLOR := SBG_COLOR_JOB;
+      end if;
+      /* Сформируем задачу */
+      RGT := PKG_P8PANELS_VISUAL.TGANTT_TASK_MAKE(NRN       => C.RN,
+                                                  SNUMB     => C.NUMB,
+                                                  SCAPTION  => C.NUMB || ' - ' || C.NAME,
+                                                  SNAME     => C.NAME,
+                                                  DSTART    => C.DATE_FROM,
+                                                  DEND      => C.DATE_TO,
+                                                  SBG_COLOR => STASK_BG_COLOR);
+      PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_ATTR_VAL(RGANTT => RG,
+                                                   RTASK  => RGT,
+                                                   SNAME  => 'type',
+                                                   SVALUE => C.TYPE,
+                                                   BCLEAR => true);
+      /* Добавляем задачу в диаграмму */
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK(RGANTT => RG, RTASK => RGT);
+    end loop;
+    /* Сериализуем собранные данные */
+    COUT := PKG_P8PANELS_VISUAL.TGANTT_TO_XML(RGANTT => RG);
+  end GANTT;
+  
+  /* Исправление задачи в диаграмме Ганта */
+  procedure GANTT_MODIFY
+  (
+    NIDENT                  in number,  -- Идентификатор буфера
+    NRN                     in number,  -- Рег. номер записи
+    DDATE_FROM              in date,    -- Дата начала задачи
+    DDATE_TO                in date     -- Дата окончания задачи 
+  )
+  is
+  begin
+    for C in (select T.*
+                from P8PNL_SMPL_GANTT T
+               where T.RN = NRN
+                 and T.IDENT = NIDENT)
+    loop
+      GANTT_BASE_UPDATE(NIDENT     => C.IDENT,
+                        NRN        => C.RN,
+                        NTYPE      => C.TYPE,
+                        SNUMB      => C.NUMB,
+                        SNAME      => C.NAME,
+                        DDATE_FROM => TRUNC(DDATE_FROM),
+                        DDATE_TO   => TRUNC(DDATE_TO));
+    end loop;
+  end GANTT_MODIFY;
 
 end PKG_P8PANELS_SAMPLES;
 /
