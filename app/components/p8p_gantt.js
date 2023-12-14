@@ -118,15 +118,10 @@ const P8PGanttTaskEditor = ({
     const handleCancel = () => (onCancel ? onCancel() : null);
 
     //При изменении сроков
-    const handlePeriodChanged = e => {
-        setState(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    };
+    const handlePeriodChanged = e => setState(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
     //При изменении прогресса
-    const handleProgressChanged = (e, newValue) => {
-        console.log(newValue);
-        setState(prev => ({ ...prev, progress: newValue }));
-    };
+    const handleProgressChanged = (e, newValue) => setState(prev => ({ ...prev, progress: newValue }));
 
     //Описание легенды для задачи
     let legend = null;
