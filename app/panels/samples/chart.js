@@ -22,7 +22,7 @@ import { ApplicationСtx } from "../../context/application"; //Контекст 
 const STYLES = {
     CONTAINER: { textAlign: "center", paddingTop: "20px" },
     TITLE: { paddingBottom: "15px" },
-    CHART: { minWidth: "80vw", maxHeight: "80vw", display: "flex", justifyContent: "center" },
+    CHART: { minWidth: "65vw", maxHeight: "65vw", display: "flex", justifyContent: "center" },
     CHART_PAPER: { padding: "25px" }
 };
 
