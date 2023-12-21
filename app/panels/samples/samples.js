@@ -35,6 +35,7 @@ const MODES = {
 
 //Стили
 const STYLES = {
+    ROOT: { height: "calc(100vh - 64px)" },
     CONTAINER: { textAlign: "center", paddingTop: "20px" },
     BACK_BUTTON: { position: "absolute", left: "20px", marginTop: "20px" }
 };
@@ -46,19 +47,19 @@ const STYLES = {
 //Примеры
 const Samples = () => {
     //Собственное состояние
-    const [mode, setMode] = useState("");
+    const [mode, setMode] = useState("MUI");
 
     //Генерация содержимого
     return (
-        <div>
+        <div style={STYLES.ROOT}>
             {mode ? (
-                <div>
+                <>
                     <Fab variant="extended" sx={STYLES.BACK_BUTTON} onClick={() => setMode("")}>
                         <Icon>arrow_back_ios</Icon>
                         {BUTTONS.NAVIGATE_BACK}
                     </Fab>
                     {React.createElement(MODES[mode]?.component || (() => {}), { title: MODES[mode]?.caption })}
-                </div>
+                </>
             ) : (
                 <div style={STYLES.CONTAINER}>
                     {Object.entries(MODES).map(m => (
