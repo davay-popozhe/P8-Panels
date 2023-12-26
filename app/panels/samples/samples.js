@@ -47,7 +47,7 @@ const STYLES = {
 //Примеры
 const Samples = () => {
     //Собственное состояние
-    const [mode, setMode] = useState("MUI");
+    const [mode, setMode] = useState("");
 
     //Генерация содержимого
     return (
