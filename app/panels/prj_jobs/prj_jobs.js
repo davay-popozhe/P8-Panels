@@ -191,9 +191,7 @@ const PrjJobs = () => {
             if (!state.projectsLoaded || force) {
                 const data = await executeStored({
                     stored: "PKG_P8PANELS_PROJECTS.JB_PRJCTS_LIST",
-                    args: {
-                        NIDENT: state.ident
-                    },
+                    args: { NIDENT: state.ident },
                     respArg: "COUT"
                 });
                 setState(pv => ({ ...pv, projectsLoaded: true, projects: [...(data?.XPROJECTS || [])] }));
@@ -207,11 +205,7 @@ const PrjJobs = () => {
         async (tasksOnly = false) => {
             const data = await executeStored({
                 stored: "PKG_P8PANELS_PROJECTS.JB_JOBS_LIST",
-                args: {
-                    NIDENT: state.ident,
-                    NPRN: state.selectedProject,
-                    NINCLUDE_DEF: tasksOnly === false ? 1 : 0
-                },
+                args: { NIDENT: state.ident, NPRN: state.selectedProject, NINCLUDE_DEF: tasksOnly === false ? 1 : 0 },
                 attributeValueProcessor: (name, val) =>
                     name == "numb" ? undefined : ["start", "end"].includes(name) ? formatDateJSONDateOnly(val) : val,
                 respArg: "COUT"
@@ -228,25 +222,33 @@ const PrjJobs = () => {
 
     //Изменение работы в графике
     const modifyJob = useCallback(
-        async (job, dateFrom, dateTo) => {
+        async (job, dateFrom, dateTo, dateBegin, dateFact, durationMeas) => {
+            let data = null;
             try {
-                const data = await executeStored({
+                data = await executeStored({
                     stored: "PKG_P8PANELS_PROJECTS.JB_JOBS_MODIFY_PERIOD",
-                    args: {
-                        NJB_JOBS: job,
-                        DDATE_FROM: new Date(dateFrom),
-                        DDATE_TO: new Date(dateTo),
-                        DBEGIN: new Date(state.dateBegin)
-                    }
+                    args: { NJB_JOBS: job, DDATE_FROM: dateFrom, DDATE_TO: dateTo, DBEGIN: dateBegin, DFACT: dateFact, NDURATION_MEAS: durationMeas }
                 });
-                setState(pv => ({ ...pv, resourceStatus: data.NRESOURCE_STATUS, needSave: true }));
-                loadProjects(true);
+                if (data?.NRESOURCE_STATUS != -1) {
+                    setState(pv => ({ ...pv, resourceStatus: data.NRESOURCE_STATUS, needSave: true }));
+                    loadProjects(true);
+                }
             } finally {
                 loadProjectJobs(true);
             }
         },
-        [executeStored, loadProjectJobs, loadProjects, state.dateBegin]
+        [executeStored, loadProjectJobs, loadProjects]
     );
+
+    //Сохранение буфера балансировки в проекты
+    const saveProjects = useCallback(async () => {
+        const data = await executeStored({
+            stored: "PKG_P8PANELS_PROJECTS.JB_SAVE",
+            args: { NIDENT: state.ident },
+            respArg: "COUT"
+        });
+        setState(pv => ({ ...pv, needSave: false, projects: [...(data?.XPROJECTS || [])] }));
+    }, [executeStored, state.ident]);
 
     //Инициализация данных балансировки
     const initJobs = useCallback(async () => {
@@ -327,18 +329,7 @@ const PrjJobs = () => {
 
     //Обработка измненения сроков задачи в диаграмме Гантта
     const handleTaskDatesChange = ({ task, start, end, isMain }) => {
-        console.log("ПОМЕНЯЛИ ДАТЫ");
-        console.log(task);
-        console.log(start);
-        console.log(end);
-        if (isMain) modifyJob(task.rn, start, end);
-    };
-
-    //Обработка изменения прогресса задачи в диаграмме Гантта
-    const handleTaskProgressChange = ({ task, progress }) => {
-        console.log("ПОМЕНЯЛИ % ГОТОВНОСТИ");
-        console.log(task);
-        console.log(progress);
+        if (isMain) modifyJob(task.rn, new Date(start), new Date(end), new Date(state.dateBegin), new Date(state.dateFact), state.durationMeas);
     };
 
     //Генерация кастомных представлений атрибутов задачи в редакторе
@@ -352,6 +343,9 @@ const PrjJobs = () => {
                 return null;
         }
     };
+
+    //Обработка нажатия на сохранение данных в проект
+    const handleSaveToProjectsClick = () => saveProjects();
 
     //Обработка нажатия на проект в таблице детализации трудоёмкости по плану-графику монитора ресурсов
     const handlePlanJobsDtlProjectClick = ({ sender }) => {
@@ -381,7 +375,7 @@ const PrjJobs = () => {
                     <>
                         {state.needSave ? (
                             <List>
-                                <ListItemButton sx={STYLES.PROJECTS_LIST_SAVE_BUTTON}>
+                                <ListItemButton sx={STYLES.PROJECTS_LIST_SAVE_BUTTON} onClick={handleSaveToProjectsClick}>
                                     <ListItemIcon>
                                         <Icon>save</Icon>
                                     </ListItemIcon>
@@ -423,7 +417,6 @@ const PrjJobs = () => {
                                     onTitleClick={handleTitleClick}
                                     tasks={state.selectedProjectTasks}
                                     onTaskDatesChange={handleTaskDatesChange}
-                                    onTaskProgressChange={handleTaskProgressChange}
                                     taskAttributeRenderer={taskAttributeRenderer}
                                 />
                             </Box>
