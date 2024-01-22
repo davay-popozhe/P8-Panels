@@ -360,7 +360,9 @@ create or replace package PKG_P8PANELS_PROJECTS as
     DDATE_FROM              in date,    -- Новая дата начала
     DDATE_TO                in date,    -- Новая дата окончания
     DBEGIN                  in date,    -- Дата начала периода мониторинга загрузки ресурсов
-    NRESOURCE_STATUS        out number  -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения)
+    DFACT                   in date,    -- Факт по состоянию на
+    NDURATION_MEAS          in number,  -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)    
+    NRESOURCE_STATUS        out number  -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения, -1 - ничего не изменяли)
   );
   
   /* Получение списка работ проектов для диаграммы Ганта */
@@ -417,7 +419,14 @@ create or replace package PKG_P8PANELS_PROJECTS as
   /* Очистка данных балансировки */
   procedure JB_CLEAN
   (
-    NIDENT                  in number   -- Идентификатор буфера сформированных данных
+    NIDENT                  in number   -- Идентификатор процесса
+  );
+  
+  /* Перенос данных буфера балансировки в проекты */
+  procedure JB_SAVE
+  (
+    NIDENT                  in number,  -- Идентификатор процесса
+    COUT                    out clob    -- Список проектов
   );
   
   /* Формирование исходных данных для балансировки планов-графиков работ */
@@ -427,7 +436,7 @@ create or replace package PKG_P8PANELS_PROJECTS as
     DFACT                   in out date,     -- Факт по состоянию на
     NDURATION_MEAS          in out number,   -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
     SLAB_MEAS               in out varchar2, -- Единица измерения трудоёмкости
-    NIDENT                  in out number,   -- Идентификатор буфера сформированных данных (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
+    NIDENT                  in out number,   -- Идентификатор процесса (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
     NRESOURCE_STATUS        out number       -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения)    
   );
 
@@ -448,11 +457,6 @@ text="Буфер для хранения параметров балансиро
 /*
 TODO: owner="root" created="25.10.2023"
 text="Права доступа в мониторе ресурвов при балансировке планов-графиков"
-*/
-
-/*
-TODO: owner="root" created="25.10.2023"
-text="Признак измененности на работах, чтобы удобнее было переносить в проект"
 */
 
 /*
@@ -510,6 +514,32 @@ text="Проверить, что для расчётных полей дата-�
     when NO_DATA_FOUND then
       PKG_MSG.RECORD_NOT_FOUND(NFLAG_SMART => 0, NDOCUMENT => NRN, SUNIT_TABLE => 'PROJECT');
   end GET;
+  
+  /* Проверка пользователя на ответственность за проект */
+  function CHECK_RESPONSIBLE
+  (
+    NRN                     in number,            -- Рег. номер проекта
+    SAUTHID                 in varchar2           -- Имя пользователя    
+  ) return                  number                -- Признак ответственности за проект (0 - не ответственный, 1 - ответственный)
+  is
+    RP                      PROJECT%rowtype;      -- Запись проекта
+    NRES                    PKG_STD.TNUMBER := 0; -- Буфер для результата
+    NAUTHID_AGENT           PKG_STD.TREF;         -- Рег. номер контрагента пользователя  
+  begin
+    /* Считаем проект */
+    RP := GET(NRN => NRN);
+    /* Найдем контрагента, соответствующего текущему пользователю */
+    FIND_AGNLIST_AUTHID(NFLAG_OPTION => 1, NCOMPANY => RP.COMPANY, SPERS_AUTHID => SAUTHID, NAGENT => NAUTHID_AGENT);
+    /* Проверим ответственность */
+    if (RP.RESPONSIBLE = NAUTHID_AGENT) then
+      NRES := 1;
+    end if;
+    /* Вернём результат */
+    return NRES;
+  exception
+    when others then
+      return NRES;
+  end CHECK_RESPONSIBLE;
 
   /* Отбор проектов */
   procedure COND
@@ -4152,6 +4182,18 @@ text="Проверить, что для расчётных полей дата-�
       PKG_MSG.RECORD_NOT_FOUND(NFLAG_SMART => 0, NDOCUMENT => NJB_PRJCTS, SUNIT_TABLE => 'P8PNL_JB_PRJCTS');
   end JB_PRJCTS_GET;
 
+  /* Установка признака наличия изменений проекта, требующих сохранения */
+  procedure JB_PRJCTS_SET_CHANGED
+  (
+    NJB_PRJCTS              in number,  -- Рег. номер записи списка балансируемых проектов
+    NCHANGED                in number   -- Признак наличия изменений, требующих сохранения (0 - нет, 1 - да)  
+  )
+  is
+  begin
+    /* Установим признак */
+    update P8PNL_JB_PRJCTS T set T.CHANGED = NCHANGED where T.RN = NJB_PRJCTS;
+  end JB_PRJCTS_SET_CHANGED;
+
   /* Базовое добавление проекта для балансировки работ */
   procedure JB_PRJCTS_BASE_INSERT
   (
@@ -4172,18 +4214,6 @@ text="Проверить, что для расчётных полей дата-�
     values
       (NJB_PRJCTS, NIDENT, NPROJECT, NJOBS, NEDITABLE, NCHANGED);
   end JB_PRJCTS_BASE_INSERT;
-  
-  /* Установка признака наличия изменений проекта, требующих сохранения */
-  procedure JB_PRJCTS_SET_CHANGED
-  (
-    NJB_PRJCTS              in number,  -- Рег. номер записи списка балансируемых проектов
-    NCHANGED                in number   -- Признак наличия изменений, требующих сохранения (0 - нет, 1 - да)  
-  )
-  is
-  begin
-    /* Установим признак */
-    update P8PNL_JB_PRJCTS T set T.CHANGED = NCHANGED where T.RN = NJB_PRJCTS;
-  end JB_PRJCTS_SET_CHANGED;
   
   /* Получение списка проектов */
   procedure JB_PRJCTS_LIST
@@ -4281,6 +4311,18 @@ text="Проверить, что для расчётных полей дата-�
                   COALESCE(TO_CHAR(NSOURCE), '<НЕ УКАЗАН>'));
   end JB_JOBS_GET_BY_SOURCE;
   
+  /* Установка признака наличия изменений балансируемой работы/этапа, требующих сохранения */
+  procedure JB_JOBS_SET_CHANGED
+  (
+    NJB_JOBS                in number,  -- Рег. номер записи балансируемой работы/этапа
+    NCHANGED                in number   -- Признак наличия изменений, требующих сохранения (0 - нет, 1 - да)  
+  )
+  is
+  begin
+    /* Установим признак */
+    update P8PNL_JB_JOBS T set T.CHANGED = NCHANGED where T.RN = NJB_JOBS;
+  end JB_JOBS_SET_CHANGED;
+  
   /* Базовое добавление работы/этапа для балансировки работ */
   procedure JB_JOBS_BASE_INSERT
   (
@@ -4309,32 +4351,165 @@ text="Проверить, что для расчётных полей дата-�
       (NJB_JOBS, NIDENT, NPRN, NHRN, NSOURCE, SNUMB, SNAME, DDATE_FROM, DDATE_TO, NDURATION, SEXECUTOR, NSTAGE, NEDITABLE);
   end JB_JOBS_BASE_INSERT;
   
+  /* Базовое изменением сроков работы в буфере балансировки */
+  procedure JB_JOBS_BASE_MODIFY_PERIOD
+  (
+    NJB_JOBS                in number,               -- Рег. номер записи балансируемой работы/этапа
+    NDELTA                  in number,               -- Изменение срока работы
+    NCHANGE_FLAG            in number,               -- Флаг изменения данных (1 - изменять дату начала, 2 - изменять дату окончания)
+    DFACT                   in date,                 -- Факт по состоянию на
+    NDURATION_MEAS          in number                -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)    
+  )
+  is
+    RJ                      PROJECTJOB%rowtype;      -- Запись работы в проекте
+    RS                      PROJECTSTAGE%rowtype;    -- Запись этапа в проекте
+    RJB_J                   P8PNL_JB_JOBS%rowtype;   -- Запись работы в буфере балансировки
+    DDATE_FROM_NEW          PKG_STD.TLDATE;          -- Новая дата начала работы
+    DDATE_TO_NEW            PKG_STD.TLDATE;          -- Новая дата окончания работы
+  begin
+    /* Считаем работу из буфера */
+    RJB_J := JB_JOBS_GET(NJB_JOBS => NJB_JOBS);
+    /* Считаем работу проекта */
+    RJ := JOBS_GET(NRN => RJB_J.SOURCE);
+    /* Проверки - работа должна быть привязана к этапу */
+    if (RJ.PROJECTSTAGE is null) then
+      P_EXCEPTION(0,
+                  'Работа "%s" должа быть привязана к этапу проекта.',
+                  trim(RJ.NUMB));
+    end if;
+    /* Считаем этап проекта */
+    RS := STAGES_GET(NRN => RJ.PROJECTSTAGE);
+    /* Проверки - работа должна иметь фиксированную длительность */
+    if (RJ.DURATION_CHG <> 2) then
+      P_EXCEPTION(0,
+                  'Работа "%s" должна иметь фиксированную длительность.',
+                  trim(RJ.NUMB));
+    end if;
+    /* Проверки - работа должна быть в состоянии отличном от "Неначата" */
+    if (RJ.STATE <> 0) then
+      P_EXCEPTION(0,
+                  'Работа "%s" должна быть в состоянии "Не начата".',
+                  trim(RJ.NUMB));
+    end if;
+    /* Вычислим новую дату начала и окончания для работы */
+    if (NCHANGE_FLAG = 1) then
+      DDATE_FROM_NEW := RJB_J.DATE_FROM + NDELTA;
+      P_PROJECTJOB_GET_OFFSET_DATE(NCOMPANY     => RJ.COMPANY,
+                                   DSRC_DATE    => DDATE_FROM_NEW,
+                                   NOFFSET      => RJ.DURATION_P,
+                                   NOFFSET_MEAS => NDURATION_MEAS,
+                                   DDEST_DATE   => DDATE_TO_NEW);
+    else
+      DDATE_TO_NEW := RJB_J.DATE_TO + NDELTA;
+      P_PROJECTJOB_GET_OFFSET_DATE(NCOMPANY     => RJ.COMPANY,
+                                   DSRC_DATE    => DDATE_TO_NEW,
+                                   NOFFSET      => -RJ.DURATION_P,
+                                   NOFFSET_MEAS => NDURATION_MEAS,
+                                   DDEST_DATE   => DDATE_FROM_NEW);
+    end if;
+    /* Проверки - дата начала работы не должна быть меньше даты факта */
+    if ((NCHANGE_FLAG = 1) and (DDATE_FROM_NEW <= DFACT)) then
+      P_EXCEPTION(0,
+                  'Работа не может начинаться раньше даты "Факт по состоянию на" (%s).',
+                  TO_CHAR(DFACT, 'DD.MM.YYYY'));
+    end if;
+    /* Проверки - дата окончания работы не должна быть меньше даты факта */
+    if ((NCHANGE_FLAG = 2) and (DDATE_TO_NEW <= DFACT)) then
+      P_EXCEPTION(0,
+                  'Работа не может заканчиваться раньше даты "Факт по состоянию на" (%s).',
+                  TO_CHAR(DFACT, 'DD.MM.YYYY'));
+    end if;
+    /* Проверки - дата окончания работы не должна быть больше даты окончания этапа */
+    if ((NCHANGE_FLAG = 2) and (DDATE_TO_NEW >= RS.ENDPLAN)) then
+      P_EXCEPTION(0,
+                  'Работа не может заканчиваться после даты завершения этапа (%s).',
+                  TO_CHAR(RS.ENDPLAN, 'DD.MM.YYYY'));
+    end if;
+    /* Изменяем работу */
+    update P8PNL_JB_JOBS T
+       set T.DATE_FROM = DDATE_FROM_NEW,
+           T.DATE_TO   = DDATE_TO_NEW
+     where T.RN = RJB_J.RN;
+    /* Установим признак наличия изменений */
+    JB_JOBS_SET_CHANGED(NJB_JOBS => RJB_J.RN, NCHANGED => 1);
+    /* Обходим зависимые работы с фиксированной длительностью и меняем их */
+    for C in (select J.RN
+                from P8PNL_JB_JOBS J
+               where J.RN in (select PRV.PRN
+                                from P8PNL_JB_JOBSPREV PRV
+                               where PRV.IDENT = RJB_J.IDENT
+                                 and PRV.JB_JOBS = RJB_J.RN))
+    loop
+      JB_JOBS_BASE_MODIFY_PERIOD(NJB_JOBS       => C.RN,
+                                 NDELTA         => NDELTA,
+                                 NCHANGE_FLAG   => NCHANGE_FLAG,
+                                 DFACT          => DFACT,
+                                 NDURATION_MEAS => NDURATION_MEAS);
+    end loop;
+  end JB_JOBS_BASE_MODIFY_PERIOD;
+  
   /* Изменение сроков работы в буфере балансировки */
   procedure JB_JOBS_MODIFY_PERIOD
   (
-    NJB_JOBS                in number,               -- Рег. номер записи балансируемой работы/этапа
-    DDATE_FROM              in date,                 -- Новая дата начала
-    DDATE_TO                in date,                 -- Новая дата окончания
-    DBEGIN                  in date,                 -- Дата начала периода мониторинга загрузки ресурсов
-    NRESOURCE_STATUS        out number               -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения)
+    NJB_JOBS                in number,                     -- Рег. номер записи балансируемой работы/этапа
+    DDATE_FROM              in date,                       -- Новая дата начала
+    DDATE_TO                in date,                       -- Новая дата окончания
+    DBEGIN                  in date,                       -- Дата начала периода мониторинга загрузки ресурсов
+    DFACT                   in date,                       -- Факт по состоянию на
+    NDURATION_MEAS          in number,                     -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
+    NRESOURCE_STATUS        out number                     -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения, -1 - ничего не изменяли)
   )
   is
-    RJB_J                   P8PNL_JB_JOBS%rowtype;   -- Запись работы в буфере балансировки
-    RJB_P                   P8PNL_JB_PRJCTS%rowtype; -- Запись родительского проекта в буфере балансировки
+    RJB_J                   P8PNL_JB_JOBS%rowtype;         -- Запись работы в буфере балансировки
+    RJB_P                   P8PNL_JB_PRJCTS%rowtype;       -- Запись родительского проекта в буфере балансировки
+    RJ                      PROJECTJOB%rowtype;            -- Запись работы в проекте
+    NCHANGE_FLAG            PKG_STD.TNUMBER := 0;          -- Флаг изменения данных (0 - нечего менять, 1 - дата начала изменилась, 2 - дата окончания изменилась)
+    NDELTA                  PKG_STD.TNUMBER;               -- Изменение даты
+    SUTILIZER               PKG_STD.TSTRING := UTILIZER(); -- Пользователь сеанса
   begin
     /* Считаем работу из буфера */
     RJB_J := JB_JOBS_GET(NJB_JOBS => NJB_JOBS);
     /* Считаем проект из буфера */
     RJB_P := JB_PRJCTS_GET(NJB_PRJCTS => RJB_J.PRN);
-    /* Изменим работу */
-    update P8PNL_JB_JOBS T
-       set T.DATE_FROM = DDATE_FROM,
-           T.DATE_TO   = DDATE_TO
-     where T.RN = RJB_J.RN;
-    /* Выставим признак изменений в проекте */
-    JB_PRJCTS_SET_CHANGED(NJB_PRJCTS => RJB_P.RN, NCHANGED => 1);
-    /* Выполним пересчёт монитора */
-    JB_PERIODS_RECALC(NIDENT => RJB_P.IDENT, DBEGIN => DBEGIN, NINITIAL => 0, NRESOURCE_STATUS => NRESOURCE_STATUS);
+    /* Считаем работу проекта */
+    RJ := JOBS_GET(NRN => RJB_J.SOURCE);
+    /* Проверки - это должна быть работа */
+    if (RJB_J.STAGE = 1) then
+      P_EXCEPTION(0, 'Изменение сроков допустимо только для работ.');
+    end if;
+    /* Проверки - пользователь должен быть ответственным за проект */
+    if (CHECK_RESPONSIBLE(NRN => RJB_P.PROJECT, SAUTHID => SUTILIZER) <> 1) then
+      P_EXCEPTION(0, 'Вы не являетесь ответственным за данный проект.');
+    end if;
+    /* Проверки - работа должна иметь фиксированную длительность */
+    if (RJ.DURATION_CHG <> 2) then
+      P_EXCEPTION(0, 'Работа должна иметь фиксированную длительность.');
+    end if;
+    /* Определимся с тем, что будем менять и на сколько */
+    if ((DDATE_FROM is not null) and (TRUNC(RJB_J.DATE_FROM) <> TRUNC(DDATE_FROM))) then
+      NCHANGE_FLAG := 1;
+      NDELTA       := TRUNC(DDATE_FROM) - TRUNC(RJB_J.DATE_FROM);
+    end if;
+    if ((DDATE_TO is not null) and (TRUNC(RJB_J.DATE_TO) <> TRUNC(DDATE_TO)) and (NCHANGE_FLAG = 0)) then
+      NCHANGE_FLAG := 2;
+      NDELTA       := TRUNC(DDATE_TO) - TRUNC(RJB_J.DATE_TO);
+    end if;
+    /* Если есть что менять */
+    if (NCHANGE_FLAG <> 0) then
+      /* Изменяем работы */
+      JB_JOBS_BASE_MODIFY_PERIOD(NJB_JOBS       => RJB_J.RN,
+                                 NDELTA         => NDELTA,
+                                 NCHANGE_FLAG   => NCHANGE_FLAG,
+                                 DFACT          => DFACT,
+                                 NDURATION_MEAS => NDURATION_MEAS);
+      /* Выставим признак изменений в проекте */
+      JB_PRJCTS_SET_CHANGED(NJB_PRJCTS => RJB_P.RN, NCHANGED => 1);
+      /* Выполним пересчёт монитора */
+      JB_PERIODS_RECALC(NIDENT => RJB_P.IDENT, DBEGIN => DBEGIN, NINITIAL => 0, NRESOURCE_STATUS => NRESOURCE_STATUS);
+    else
+      /* Ничего не изменили */
+      NRESOURCE_STATUS := -1;
+    end if;
   end JB_JOBS_MODIFY_PERIOD;
   
   /* Получение списка работ проектов для диаграммы Ганта */
@@ -4362,7 +4537,7 @@ text="Проверить, что для расчётных полей дата-�
     RG                      PKG_P8PANELS_VISUAL.TGANTT;               -- Описание диаграммы Ганта
     RGT                     PKG_P8PANELS_VISUAL.TGANTT_TASK;          -- Описание задачи для диаграммы    
     STITLE                  PKG_STD.TSTRING;                          -- Общий заголовок
-    BREAD_ONLY              boolean := false;                         -- Флаг доступности проекта только для чтения
+    BREAD_ONLY_DATES        boolean := false;                         -- Флаг доступности дат проекта только для чтения
     BTASK_READ_ONLY         boolean;                                  -- Флаг доступности задачи только для чтения
     STASK_BG_COLOR          PKG_STD.TSTRING;                          -- Цвет фона задачи
     STASK_TEXT_COLOR        PKG_STD.TSTRING;                          -- Цвет текста задачи
@@ -4377,7 +4552,7 @@ text="Проверить, что для расчётных полей дата-�
     RPRJ := GET(NRN => RJB_PRJ.PROJECT);
     /* Определимся с возможностью изменения данных проекта */
     if (RJB_PRJ.EDITABLE = 0) then
-      BREAD_ONLY := true;
+      BREAD_ONLY_DATES := true;
     end if;
     /* Сформируем общий заголовок */
     STITLE := RPRJ.NAME_USL || ' - ' || RPRJ.NAME;
@@ -4394,9 +4569,10 @@ text="Проверить, что для расчётных полей дата-�
       STITLE := STITLE || ')';
     end if;
     /* Инициализируем диаграмму Ганта */
-    RG := PKG_P8PANELS_VISUAL.TGANTT_MAKE(STITLE     => STITLE,
-                                          NZOOM      => PKG_P8PANELS_VISUAL.NGANTT_ZOOM_MONTH,
-                                          BREAD_ONLY => BREAD_ONLY);
+    RG := PKG_P8PANELS_VISUAL.TGANTT_MAKE(STITLE              => STITLE,
+                                          NZOOM               => PKG_P8PANELS_VISUAL.NGANTT_ZOOM_MONTH,                                          
+                                          BREAD_ONLY_DATES    => BREAD_ONLY_DATES,
+                                          BREAD_ONLY_PROGRESS => true);
     /* Добавим динамические атрибуты к задачам */
     PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'type', SCAPTION => 'Тип');
     PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'state', SCAPTION => 'Состояние');
@@ -5354,7 +5530,7 @@ text="Проверить, что для расчётных полей дата-�
   /* Очистка данных балансировки */
   procedure JB_CLEAN
   (
-    NIDENT                  in number   -- Идентификатор буфера сформированных данных
+    NIDENT                  in number   -- Идентификатор процесса
   )
   is
   begin
@@ -5376,6 +5552,95 @@ text="Проверить, что для расчётных полей дата-�
     JB_PERIODS_CLEAN(NIDENT => NIDENT);
   end JB_CLEAN;
   
+  /* Перенос данных буфера балансировки в проекты */
+  procedure JB_SAVE
+  (
+    NIDENT                  in number,    -- Идентификатор процесса
+    COUT                    out clob      -- Список проектов
+  )
+  is
+    NJH                     PKG_STD.TREF; -- Рег. номер записи истории изменения работы
+  begin
+    /* Обходим изменённые проекты буфера */
+    for P in (select T.*
+                from P8PNL_JB_PRJCTS T
+               where T.IDENT = NIDENT
+                 and T.CHANGED = 1)
+    loop
+      /* Обходим изменённые работы проекта */
+      for J in (select T.*
+                  from P8PNL_JB_JOBS T
+                 where T.IDENT = NIDENT
+                   and T.PRN = P.RN
+                   and T.STAGE = 0
+                   and T.CHANGED = 1)
+      loop
+        /* Меняем работу в проекте */
+        for PJ in (select T.* from PROJECTJOB T where T.RN = J.SOURCE)
+        loop
+          P_PROJECTJOB_BASE_UPDATE(NRN                => PJ.RN,
+                                   NCOMPANY           => PJ.COMPANY,
+                                   NJUR_PERS          => PJ.JUR_PERS,
+                                   NPROJECTSTAGE      => PJ.PROJECTSTAGE,
+                                   NFACEACC           => PJ.FACEACC,
+                                   SNUMB              => PJ.NUMB,
+                                   SBUDG_NUMB         => PJ.BUDG_NUMB,
+                                   SNAME              => PJ.NAME,
+                                   NPRJOB             => PJ.PRJOB,
+                                   NPRIORITY          => PJ.PRIORITY,
+                                   NRESTRICTION       => PJ.RESTRICTION,
+                                   DRESTRICT_DATE     => PJ.RESTRICT_DATE,
+                                   NDURATION_CHG      => PJ.DURATION_CHG,
+                                   NDURATION_NRM      => PJ.DURATION_NRM,
+                                   NDURATION_MEAS     => PJ.DURATION_MEAS,
+                                   NDURATION_P        => PJ.DURATION_P,
+                                   NDURATION_F        => PJ.DURATION_F,
+                                   NSUBDIV            => PJ.SUBDIV,
+                                   NPERFORM           => PJ.PERFORM,
+                                   NRELEASE           => PJ.RELEASE,
+                                   NVOLUME_P          => PJ.VOLUME_P,
+                                   NVOLUME_F          => PJ.VOLUME_F,
+                                   NPRICE_P           => PJ.PRICE_P,
+                                   NPRICE_F           => PJ.PRICE_F,
+                                   NCURNAMES          => PJ.CURNAMES,
+                                   NFPDARTCL          => PJ.FPDARTCL,
+                                   NCOST_PLAN         => PJ.COST_PLAN,
+                                   NCOST_FACT         => PJ.COST_FACT,
+                                   NCOST_BPRICE       => PJ.COST_BPRICE,
+                                   NCOST_CALC         => PJ.COST_CALC,
+                                   NSTATE             => PJ.STATE,
+                                   NPERFORM_PRC       => PJ.PERFORM_PRC,
+                                   NFINDEFLINIT       => PJ.FINDEFLINIT,
+                                   DBEGPLAN           => J.DATE_FROM,
+                                   DBEGFACT           => PJ.BEGFACT,
+                                   DENDPLAN           => J.DATE_TO,
+                                   DENDFACT           => PJ.ENDFACT,
+                                   SNOTE              => PJ.NOTE,
+                                   DDO_ACT_FROM       => sysdate,
+                                   NRFLCT_HS          => PJ.RFLCT_HS,
+                                   NLAB_NORM          => PJ.LAB_NORM,
+                                   NCALC_LAB          => PJ.CALC_LAB,
+                                   NLAB_PLAN_I        => PJ.LAB_PLAN,
+                                   NLAB_FACT_I        => PJ.LAB_FACT,
+                                   NLAB_PART          => PJ.LAB_PART,
+                                   NLAB_MEAS          => PJ.LAB_MEAS,
+                                   SCHNG_BASE         => PJ.CHNG_BASE,
+                                   NFACEACCPERF       => PJ.FACEACCPERF,
+                                   NCHECK_DO_ACT_FROM => 0,
+                                   NLAB_UNITCOST      => PJ.LAB_UNITCOST,
+                                   NLAB_CURRENCY      => PJ.LAB_CURRENCY);
+          P_PROJECTJOBHS_MAKE_HIST(NCOMPANY => PJ.COMPANY, NPRN => PJ.RN, NCHECK_HS => 0, NRN => NJH);
+        end loop;
+        /* Снимаем флаг внесения изменений в буферную работу */
+        JB_JOBS_SET_CHANGED(NJB_JOBS => J.RN, NCHANGED => 0);
+      end loop;
+      /* Снимаем флаг внесения изменений в буферный проект */
+      JB_PRJCTS_SET_CHANGED(NJB_PRJCTS => P.RN, NCHANGED => 0);
+    end loop;
+    /* Вернём пересобранный список проектов */
+    JB_PRJCTS_LIST(NIDENT => NIDENT, COUT => COUT);
+  end JB_SAVE;
+  
   /* Формирование исходных данных для балансировки планов-графиков работ */
   procedure JB_INIT
   (
@@ -5383,13 +5648,12 @@ text="Проверить, что для расчётных полей дата-�
     DFACT                   in out date,                           -- Факт по состоянию на
     NDURATION_MEAS          in out number,                         -- Единица измерения длительности (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
     SLAB_MEAS               in out varchar2,                       -- Единица измерения трудоёмкости
-    NIDENT                  in out number,                         -- Идентификатор буфера сформированных данных (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
+    NIDENT                  in out number,                         -- Идентификатор процесса (null - сгенерировать новый, !null - удалить старые данные и пересоздать с указанным идентификатором)
     NRESOURCE_STATUS        out number                             -- Состояние ресурсов (0 - без отклонений, 1 - есть отклонения)
   )
   is
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
     SUTILIZER               PKG_STD.TSTRING := UTILIZER();         -- Пользователь сеанса
-    NUTILIZER_AGENT         PKG_STD.TREF;                          -- Рег. номер контрагента текущего пользователя
     NJB_PRJCTS              PKG_STD.TREF;                          -- Рег. номер проекта в списке для балансировки
     NJB_JOBS_STAGE          PKG_STD.TREF;                          -- Рег. номер этапа проекта в списке для балансировки
     NJB_JOBS_JOB            PKG_STD.TREF;                          -- Рег. номер работы проекта в списке для балансировки
@@ -5406,19 +5670,19 @@ text="Проверить, что для расчётных полей дата-�
     else
       DBEGIN := TRUNC(DBEGIN, 'yyyy');
     end if;
+    /* Обработаем дату факта */
+    DFACT := TO_DATE('01.01.2022', 'DD.MM.YYYY');
     /* Обработаем единицу измерения длительности (пока - она всегда должна быть "день", по умолчанию) */
     NDURATION_MEAS := NJB_DURATION_MEAS;
     /* Обработаем единицу измерения трудоёмкости (пока - она всегда должна быть "ч/ч", по умолчанию) */
     SLAB_MEAS := SJB_LAB_MEAS;
     FIND_DICMUNTS_BY_MNEMO(NFLAG_SMART => 0, NCOMPANY => NCOMPANY, SMEAS_MNEMO => SLAB_MEAS, NRN => NLAB_MEAS);
-    /* Отработаем идентификатор буфера */
+    /* Отработаем идентификатор процесса */
     if (NIDENT is null) then
       NIDENT := GEN_IDENT();
     else
       JB_CLEAN(NIDENT => NIDENT);
     end if;
-    /* Найдем контрагента, соответствующего текущему пользователю */
-    FIND_AGNLIST_AUTHID(NFLAG_OPTION => 1, NCOMPANY => NCOMPANY, SPERS_AUTHID => SUTILIZER, NAGENT => NUTILIZER_AGENT);
     /* Обходим проекты */
     for PRJ in (select P.RN NRN,
                        COALESCE((select 1
@@ -5432,11 +5696,7 @@ text="Проверить, что для расчётных полей дата-�
                                    and PS.ENDPLAN is not null
                                    and ROWNUM <= 1),
                                 0) NJOBS,
-                       COALESCE((select 1
-                                  from AGNLIST AG
-                                 where AG.RN = P.RESPONSIBLE
-                                   and AG.RN = NUTILIZER_AGENT),
-                                0) NEDITABLE,
+                       0 NEDITABLE,
                        P.BEGPLAN DBEGPLAN,
                        P.ENDPLAN DENDPLAN
                   from PROJECT P
@@ -5449,6 +5709,10 @@ text="Проверить, что для расчётных полей дата-�
                            and UP.UNITCODE = 'Projects')
                  order by P.NAME_USL)
     loop
+      /* Установим признак доступности редактирования */
+      if (CHECK_RESPONSIBLE(NRN => PRJ.NRN, SAUTHID => SUTILIZER) = 1) then
+        PRJ.NEDITABLE := 1;
+      end if;
       /* Помещаем проект в список балансируемых */
       JB_PRJCTS_BASE_INSERT(NIDENT     => NIDENT,
                             NPROJECT   => PRJ.NRN,
@@ -5513,7 +5777,8 @@ text="Проверить, что для расчётных полей дата-�
                           J.BEGPLAN DBEGPLAN,
                           J.ENDPLAN DENDPLAN,
                           COALESCE(COALESCE(DP.CODE, AG.AGNABBR), STG.SEXECUTOR) SEXECUTOR,
-                          J.STATE NSTATE
+                          J.STATE NSTATE,
+                          J.DURATION_CHG NDURATION_CHG
                      from PROJECTJOB     J,
                           AGNLIST        AG,
                           INS_DEPARTMENT DP
@@ -5528,7 +5793,7 @@ text="Проверить, что для расчётных полей дата-�
         loop
           /* Определим возможность редактирования работы */
           NEDITABLE := 1;
-          if ((PRJ.NEDITABLE = 0) or (PJ.NSTATE not in (0, 1))) then
+          if ((PRJ.NEDITABLE = 0) or (PJ.NSTATE <> 0) or (PJ.NDURATION_CHG <> 2)) then
             NEDITABLE := 0;
           end if;
           /* Определим длительность работы */
