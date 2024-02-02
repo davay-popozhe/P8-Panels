@@ -51,7 +51,10 @@ create or replace package PKG_P8PANELS_VISUAL as
     BORDER                  boolean,         -- Разрешить сортировку
     BFILTER                 boolean,         -- Разрешить отбор
     RCOL_VALS               TCOL_VALS,       -- Предопределённые значения
-    SHINT                   PKG_STD.TSTRING  -- Текст всплывающей подсказки
+    SHINT                   PKG_STD.TSTRING, -- Текст всплывающей подсказки
+    SPARENT                 PKG_STD.TSTRING, -- Наименование родительской колонки
+    BEXPANDABLE             boolean,         -- Разрешить сокрытие/отображение дочерних колонок
+    BEXPANDED               boolean          -- Отобразить/скрыть дочерние колонки
   );
   
   /* Типы данных - коллекция описателей колонок таблицы данных */
@@ -70,16 +73,30 @@ create or replace package PKG_P8PANELS_VISUAL as
   /* Типы данных - строка */
   type TROW is record
   (
-    RCOLS                   TCOLS       -- Колонки
+    SGROUP                  PKG_STD.TSTRING, -- Наименование группы
+    RCOLS                   TCOLS            -- Колонки
   );
   
   /* Типы данных - коллекция строк */
   type TROWS is table of TROW;
+
+  /* Типы данных - группа */
+  type TGROUP is record
+  (
+    SNAME                   PKG_STD.TSTRING, -- Наименование
+    SCAPTION                PKG_STD.TSTRING, -- Заголовок
+    BEXPANDABLE             boolean,         -- Разрешить сокрытие/отображение дочерних 
+    BEXPANDED               boolean          -- Отобразить/скрыть дочерние
+  );
+  
+  /* Типы данных - коллекция групп */
+  type TGROUPS is table of TGROUP;
   
   /* Типы данных - таблица данных */
   type TDATA_GRID is record
   (
     RCOL_DEFS               TCOL_DEFS,  -- Описание колонок
+    RGROUPS                 TGROUPS,    -- Описание групп
     RROWS                   TROWS       -- Данные строк
   );
   
@@ -139,6 +156,7 @@ create or replace package PKG_P8PANELS_VISUAL as
     NPROGRESS               PKG_STD.TNUMBER := null,         -- Прогресс (% готовности) задачи (null - не определен)
     SBG_COLOR               PKG_STD.TSTRING := null,         -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     STEXT_COLOR             PKG_STD.TSTRING := null,         -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+    SBG_PROGRESS_COLOR      PKG_STD.TSTRING := null,         -- Цвет заливки прогресса (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     BREAD_ONLY              boolean := null,                 -- Сроки и прогресс задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_DATES        boolean := null,                 -- Сроки задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_PROGRESS     boolean := null,                 -- Прогресс задачи только для чтения (null - как указано в описании диаграммы)
@@ -154,6 +172,7 @@ create or replace package PKG_P8PANELS_VISUAL as
   (
     SBG_COLOR               PKG_STD.TSTRING := null, -- Цвет заливки задачи (формат - HTML-цвет, #RRGGBBAA)
     STEXT_COLOR             PKG_STD.TSTRING := null, -- Цвет текста заголовка задачи (формат - HTML-цвет, #RRGGBBAA)
+    SBG_PROGRESS_COLOR      PKG_STD.TSTRING := null, -- Цвет заливки прогресса (формат - HTML-цвет, #RRGGBBAA)
     SDESC                   PKG_STD.TSTRING          -- Описание
   );
   
@@ -252,7 +271,9 @@ create or replace package PKG_P8PANELS_VISUAL as
   
   /* Формирование строки */
   function TROW_MAKE
-  return                    TROW;       -- Результат работы
+  (
+    SGROUP                  in varchar2 := null -- Наименование группы
+  ) return                  TROW;               -- Результат работы
   
   /* Добавление колонки к строке */
   procedure TROW_ADD_COL
@@ -319,8 +340,22 @@ create or replace package PKG_P8PANELS_VISUAL as
     BORDER                  in boolean := false,           -- Разрешить сортировку по колонке
     BFILTER                 in boolean := false,           -- Разрешить отбор по колонке
     RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения колонки
-    SHINT                   in varchar2 := null,           -- Текст всплывающей подсказки    
+    SHINT                   in varchar2 := null,           -- Текст всплывающей подсказки
+    SPARENT                 in varchar2 := null,           -- Наименование родительской колонки
+    BEXPANDABLE             in boolean := false,           -- Разрешить сокрытие/отображение дочерних колонок
+    BEXPANDED               in boolean := true,            -- Отобразить/скрыть дочерние колонки
     BCLEAR                  in boolean := false            -- Флаг очистки коллекции описаний колонок таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
+  );
+  
+  /* Добавление описания группы к таблице данных */
+  procedure TDATA_GRID_ADD_GROUP
+  (
+    RDATA_GRID              in out nocopy TDATA_GRID, -- Описание таблицы данных
+    SNAME                   in varchar2,              -- Наименование группы
+    SCAPTION                in varchar2,              -- Заголовок группы
+    BEXPANDABLE             in boolean := false,      -- Разрешить сокрытие/отображение дочерних
+    BEXPANDED               in boolean := true,       -- Отобразить/скрыть дочерние
+    BCLEAR                  in boolean := false       -- Флаг очистки коллекции описаний групп таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
   );
   
   /* Добавление описания колонки к таблице данных */
@@ -407,6 +442,7 @@ create or replace package PKG_P8PANELS_VISUAL as
     NPROGRESS               in number := null,   -- Прогресс (% готовности) задачи (null - не определен)
     SBG_COLOR               in varchar2 := null, -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     STEXT_COLOR             in varchar2 := null, -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+    SBG_PROGRESS_COLOR      in varchar2 := null, -- Цвет заливки прогресса (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     BREAD_ONLY              in boolean := null,  -- Сроки и прогресс задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_DATES        in boolean := null,  -- Сроки задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_PROGRESS     in boolean := null   -- Прогресс задачи только для чтения (null - как указано в описании диаграммы)
@@ -456,6 +492,7 @@ create or replace package PKG_P8PANELS_VISUAL as
     RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
     SBG_COLOR               in varchar2 := null,  -- Цвет заливки задачи (формат - HTML-цвет, #RRGGBBAA)
     STEXT_COLOR             in varchar2 := null,  -- Цвет текста заголовка задачи (формат - HTML-цвет, #RRGGBBAA)
+    SBG_PROGRESS_COLOR      in varchar2 := null,  -- Цвет заливки прогресса (формат - HTML-цвет, #RRGGBBAA)
     SDESC                   in varchar2,          -- Описание
     BCLEAR                  in boolean := false   -- Флаг очистки коллекции цветов (false - не очищать, true - очистить коллекцию перед добавлением)
   );
@@ -549,29 +586,34 @@ text="Формат data_grid и gant как в chart"
   SRQ_TAG_STO                 constant PKG_STD.TSTRING := 'to';        -- Тэг для значения "по"
 
   /* Константы - тэги ответов */
-  SRESP_TAG_XDATA             constant PKG_STD.TSTRING := 'XDATA';           -- Тэг для корня описания данных
-  SRESP_TAG_XROWS             constant PKG_STD.TSTRING := 'XROWS';           -- Тэг для строк данных
-  SRESP_TAG_XCOLUMNS_DEF      constant PKG_STD.TSTRING := 'XCOLUMNS_DEF';    -- Тэг для описания колонок
-  SRESP_TAG_XGANTT_DEF        constant PKG_STD.TSTRING := 'XGANTT_DEF';      -- Тэг для описания заголовка диаграммы Ганта
-  SRESP_TAG_XGANTT_TASKS      constant PKG_STD.TSTRING := 'XGANTT_TASKS';    -- Тэг для описания коллекции задач диаграммы Ганта
-  SRESP_TAG_XCHART            constant PKG_STD.TSTRING := 'XCHART';          -- Тэг для описания графика
+  SRESP_TAG_XDATA             constant PKG_STD.TSTRING := 'XDATA';        -- Тэг для корня описания данных
+  SRESP_TAG_XROWS             constant PKG_STD.TSTRING := 'XROWS';        -- Тэг для строк данных
+  SRESP_TAG_XCOLUMNS_DEF      constant PKG_STD.TSTRING := 'XCOLUMNS_DEF'; -- Тэг для описания колонок
+  SRESP_TAG_XGROUPS           constant PKG_STD.TSTRING := 'XGROUPS';      -- Тэг для описания групп
+  SRESP_TAG_XGANTT_DEF        constant PKG_STD.TSTRING := 'XGANTT_DEF';   -- Тэг для описания заголовка диаграммы Ганта
+  SRESP_TAG_XGANTT_TASKS      constant PKG_STD.TSTRING := 'XGANTT_TASKS'; -- Тэг для описания коллекции задач диаграммы Ганта
+  SRESP_TAG_XCHART            constant PKG_STD.TSTRING := 'XCHART';       -- Тэг для описания графика
   
   /* Константы - атрибуты ответов (универсальные) */
-  SRESP_ATTR_NAME             constant PKG_STD.TSTRING := 'name';     -- Атрибут для наименования
-  SRESP_ATTR_CAPTION          constant PKG_STD.TSTRING := 'caption';  -- Атрибут для подписи
-  SRESP_ATTR_DATA_TYPE        constant PKG_STD.TSTRING := 'dataType'; -- Атрибут для типа данных
-  SRESP_ATTR_VISIBLE          constant PKG_STD.TSTRING := 'visible';  -- Атрибут для флага видимости
-  SRESP_ATTR_TITLE            constant PKG_STD.TSTRING := 'title';    -- Атрибут для заголовка
-  SRESP_ATTR_ZOOM             constant PKG_STD.TSTRING := 'zoom';     -- Атрибут для масштаба
-  SRESP_ATTR_ID               constant PKG_STD.TSTRING := 'id';       -- Атрибут для идентификатора
-  SRESP_ATTR_START            constant PKG_STD.TSTRING := 'start';    -- Атрибут для даты начала
-  SRESP_ATTR_END              constant PKG_STD.TSTRING := 'end';      -- Атрибут для даты окончания
-  SRESP_ATTR_RN               constant PKG_STD.TSTRING := 'rn';       -- Атрибут для рег. номера
-  SRESP_ATTR_NUMB             constant PKG_STD.TSTRING := 'numb';     -- Атрибут для номера
-  SRESP_ATTR_FULL_NAME        constant PKG_STD.TSTRING := 'fullName'; -- Атрибут для полного наименования
-  SRESP_ATTR_DESC             constant PKG_STD.TSTRING := 'desc';     -- Атрибут для описания
-  SRESP_ATTR_TYPE             constant PKG_STD.TSTRING := 'type';     -- Атрибут для типа
-  SRESP_ATTR_HINT             constant PKG_STD.TSTRING := 'hint';     -- Атрибут для подсказки
+  SRESP_ATTR_NAME             constant PKG_STD.TSTRING := 'name';       -- Атрибут для наименования
+  SRESP_ATTR_CAPTION          constant PKG_STD.TSTRING := 'caption';    -- Атрибут для подписи
+  SRESP_ATTR_DATA_TYPE        constant PKG_STD.TSTRING := 'dataType';   -- Атрибут для типа данных
+  SRESP_ATTR_VISIBLE          constant PKG_STD.TSTRING := 'visible';    -- Атрибут для флага видимости
+  SRESP_ATTR_TITLE            constant PKG_STD.TSTRING := 'title';      -- Атрибут для заголовка
+  SRESP_ATTR_ZOOM             constant PKG_STD.TSTRING := 'zoom';       -- Атрибут для масштаба
+  SRESP_ATTR_ID               constant PKG_STD.TSTRING := 'id';         -- Атрибут для идентификатора
+  SRESP_ATTR_START            constant PKG_STD.TSTRING := 'start';      -- Атрибут для даты начала
+  SRESP_ATTR_END              constant PKG_STD.TSTRING := 'end';        -- Атрибут для даты окончания
+  SRESP_ATTR_RN               constant PKG_STD.TSTRING := 'rn';         -- Атрибут для рег. номера
+  SRESP_ATTR_NUMB             constant PKG_STD.TSTRING := 'numb';       -- Атрибут для номера
+  SRESP_ATTR_FULL_NAME        constant PKG_STD.TSTRING := 'fullName';   -- Атрибут для полного наименования
+  SRESP_ATTR_DESC             constant PKG_STD.TSTRING := 'desc';       -- Атрибут для описания
+  SRESP_ATTR_TYPE             constant PKG_STD.TSTRING := 'type';       -- Атрибут для типа
+  SRESP_ATTR_HINT             constant PKG_STD.TSTRING := 'hint';       -- Атрибут для подсказки
+  SRESP_ATTR_GROUP_NAME       constant PKG_STD.TSTRING := 'groupName';  -- Атрибут для наименования группы
+  SRESP_ATTR_PARENT           constant PKG_STD.TSTRING := 'parent';     -- Атрибут для ссылки на родителя
+  SRESP_ATTR_EXPANDABLE       constant PKG_STD.TSTRING := 'expandable'; -- Атрибут для доступности действия сокрытия/отображения
+  SRESP_ATTR_EXPANDED         constant PKG_STD.TSTRING := 'expanded';   -- Атрибут для флага сокрытия/отображения
 
   /* Константы - атрибуты ответов (таблица данных) */
   SRESP_ATTR_DT_ORDER         constant PKG_STD.TSTRING := 'order';  -- Атрибут для флага сортировки
@@ -579,16 +621,17 @@ text="Формат data_grid и gant как в chart"
   SRESP_ATTR_DT_COLUMN_VALUES constant PKG_STD.TSTRING := 'values'; -- Атрибут для предопределённых значений
 
   /* Константы - атрибуты ответов (диаграмма Ганта) */  
-  SRESP_ATTR_GANTT_ZOOM_BAR   constant PKG_STD.TSTRING := 'zoomBar';          -- Атрибут для флага отображения панели масштаба диаграммы Ганта
-  SRESP_ATTR_TASK_PROGRESS    constant PKG_STD.TSTRING := 'progress';         -- Атрибут для прогресса задачи
-  SRESP_ATTR_TASK_DEPS        constant PKG_STD.TSTRING := 'dependencies';     -- Атрибут для зависимостей задачи
-  SRESP_ATTR_TASK_RO          constant PKG_STD.TSTRING := 'readOnly';         -- Атрибут для флага задачи "только для чтения"
-  SRESP_ATTR_TASK_RO_PRGRS    constant PKG_STD.TSTRING := 'readOnlyProgress'; -- Атрибут для флага задачи "прогресс только для чтения"
-  SRESP_ATTR_TASK_RO_DATES    constant PKG_STD.TSTRING := 'readOnlyDates';    -- Атрибут для флага задачи "даты только для чтения"
-  SRESP_ATTR_TASK_BG_COLOR    constant PKG_STD.TSTRING := 'bgColor';          -- Атрибут для цвета заголовка задачи
-  SRESP_ATTR_TASK_TEXT_COLOR  constant PKG_STD.TSTRING := 'textColor';        -- Атрибут для цвета текста задачи
-  SRESP_ATTR_TASK_ATTRIBUTES  constant PKG_STD.TSTRING := 'taskAttributes';   -- Атрибут для коллекции атрибутов задачи
-  SRESP_ATTR_TASK_COLORS      constant PKG_STD.TSTRING := 'taskColors';       -- Атрибут для коллекции цветов задачи
+  SRESP_ATTR_GANTT_ZOOM_BAR    constant PKG_STD.TSTRING := 'zoomBar';          -- Атрибут для флага отображения панели масштаба диаграммы Ганта
+  SRESP_ATTR_TASK_PROGRESS     constant PKG_STD.TSTRING := 'progress';         -- Атрибут для прогресса задачи
+  SRESP_ATTR_TASK_DEPS         constant PKG_STD.TSTRING := 'dependencies';     -- Атрибут для зависимостей задачи
+  SRESP_ATTR_TASK_RO           constant PKG_STD.TSTRING := 'readOnly';         -- Атрибут для флага задачи "только для чтения"
+  SRESP_ATTR_TASK_RO_PRGRS     constant PKG_STD.TSTRING := 'readOnlyProgress'; -- Атрибут для флага задачи "прогресс только для чтения"
+  SRESP_ATTR_TASK_RO_DATES     constant PKG_STD.TSTRING := 'readOnlyDates';    -- Атрибут для флага задачи "даты только для чтения"
+  SRESP_ATTR_TASK_BG_COLOR     constant PKG_STD.TSTRING := 'bgColor';          -- Атрибут для цвета заголовка задачи
+  SRESP_ATTR_TASK_TEXT_COLOR   constant PKG_STD.TSTRING := 'textColor';        -- Атрибут для цвета текста задачи
+  SRESP_ATTR_TASK_BG_PRG_COLOR constant PKG_STD.TSTRING := 'bgProgressColor';  -- Атрибут для цвета прогресса задачи
+  SRESP_ATTR_TASK_ATTRIBUTES   constant PKG_STD.TSTRING := 'taskAttributes';   -- Атрибут для коллекции атрибутов задачи
+  SRESP_ATTR_TASK_COLORS       constant PKG_STD.TSTRING := 'taskColors';       -- Атрибут для коллекции цветов задачи
 
   /* Константы - атрибуты ответов (графики) */  
   SRESP_ATTR_CHART_LGND_POS   constant PKG_STD.TSTRING := 'legendPosition';  -- Атрибут для места размешения легенды графика
@@ -695,22 +738,28 @@ text="Формат data_grid и gant как в chart"
     BORDER                  in boolean := false,           -- Разрешить сортировку
     BFILTER                 in boolean := false,           -- Разрешить отбор
     RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения
-    SHINT                   in varchar2 := null            -- Текст всплывающей подсказки
+    SHINT                   in varchar2 := null,           -- Текст всплывающей подсказки
+    SPARENT                 in varchar2 := null,           -- Наименование родительской колонки
+    BEXPANDABLE             in boolean := false,           -- Разрешить сокрытие/отображение дочерних колонок
+    BEXPANDED               in boolean := true             -- Отобразить/скрыть дочерние колонки
   ) return                  TCOL_DEF                       -- Результат работы
   is
     RRES                    TCOL_DEF;                      -- Буфер для результата
   begin
     /* Формируем объект */
-    RRES.SNAME      := SNAME;
-    RRES.SCAPTION   := SCAPTION;
-    RRES.SDATA_TYPE := COALESCE(SDATA_TYPE, SDATA_TYPE_STR);
-    RRES.SCOND_FROM := COALESCE(SCOND_FROM, UTL_COND_NAME_MAKE_FROM(SNAME => SNAME));
-    RRES.SCOND_TO   := COALESCE(SCOND_TO, UTL_COND_NAME_MAKE_TO(SNAME => SNAME));
-    RRES.BVISIBLE   := COALESCE(BVISIBLE, true);
-    RRES.BORDER     := COALESCE(BORDER, false);
-    RRES.BFILTER    := COALESCE(BFILTER, false);
-    RRES.RCOL_VALS  := COALESCE(RCOL_VALS, TCOL_VALS());
-    RRES.SHINT      := SHINT;
+    RRES.SNAME       := SNAME;
+    RRES.SCAPTION    := SCAPTION;
+    RRES.SDATA_TYPE  := COALESCE(SDATA_TYPE, SDATA_TYPE_STR);
+    RRES.SCOND_FROM  := COALESCE(SCOND_FROM, UTL_COND_NAME_MAKE_FROM(SNAME => SNAME));
+    RRES.SCOND_TO    := COALESCE(SCOND_TO, UTL_COND_NAME_MAKE_TO(SNAME => SNAME));
+    RRES.BVISIBLE    := COALESCE(BVISIBLE, true);
+    RRES.BORDER      := COALESCE(BORDER, false);
+    RRES.BFILTER     := COALESCE(BFILTER, false);
+    RRES.RCOL_VALS   := COALESCE(RCOL_VALS, TCOL_VALS());
+    RRES.SHINT       := SHINT;
+    RRES.SPARENT     := SPARENT;
+    RRES.BEXPANDABLE := COALESCE(BEXPANDABLE, false);
+    RRES.BEXPANDED   := COALESCE(BEXPANDED, true);
     /* Возвращаем результат */
     return RRES;
   end TCOL_DEF_MAKE;
@@ -729,6 +778,9 @@ text="Формат data_grid и gant как в chart"
     BFILTER                 in boolean := false,           -- Разрешить отбор
     RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения
     SHINT                   in varchar2 := null,           -- Текст всплывающей подсказки
+    SPARENT                 in varchar2 := null,           -- Наименование родительской колонки
+    BEXPANDABLE             in boolean := false,           -- Разрешить сокрытие/отображение дочерних колонок
+    BEXPANDED               in boolean := true,            -- Отобразить/скрыть дочерние колонки
     BCLEAR                  in boolean := false            -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
@@ -739,16 +791,19 @@ text="Формат data_grid и gant как в chart"
     end if;
     /* Добавляем элемент */
     RCOL_DEFS.EXTEND();
-    RCOL_DEFS(RCOL_DEFS.LAST) := TCOL_DEF_MAKE(SNAME      => SNAME,
-                                               SCAPTION   => SCAPTION,
-                                               SDATA_TYPE => SDATA_TYPE,
-                                               SCOND_FROM => SCOND_FROM,
-                                               SCOND_TO   => SCOND_TO,
-                                               BVISIBLE   => BVISIBLE,
-                                               BORDER     => BORDER,
-                                               BFILTER    => BFILTER,
-                                               SHINT      => SHINT,
-                                               RCOL_VALS  => RCOL_VALS);
+    RCOL_DEFS(RCOL_DEFS.LAST) := TCOL_DEF_MAKE(SNAME       => SNAME,
+                                               SCAPTION    => SCAPTION,
+                                               SDATA_TYPE  => SDATA_TYPE,
+                                               SCOND_FROM  => SCOND_FROM,
+                                               SCOND_TO    => SCOND_TO,
+                                               BVISIBLE    => BVISIBLE,
+                                               BORDER      => BORDER,
+                                               BFILTER     => BFILTER,
+                                               RCOL_VALS   => RCOL_VALS,
+                                               SHINT       => SHINT,
+                                               SPARENT     => SPARENT,
+                                               BEXPANDABLE => BEXPANDABLE,
+                                               BEXPANDED   => BEXPANDED);
   end TCOL_DEFS_ADD;
   
   /* Поиск описания колонки по наименованию */
@@ -772,7 +827,7 @@ text="Формат data_grid и gant как в chart"
     return null;
   end TCOL_DEFS_FIND;
   
-  /* Сериализация описания колонки таблицы данных */
+  /* Сериализация описания колонок таблицы данных */
   procedure TCOL_DEFS_TO_XML
   (
     RCOL_DEFS               in TCOL_DEFS -- Описание колонок таблицы данных
@@ -793,6 +848,9 @@ text="Формат data_grid и gant как в chart"
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DT_ORDER, BVALUE => RCOL_DEFS(I).BORDER);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DT_FILTER, BVALUE => RCOL_DEFS(I).BFILTER);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_HINT, SVALUE => RCOL_DEFS(I).SHINT);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_PARENT, SVALUE => RCOL_DEFS(I).SPARENT);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_EXPANDABLE, BVALUE => RCOL_DEFS(I).BEXPANDABLE);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_EXPANDED, BVALUE => RCOL_DEFS(I).BEXPANDED);
         /* Предопределённые значения */
         if (RCOL_DEFS(I).RCOL_VALS is not null) and (RCOL_DEFS(I).RCOL_VALS.COUNT > 0) then
           for V in RCOL_DEFS(I).RCOL_VALS.FIRST .. RCOL_DEFS(I).RCOL_VALS.LAST
@@ -814,7 +872,7 @@ text="Формат data_grid и gant как в chart"
                             COALESCE(RCOL_DEFS(I).SDATA_TYPE, '<НЕ ОПРЕДЕЛЁН>'));
             end case;
             /* Закрываем описание предопределённого значения */
-            PKG_XFAST.UP();          
+            PKG_XFAST.UP();
           end loop;
         end if;
         /* Закрываем описание колонки */
@@ -862,14 +920,86 @@ text="Формат data_grid и gant как в chart"
     RCOLS(RCOLS.LAST) := TCOL_MAKE(SNAME => SNAME, SVALUE => SVALUE, NVALUE => NVALUE, DVALUE => DVALUE);
   end TCOLS_ADD;
   
-  /* Формирование строки */
-  function TROW_MAKE
-  return                    TROW        -- Результат работы
+  /* Формирование описания группы */
+  function TGROUP_MAKE
+  (
+    SNAME                   in varchar2,        -- Наименование
+    SCAPTION                in varchar2,        -- Заголовок
+    BEXPANDABLE             in boolean := true, -- Разрешить сокрытие/отображение дочерних
+    BEXPANDED               in boolean := true  -- Отобразить/скрыть дочерние
+  ) return                  TGROUP              -- Результат работы
   is
-    RRES                    TROW;       -- Буфер для результата
+    RRES                    TGROUP;             -- Буфер для результата
   begin
     /* Формируем объект */
-    RRES.RCOLS := TCOLS();
+    RRES.SNAME       := SNAME;
+    RRES.SCAPTION    := SCAPTION;
+    RRES.BEXPANDABLE := COALESCE(BEXPANDABLE, true);
+    RRES.BEXPANDED   := COALESCE(BEXPANDED, true);
+    /* Возвращаем результат */
+    return RRES;
+  end TGROUP_MAKE;
+  
+  /* Добавление описания группы в коллекцию */
+  procedure TGROUPS_ADD
+  (
+    RGROUPS                 in out nocopy TGROUPS, -- Коллекция описаний колонок
+    SNAME                   in varchar2,           -- Наименование
+    SCAPTION                in varchar2,           -- Заголовок
+    BEXPANDABLE             in boolean := false,   -- Разрешить сокрытие/отображение дочерних
+    BEXPANDED               in boolean := true,    -- Отобразить/скрыть дочерние
+    BCLEAR                  in boolean := false    -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Инициализируем коллекцию если необходимо */
+    if ((RGROUPS is null) or (BCLEAR)) then
+      RGROUPS := TGROUPS();
+    end if;
+    /* Добавляем элемент */
+    RGROUPS.EXTEND();
+    RGROUPS(RGROUPS.LAST) := TGROUP_MAKE(SNAME       => SNAME,
+                                         SCAPTION    => SCAPTION,
+                                         BEXPANDABLE => BEXPANDABLE,
+                                         BEXPANDED   => BEXPANDED);
+  end TGROUPS_ADD;
+  
+  /* Сериализация описания групп таблицы данных */
+  procedure TGROUPS_TO_XML
+  (
+    RGROUPS                 in TGROUPS  -- Описание групп таблицы данных
+  )
+  is    
+  begin
+    /* Обходим группы из коллекции */
+    if ((RGROUPS is not null) and (RGROUPS.COUNT > 0)) then
+      for I in RGROUPS.FIRST .. RGROUPS.LAST
+      loop
+        /* Открываем описание группы */
+        PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XGROUPS);
+        /* Атрибуты группы */
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_NAME, SVALUE => RGROUPS(I).SNAME);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_CAPTION, SVALUE => RGROUPS(I).SCAPTION);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_EXPANDABLE, BVALUE => RGROUPS(I).BEXPANDABLE);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_EXPANDED, BVALUE => RGROUPS(I).BEXPANDED);
+        /* Закрываем описание группы */
+        PKG_XFAST.UP();
+      end loop;
+    end if;
+  end TGROUPS_TO_XML;
+  
+  /* Формирование строки */
+  function TROW_MAKE
+  (
+    SGROUP                  in varchar2 := null -- Наименование группы
+  )
+  return                    TROW                -- Результат работы
+  is
+    RRES                    TROW;               -- Буфер для результата
+  begin
+    /* Формируем объект */
+    RRES.SGROUP := SGROUP;
+    RRES.RCOLS  := TCOLS();
     /* Возвращаем результат */
     return RRES;
   end TROW_MAKE;
@@ -959,6 +1089,10 @@ text="Формат data_grid и gant как в chart"
       loop
         /* Открываем строку */
         PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XROWS);
+        /* Если указана группа - добавим её */
+        if (RROWS(I).SGROUP is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_GROUP_NAME, SVALUE => RROWS(I).SGROUP);
+        end if;
         /* Обходим колонки строки */
         if ((RROWS(I).RCOLS is not null) and (RROWS(I).RCOLS.COUNT > 0)) then
           for J in RROWS(I).RCOLS.FIRST .. RROWS(I).RCOLS.LAST
@@ -1000,6 +1134,7 @@ text="Формат data_grid и gant как в chart"
   begin
     /* Формируем объект */
     RRES.RCOL_DEFS := TCOL_DEFS();
+    RRES.RGROUPS   := TGROUPS();
     RRES.RROWS     := TROWS();
     /* Возвращаем результат */
     return RRES;
@@ -1030,24 +1165,51 @@ text="Формат data_grid и gant как в chart"
     BFILTER                 in boolean := false,           -- Разрешить отбор по колонке
     RCOL_VALS               in TCOL_VALS := null,          -- Предопределённые значения колонки
     SHINT                   in varchar2 := null,           -- Текст всплывающей подсказки
+    SPARENT                 in varchar2 := null,           -- Наименование родительской колонки
+    BEXPANDABLE             in boolean := false,           -- Разрешить сокрытие/отображение дочерних колонок
+    BEXPANDED               in boolean := true,            -- Отобразить/скрыть дочерние колонки
     BCLEAR                  in boolean := false            -- Флаг очистки коллекции описаний колонок таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
   begin
     /* Формируем описание и добавляем в коллекцию таблицы данных */
-    TCOL_DEFS_ADD(RCOL_DEFS  => RDATA_GRID.RCOL_DEFS,
-                  SNAME      => SNAME,
-                  SCAPTION   => SCAPTION,
-                  SDATA_TYPE => SDATA_TYPE,
-                  SCOND_FROM => SCOND_FROM,
-                  SCOND_TO   => SCOND_TO,
-                  BVISIBLE   => BVISIBLE,
-                  BORDER     => BORDER,
-                  BFILTER    => BFILTER,
-                  RCOL_VALS  => RCOL_VALS,
-                  SHINT      => SHINT,
-                  BCLEAR     => BCLEAR);
+    TCOL_DEFS_ADD(RCOL_DEFS   => RDATA_GRID.RCOL_DEFS,
+                  SNAME       => SNAME,
+                  SCAPTION    => SCAPTION,
+                  SDATA_TYPE  => SDATA_TYPE,
+                  SCOND_FROM  => SCOND_FROM,
+                  SCOND_TO    => SCOND_TO,
+                  BVISIBLE    => BVISIBLE,
+                  BORDER      => BORDER,
+                  BFILTER     => BFILTER,
+                  RCOL_VALS   => RCOL_VALS,
+                  SHINT       => SHINT,
+                  SPARENT     => SPARENT,
+                  BEXPANDABLE => BEXPANDABLE,
+                  BEXPANDED   => BEXPANDED,
+                  BCLEAR      => BCLEAR);
   end TDATA_GRID_ADD_COL_DEF;
+  
+  /* Добавление описания группы к таблице данных */
+  procedure TDATA_GRID_ADD_GROUP
+  (
+    RDATA_GRID              in out nocopy TDATA_GRID, -- Описание таблицы данных
+    SNAME                   in varchar2,              -- Наименование группы
+    SCAPTION                in varchar2,              -- Заголовок группы
+    BEXPANDABLE             in boolean := false,      -- Разрешить сокрытие/отображение дочерних
+    BEXPANDED               in boolean := true,       -- Отобразить/скрыть дочерние
+    BCLEAR                  in boolean := false       -- Флаг очистки коллекции описаний групп таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
+  )
+  is
+  begin
+    /* Формируем описание и добавляем в коллекцию таблицы данных */
+    TGROUPS_ADD(RGROUPS     => RDATA_GRID.RGROUPS,
+                SNAME       => SNAME,
+                SCAPTION    => SCAPTION,
+                BEXPANDABLE => BEXPANDABLE,
+                BEXPANDED   => BEXPANDED,
+                BCLEAR      => BCLEAR);
+  end TDATA_GRID_ADD_GROUP;
   
   /* Добавление описания колонки к таблице данных */
   procedure TDATA_GRID_ADD_ROW
@@ -1084,6 +1246,8 @@ text="Формат data_grid и gant как в chart"
     if (NINCLUDE_DEF = 1) then
       TCOL_DEFS_TO_XML(RCOL_DEFS => RDATA_GRID.RCOL_DEFS);
     end if;
+    /* Формируем описание групп */
+    TGROUPS_TO_XML(RGROUPS => RDATA_GRID.RGROUPS);
     /* Формируем описание строк */
     TROWS_TO_XML(RCOL_DEFS => RDATA_GRID.RCOL_DEFS, RROWS => RDATA_GRID.RROWS);
     /* Закрываем корень */
@@ -1502,7 +1666,8 @@ text="Формат data_grid и gant как в chart"
   (
     RTASK_COLORS            in TGANTT_TASK_COLORS, -- Описание цветов задачи диаграммы Ганта
     SBG_COLOR               in varchar2 := null,   -- Цвет заливки задачи (формат - HTML-цвет, #RRGGBBAA)
-    STEXT_COLOR             in varchar2 := null    -- Цвет текста заголовка задачи (формат - HTML-цвет, #RRGGBBAA)
+    STEXT_COLOR             in varchar2 := null,   -- Цвет текста заголовка задачи (формат - HTML-цвет, #RRGGBBAA)
+    SBG_PROGRESS_COLOR      in varchar2 := null    -- Цвет заливки прогресса (формат - HTML-цвет, #RRGGBBAA)
   ) return                  TGANTT_TASK_COLOR      -- Найденное описание цвета (null - если не нашли)
   is
   begin
@@ -1511,7 +1676,9 @@ text="Формат data_grid и gant как в chart"
       for I in RTASK_COLORS.FIRST .. RTASK_COLORS.LAST
       loop
         if ((CMP_VC2(V1 => RTASK_COLORS(I).SBG_COLOR, V2 => SBG_COLOR) = 1) and
-           (CMP_VC2(V1 => RTASK_COLORS(I).STEXT_COLOR, V2 => STEXT_COLOR) = 1)) then
+           (CMP_VC2(V1 => RTASK_COLORS(I).STEXT_COLOR, V2 => STEXT_COLOR) = 1) and
+           (CMP_VC2(V1 => RTASK_COLORS(I).SBG_PROGRESS_COLOR, V2 => SBG_PROGRESS_COLOR) = 1)) 
+            then
           return RTASK_COLORS(I);
         end if;
       end loop;
@@ -1532,6 +1699,7 @@ text="Формат data_grid и gant как в chart"
     NPROGRESS               in number := null,   -- Прогресс (% готовности) задачи (null - не определен)
     SBG_COLOR               in varchar2 := null, -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     STEXT_COLOR             in varchar2 := null, -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
+    SBG_PROGRESS_COLOR      in varchar2 := null, -- Цвет заливки прогресса (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     BREAD_ONLY              in boolean := null,  -- Сроки и прогресс задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_DATES        in boolean := null,  -- Сроки задачи только для чтения (null - как указано в описании диаграммы)
     BREAD_ONLY_PROGRESS     in boolean := null   -- Прогресс задачи только для чтения (null - как указано в описании диаграммы)
@@ -1557,6 +1725,7 @@ text="Формат data_grid и gant как в chart"
     RRES.NPROGRESS           := NPROGRESS;
     RRES.SBG_COLOR           := SBG_COLOR;
     RRES.STEXT_COLOR         := STEXT_COLOR;
+    RRES.SBG_PROGRESS_COLOR  := SBG_PROGRESS_COLOR;
     RRES.BREAD_ONLY          := BREAD_ONLY;
     RRES.BREAD_ONLY_DATES    := BREAD_ONLY_DATES;
     RRES.BREAD_ONLY_PROGRESS := BREAD_ONLY_PROGRESS;
@@ -1643,6 +1812,9 @@ text="Формат data_grid и gant как в chart"
         end if;
         if (RTASKS(I).STEXT_COLOR is not null) then
           PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_TEXT_COLOR, SVALUE => RTASKS(I).STEXT_COLOR);
+        end if;
+        if (RTASKS(I).SBG_PROGRESS_COLOR is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_BG_PRG_COLOR, SVALUE => RTASKS(I).SBG_PROGRESS_COLOR);
         end if;
         if (RTASKS(I).BREAD_ONLY is not null) then
           PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_RO, BVALUE => RTASKS(I).BREAD_ONLY);
@@ -1735,21 +1907,22 @@ text="Формат data_grid и gant как в chart"
     RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
     SBG_COLOR               in varchar2 := null,  -- Цвет заливки задачи (формат - HTML-цвет, #RRGGBBAA)
     STEXT_COLOR             in varchar2 := null,  -- Цвет текста заголовка задачи (формат - HTML-цвет, #RRGGBBAA)
+    SBG_PROGRESS_COLOR      in varchar2 := null,  -- Цвет заливки прогресса (формат - HTML-цвет, #RRGGBBAA)
     SDESC                   in varchar2,          -- Описание
     BCLEAR                  in boolean := false   -- Флаг очистки коллекции цветов (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
   begin
     /* Проверим параметры */
-    if ((SBG_COLOR is null) and (STEXT_COLOR is null)) then
+    if ((SBG_COLOR is null) and (STEXT_COLOR is null) and (SBG_PROGRESS_COLOR is null)) then
       P_EXCEPTION(0,
-                  'Должен быть указан цвет заливки или цвет текста задачи.');
+                  'Должен быть указан цвет заливки или цвет текста задачи, или цвет заливки прогресса.');
     end if;
     if (SDESC is null) then
       P_EXCEPTION(0, 'Описание цвета должно быть задано.');
     end if;
     /* Проверим, что такого ещё нет */
-    if (TGANTT_TASK_COLOR_FIND(RTASK_COLORS => RGANTT.RTASK_COLORS, SBG_COLOR => SBG_COLOR, STEXT_COLOR => STEXT_COLOR)
+    if (TGANTT_TASK_COLOR_FIND(RTASK_COLORS => RGANTT.RTASK_COLORS, SBG_COLOR => SBG_COLOR, STEXT_COLOR => STEXT_COLOR, SBG_PROGRESS_COLOR => SBG_PROGRESS_COLOR)
        .SDESC is not null) then
       P_EXCEPTION(0,
                   'Такое описание цвета для задачи диаграммы Ганта уже зарегистрировано.');
@@ -1762,6 +1935,7 @@ text="Формат data_grid и gant как в chart"
     RGANTT.RTASK_COLORS.EXTEND();
     RGANTT.RTASK_COLORS(RGANTT.RTASK_COLORS.LAST).SBG_COLOR := SBG_COLOR;
     RGANTT.RTASK_COLORS(RGANTT.RTASK_COLORS.LAST).STEXT_COLOR := STEXT_COLOR;
+    RGANTT.RTASK_COLORS(RGANTT.RTASK_COLORS.LAST).SBG_PROGRESS_COLOR := SBG_PROGRESS_COLOR;
     RGANTT.RTASK_COLORS(RGANTT.RTASK_COLORS.LAST).SDESC := SDESC;
   end TGANTT_ADD_TASK_COLOR;
 
