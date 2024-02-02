@@ -7,7 +7,7 @@
 //Подключение библиотек
 //---------------------
 
-import React, { useEffect, useState, useMemo } from "react"; //Классы React
+import React, { useEffect, useState, useReducer } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import {
     Table,
@@ -34,6 +34,7 @@ import {
     Link
 } from "@mui/material"; //Интерфейсные компоненты
 import { P8PAppInlineError } from "./p8p_app_message"; //Встраиваемое сообщение об ошибке
+import { P8P_TABLE_AT, HEADER_INITIAL_STATE, hasValue, p8pTableReducer } from "./p8p_table_reducer"; //Редьюсер состояния
 
 //---------
 //Константы
@@ -61,7 +62,8 @@ const P8P_TABLE_COLUMN_ORDER_DIRECTIONS = {
 //Действия панели инструментов столбца
 const P8P_TABLE_COLUMN_TOOL_BAR_ACTIONS = {
     ORDER_TOGGLE: "ORDER_TOGGLE",
-    FILTER_TOGGLE: "FILTER_TOGGLE"
+    FILTER_TOGGLE: "FILTER_TOGGLE",
+    EXPAND_TOGGLE: "EXPAND_TOGGLE"
 };
 
 //Действия меню столбца
@@ -90,6 +92,9 @@ const STYLES = {
         paddingBottom: 0,
         paddingTop: 0
     },
+    TABLE_CELL_GROUP_HEADER: {
+        backgroundColor: "lightgray"
+    },
     TABLE_COLUMN_STACK: {
         alignItems: "center"
     },
@@ -110,11 +115,29 @@ const STYLES = {
 //Вспомогательные классы и функции
 //--------------------------------
 
-//Проверка существования значения
-const hasValue = value => typeof value !== "undefined" && value !== null && value !== "";
+//Панель инструментов столбца (левая)
+const P8PTableColumnToolBarLeft = ({ columnDef, onItemClick }) => {
+    //Кнопка развёртывания/свёртывания
+    let expButton = null;
+    if (columnDef.expandable)
+        expButton = (
+            <IconButton onClick={() => (onItemClick ? onItemClick(P8P_TABLE_COLUMN_TOOL_BAR_ACTIONS.EXPAND_TOGGLE, columnDef.name) : null)}>
+                <Icon>{columnDef.expanded ? "indeterminate_check_box" : "add_box"}</Icon>
+            </IconButton>
+        );
 
-//Панель инструментов столбца
-const P8PTableColumnToolBar = ({ columnDef, orders, filters, onItemClick }) => {
+    //Генерация содержимого
+    return <>{expButton}</>;
+};
+
+//Контроль свойств - Панель инструментов столбца (левая)
+P8PTableColumnToolBarLeft.propTypes = {
+    columnDef: PropTypes.object.isRequired,
+    onItemClick: PropTypes.func
+};
+
+//Панель инструментов столбца (правая)
+const P8PTableColumnToolBarRight = ({ columnDef, orders, filters, onItemClick }) => {
     //Кнопка сортировки
     const order = orders.find(o => o.name == columnDef.name);
     let orderButton = null;
@@ -134,6 +157,7 @@ const P8PTableColumnToolBar = ({ columnDef, orders, filters, onItemClick }) => {
                 <Icon>filter_alt</Icon>
             </IconButton>
         );
+
     //Генерация содержимого
     return (
         <>
@@ -143,8 +167,8 @@ const P8PTableColumnToolBar = ({ columnDef, orders, filters, onItemClick }) => {
     );
 };
 
-//Контроль свойств - Панель инструментов столбца
-P8PTableColumnToolBar.propTypes = {
+//Контроль свойств - Панель инструментов столбца (правая)
+P8PTableColumnToolBarRight.propTypes = {
     columnDef: PropTypes.object.isRequired,
     orders: PropTypes.array.isRequired,
     filters: PropTypes.array.isRequired,
@@ -431,11 +455,12 @@ P8PTableFiltersChips.propTypes = {
 //Таблица
 const P8PTable = ({
     columnsDef,
+    groups = [{}],
     rows,
     orders,
     filters,
     size,
-    morePages,
+    morePages = false,
     reloading,
     expandable,
     orderAscMenuItemCaption,
@@ -451,17 +476,25 @@ const P8PTable = ({
     noDataFoundText,
     headCellRender,
     dataCellRender,
+    groupCellRender,
     rowExpandRender,
     valueFormatter,
     onOrderChanged,
     onFilterChanged,
-    onPagesCountChanged
+    onPagesCountChanged,
+    objectsCopier
 }) => {
+    //Собственное состояние - описание заголовка
+    const [header, dispatchHeaderAction] = useReducer(p8pTableReducer, HEADER_INITIAL_STATE());
+
     //Собственное состояние - фильтруемая колонка
     const [filterColumn, setFilterColumn] = useState(null);
 
     //Собственное состояние - развёрнутые строки
     const [expanded, setExpanded] = useState({});
+
+    //Собственное состояния - развёрнутые группы
+    const [expandedGroups, setExpandedGroups] = useState({});
 
     //Собственное состояние - колонка с отображаемой подсказкой
     const [displayHintColumn, setDisplayHintColumn] = useState(null);
@@ -480,19 +513,21 @@ const P8PTable = ({
           })()
         : ["", ""];
 
-    //Определение списка видимых колонок
-    const visibleColumns = useMemo(() => columnsDef.filter(columnDef => columnDef.visible === true), [columnsDef]);
+    //Формирование заголовка таблицы
+    const setHeader = ({ columnsDef, expandable, objectsCopier }) =>
+        dispatchHeaderAction({ type: P8P_TABLE_AT.SET_HEADER, payload: { columnsDef, expandable, objectsCopier } });
 
-    //Определение количества видимых колонок
-    const visibleColumnsCount = useMemo(() => visibleColumns.length + (expandable === true ? 1 : 0), [visibleColumns, expandable]);
+    //Сворачивание/разворачивание уровня заголовка таблицы
+    const toggleHeaderExpand = ({ columnName, objectsCopier }) =>
+        dispatchHeaderAction({ type: P8P_TABLE_AT.TOGGLE_HEADER_EXPAND, payload: { columnName, expandable, objectsCopier } });
 
     //Выравнивание в зависимости от типа данных
-    const getAlignByDataType = dataType =>
-        dataType === P8P_TABLE_DATA_TYPE.DATE ? "center" : dataType === P8P_TABLE_DATA_TYPE.NUMB ? "right" : "left";
+    const getAlignByDataType = ({ dataType, hasChild }) =>
+        dataType === P8P_TABLE_DATA_TYPE.DATE || hasChild ? "center" : dataType === P8P_TABLE_DATA_TYPE.NUMB ? "right" : "left";
 
     //Упорядочение содержимого в зависимости от типа данных
-    const getJustifyContentByDataType = dataType =>
-        dataType === P8P_TABLE_DATA_TYPE.DATE ? "center" : dataType === P8P_TABLE_DATA_TYPE.NUMB ? "flex-end" : "flex-start";
+    const getJustifyContentByDataType = ({ dataType, hasChild }) =>
+        dataType === P8P_TABLE_DATA_TYPE.DATE || hasChild ? "center" : dataType === P8P_TABLE_DATA_TYPE.NUMB ? "flex-end" : "flex-start";
 
     //Отработка нажатия на элемент пункта меню
     const handleToolBarItemClick = (action, columnName) => {
@@ -510,6 +545,9 @@ const P8PTable = ({
             }
             case P8P_TABLE_COLUMN_TOOL_BAR_ACTIONS.FILTER_TOGGLE:
                 setFilterColumn(columnName);
+                break;
+            case P8P_TABLE_COLUMN_TOOL_BAR_ACTIONS.EXPAND_TOGGLE:
+                toggleHeaderExpand({ columnName, objectsCopier });
                 break;
         }
     };
@@ -579,6 +617,45 @@ const P8PTable = ({
         if (reloading) setExpanded({});
     }, [reloading]);
 
+    //При изменении описания колонок
+    useEffect(() => {
+        setHeader({ columnsDef, expandable, objectsCopier });
+    }, [columnsDef, expandable, objectsCopier]);
+
+    //При изменении состава групп
+    useEffect(() => {
+        let tmp = {};
+        groups.forEach(group => (!hasValue(expandedGroups[group.name]) ? (tmp[group.name] = group.expanded) : null));
+        setExpandedGroups(pv => ({ ...pv, ...tmp }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [groups]);
+
+    //Генерация заголовка группы
+    const renderGroupCell = group => {
+        let customRender = {};
+        if (groupCellRender) customRender = groupCellRender({ columnsDef: header.columnsDef, group }) || {};
+        return (
+            <TableCell
+                colSpan={header.displayDataColumnsCount}
+                sx={{ ...STYLES.TABLE_CELL_GROUP_HEADER, ...customRender.cellStyle }}
+                {...customRender.cellProps}
+            >
+                <Stack direction="row" sx={STYLES.TABLE_COLUMN_STACK}>
+                    {group.expandable ? (
+                        <IconButton
+                            onClick={() => {
+                                setExpandedGroups(pv => ({ ...pv, ...{ [group.name]: !pv[group.name] } }));
+                            }}
+                        >
+                            <Icon>{expandedGroups[group.name] ? "indeterminate_check_box" : "add_box"}</Icon>
+                        </IconButton>
+                    ) : null}
+                    {customRender.data ? customRender.data : group.caption}
+                </Stack>
+            </TableCell>
+        );
+    };
+
     //Генерация содержимого
     return (
         <>
@@ -616,98 +693,115 @@ const P8PTable = ({
             <TableContainer component={Paper}>
                 <Table sx={STYLES.TABLE} size={size || P8P_TABLE_SIZE.MEDIUM}>
                     <TableHead>
-                        <TableRow>
-                            {expandable && rowExpandRender ? <TableCell key="head-cell-expand-control" align="center"></TableCell> : null}
-                            {visibleColumns.map((columnDef, j) => {
-                                let customRender = {};
-                                if (headCellRender) customRender = headCellRender({ columnDef }) || {};
-                                return (
-                                    <TableCell
-                                        key={`head-cell-${j}`}
-                                        align={getAlignByDataType(columnDef.dataType)}
-                                        sx={{ ...customRender.cellStyle }}
-                                        {...customRender.cellProps}
-                                    >
-                                        <Stack
-                                            direction="row"
-                                            justifyContent={getJustifyContentByDataType(columnDef.dataType)}
-                                            sx={{ ...STYLES.TABLE_COLUMN_STACK, ...customRender.stackStyle }}
-                                            {...customRender.stackProps}
+                        {header.displayLevels.map(level => (
+                            <TableRow key={level}>
+                                {expandable && rowExpandRender ? <TableCell key="head-cell-expand-control" align="center"></TableCell> : null}
+                                {header.displayLevelsColumns[level].map((columnDef, j) => {
+                                    let customRender = {};
+                                    if (headCellRender) customRender = headCellRender({ columnDef }) || {};
+                                    return (
+                                        <TableCell
+                                            key={`head-cell-${j}`}
+                                            align={getAlignByDataType(columnDef)}
+                                            sx={{ ...customRender.cellStyle }}
+                                            rowSpan={columnDef.rowSpan}
+                                            colSpan={columnDef.colSpan}
+                                            {...customRender.cellProps}
                                         >
-                                            {customRender.data ? (
-                                                customRender.data
-                                            ) : columnDef.hint ? (
-                                                <Link
-                                                    component="button"
-                                                    variant="body2"
-                                                    align="left"
-                                                    underline="always"
-                                                    onClick={() => handleColumnShowHintClick(columnDef.name)}
-                                                >
-                                                    {columnDef.caption}
-                                                </Link>
-                                            ) : (
-                                                columnDef.caption
-                                            )}
-                                            <P8PTableColumnToolBar
-                                                columnDef={columnDef}
-                                                orders={orders}
-                                                filters={filters}
-                                                onItemClick={handleToolBarItemClick}
-                                            />
-                                            <P8PTableColumnMenu
-                                                columnDef={columnDef}
-                                                orderAscItemCaption={orderAscMenuItemCaption}
-                                                orderDescItemCaption={orderDescMenuItemCaption}
-                                                filterItemCaption={filterMenuItemCaption}
-                                                onItemClick={handleMenuItemClick}
-                                            />
-                                        </Stack>
-                                    </TableCell>
-                                );
-                            })}
-                        </TableRow>
+                                            <Stack
+                                                direction="row"
+                                                justifyContent={getJustifyContentByDataType(columnDef)}
+                                                sx={{ ...STYLES.TABLE_COLUMN_STACK, ...customRender.stackStyle }}
+                                                {...customRender.stackProps}
+                                            >
+                                                <P8PTableColumnToolBarLeft columnDef={columnDef} onItemClick={handleToolBarItemClick} />
+                                                {customRender.data ? (
+                                                    customRender.data
+                                                ) : columnDef.hint ? (
+                                                    <Link
+                                                        component="button"
+                                                        variant="body2"
+                                                        align="left"
+                                                        underline="always"
+                                                        onClick={() => handleColumnShowHintClick(columnDef.name)}
+                                                    >
+                                                        {columnDef.caption}
+                                                    </Link>
+                                                ) : (
+                                                    columnDef.caption
+                                                )}
+                                                <P8PTableColumnToolBarRight
+                                                    columnDef={columnDef}
+                                                    orders={orders}
+                                                    filters={filters}
+                                                    onItemClick={handleToolBarItemClick}
+                                                />
+                                                <P8PTableColumnMenu
+                                                    columnDef={columnDef}
+                                                    orderAscItemCaption={orderAscMenuItemCaption}
+                                                    orderDescItemCaption={orderDescMenuItemCaption}
+                                                    filterItemCaption={filterMenuItemCaption}
+                                                    onItemClick={handleMenuItemClick}
+                                                />
+                                            </Stack>
+                                        </TableCell>
+                                    );
+                                })}
+                            </TableRow>
+                        ))}
                     </TableHead>
                     <TableBody>
                         {rows.length > 0
-                            ? rows.map((row, i) => (
-                                  <React.Fragment key={`data-${i}`}>
-                                      <TableRow key={`data-row-${i}`} sx={STYLES.TABLE_ROW}>
-                                          {expandable && rowExpandRender ? (
-                                              <TableCell key={`data-cell-expand-control-${i}`} align="center">
-                                                  <IconButton onClick={() => handleExpandClick(i)}>
-                                                      <Icon>{expanded[i] === true ? "keyboard_arrow_down" : "keyboard_arrow_right"}</Icon>
-                                                  </IconButton>
-                                              </TableCell>
-                                          ) : null}
-                                          {visibleColumns.map((columnDef, j) => {
-                                              let customRender = {};
-                                              if (dataCellRender) customRender = dataCellRender({ row, columnDef }) || {};
-                                              return (
-                                                  <TableCell
-                                                      key={`data-cell-${j}`}
-                                                      align={getAlignByDataType(columnDef.dataType)}
-                                                      sx={{ ...customRender.cellStyle }}
-                                                      {...customRender.cellProps}
-                                                  >
-                                                      {customRender.data
-                                                          ? customRender.data
-                                                          : valueFormatter
-                                                          ? valueFormatter({ value: row[columnDef.name], columnDef })
-                                                          : row[columnDef.name]}
-                                                  </TableCell>
-                                              );
-                                          })}
-                                      </TableRow>
-                                      {expandable && rowExpandRender && expanded[i] === true ? (
-                                          <TableRow key={`data-row-expand-${i}`}>
-                                              <TableCell sx={STYLES.TABLE_CELL_EXPAND_CONTAINER} colSpan={visibleColumnsCount}>
-                                                  {rowExpandRender({ columnsDef, row })}
-                                              </TableCell>
-                                          </TableRow>
-                                      ) : null}
-                                  </React.Fragment>
-                              ))
+                            ? groups.map((group, g) => {
+                                  const rowsView = rows.map((row, i) =>
+                                      !group?.name || group?.name == row.groupName ? (
+                                          <React.Fragment key={`data-${i}`}>
+                                              <TableRow key={`data-row-${i}`} sx={STYLES.TABLE_ROW}>
+                                                  {expandable && rowExpandRender ? (
+                                                      <TableCell key={`data-cell-expand-control-${i}`} align="center">
+                                                          <IconButton onClick={() => handleExpandClick(i)}>
+                                                              <Icon>{expanded[i] === true ? "keyboard_arrow_down" : "keyboard_arrow_right"}</Icon>
+                                                          </IconButton>
+                                                      </TableCell>
+                                                  ) : null}
+                                                  {header.displayDataColumns.map((columnDef, j) => {
+                                                      let customRender = {};
+                                                      if (dataCellRender) customRender = dataCellRender({ row, columnDef }) || {};
+                                                      return (
+                                                          <TableCell
+                                                              key={`data-cell-${j}`}
+                                                              align={getAlignByDataType(columnDef)}
+                                                              sx={{ ...customRender.cellStyle }}
+                                                              {...customRender.cellProps}
+                                                          >
+                                                              {customRender.data
+                                                                  ? customRender.data
+                                                                  : valueFormatter
+                                                                  ? valueFormatter({ value: row[columnDef.name], columnDef })
+                                                                  : row[columnDef.name]}
+                                                          </TableCell>
+                                                      );
+                                                  })}
+                                              </TableRow>
+                                              {expandable && rowExpandRender && expanded[i] === true ? (
+                                                  <TableRow key={`data-row-expand-${i}`}>
+                                                      <TableCell sx={STYLES.TABLE_CELL_EXPAND_CONTAINER} colSpan={header.displayDataColumnsCount}>
+                                                          {rowExpandRender({ columnsDef, row })}
+                                                      </TableCell>
+                                                  </TableRow>
+                                              ) : null}
+                                          </React.Fragment>
+                                      ) : null
+                                  );
+                                  return !group?.name ? (
+                                      rowsView
+                                  ) : (
+                                      <React.Fragment key={`group-${g}`}>
+                                          <TableRow key={`group-header-${g}`}>{renderGroupCell(group)}</TableRow>
+                                          {!group.expandable || expandedGroups[group.name] === true ? rowsView : null}
+                                      </React.Fragment>
+                                  );
+                              })
                             : null}
                     </TableBody>
                 </Table>
@@ -736,9 +830,21 @@ P8PTable.propTypes = {
             order: PropTypes.bool.isRequired,
             filter: PropTypes.bool.isRequired,
             dataType: PropTypes.string.isRequired,
-            values: PropTypes.array
+            visible: PropTypes.bool.isRequired,
+            values: PropTypes.array,
+            parent: PropTypes.string,
+            expandable: PropTypes.bool.isRequired,
+            expanded: PropTypes.bool.isRequired
         })
     ).isRequired,
+    groups: PropTypes.arrayOf(
+        PropTypes.shape({
+            name: PropTypes.string.isRequired,
+            caption: PropTypes.string.isRequired,
+            expandable: PropTypes.bool.isRequired,
+            expanded: PropTypes.bool.isRequired
+        })
+    ),
     rows: PropTypes.array.isRequired,
     orders: PropTypes.arrayOf(
         PropTypes.shape({
@@ -748,7 +854,7 @@ P8PTable.propTypes = {
     ).isRequired,
     filters: PropTypes.arrayOf(P8P_TABLE_FILTER_SHAPE).isRequired,
     size: PropTypes.string,
-    morePages: PropTypes.bool.isRequired,
+    morePages: PropTypes.bool,
     reloading: PropTypes.bool.isRequired,
     expandable: PropTypes.bool,
     orderAscMenuItemCaption: PropTypes.string.isRequired,
@@ -764,11 +870,13 @@ P8PTable.propTypes = {
     noDataFoundText: PropTypes.string,
     headCellRender: PropTypes.func,
     dataCellRender: PropTypes.func,
+    groupCellRender: PropTypes.func,
     rowExpandRender: PropTypes.func,
     valueFormatter: PropTypes.func,
     onOrderChanged: PropTypes.func,
     onFilterChanged: PropTypes.func,
-    onPagesCountChanged: PropTypes.func
+    onPagesCountChanged: PropTypes.func,
+    objectsCopier: PropTypes.func.isRequired
 };
 
 //----------------

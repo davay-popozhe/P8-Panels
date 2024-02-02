@@ -32,9 +32,10 @@ const P8P_DATA_GRID_FILTER_SHAPE = P8P_TABLE_FILTER_SHAPE;
 const P8PDataGrid = ({
     columnsDef,
     filtersInitial,
+    groups,
     rows,
     size,
-    morePages,
+    morePages = false,
     reloading,
     expandable,
     orderAscMenuItemCaption,
@@ -50,6 +51,7 @@ const P8PDataGrid = ({
     noDataFoundText,
     headCellRender,
     dataCellRender,
+    groupCellRender,
     rowExpandRender,
     valueFormatter,
     onOrderChanged,
@@ -102,6 +104,7 @@ const P8PDataGrid = ({
     return (
         <P8PTable
             columnsDef={columnsDef}
+            groups={groups}
             rows={rows}
             orders={orders}
             filters={filters}
@@ -122,8 +125,10 @@ const P8PDataGrid = ({
             noDataFoundText={noDataFoundText}
             headCellRender={headCellRender}
             dataCellRender={dataCellRender}
+            groupCellRender={groupCellRender}
             rowExpandRender={rowExpandRender}
             valueFormatter={valueFormatter}
+            objectsCopier={objectsCopier}
             onOrderChanged={handleOrderChanged}
             onFilterChanged={handleFilterChanged}
             onPagesCountChanged={handlePagesCountChanged}
@@ -135,9 +140,10 @@ const P8PDataGrid = ({
 P8PDataGrid.propTypes = {
     columnsDef: PropTypes.array.isRequired,
     filtersInitial: PropTypes.arrayOf(P8P_DATA_GRID_FILTER_SHAPE),
+    groups: PropTypes.array,
     rows: PropTypes.array.isRequired,
     size: PropTypes.string,
-    morePages: PropTypes.bool.isRequired,
+    morePages: PropTypes.bool,
     reloading: PropTypes.bool.isRequired,
     expandable: PropTypes.bool,
     orderAscMenuItemCaption: PropTypes.string.isRequired,
@@ -153,6 +159,7 @@ P8PDataGrid.propTypes = {
     noDataFoundText: PropTypes.string,
     headCellRender: PropTypes.func,
     dataCellRender: PropTypes.func,
+    groupCellRender: PropTypes.func,
     rowExpandRender: PropTypes.func,
     valueFormatter: PropTypes.func,
     onOrderChanged: PropTypes.func,
