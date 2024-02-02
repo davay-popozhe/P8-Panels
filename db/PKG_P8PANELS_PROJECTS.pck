@@ -100,6 +100,12 @@ create or replace package PKG_P8PANELS_PROJECTS as
     COUT                    out clob    -- Сериализованная таблица данных
   );
   
+  /* Сфодный график проектов */
+  procedure GRAPH
+  (
+    COUT                    out clob    -- График проектов
+  );
+  
   /* График по данным проектов - "Топ проблем" */
   procedure CHART_PROBLEMS
   (
@@ -1516,6 +1522,150 @@ text="Проверить, что для расчётных полей дата-�
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
   end LIST;
+  
+  /* Сфодный график проектов */
+  procedure GRAPH
+  (
+    COUT                    out clob                               -- График проектов
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Рег. номер организации
+    DFROM                   PKG_STD.TLDATE;                        -- Дата начала всех работ
+    DTO                     PKG_STD.TLDATE;                        -- Дата окончания всех работ
+    DFROM_CUR               PKG_STD.TLDATE;                        -- Дата начала текущая
+    DTO_CUR                 PKG_STD.TLDATE;                        -- Дата окончания текущая
+    SYEAR_COL_NAME          PKG_STD.TSTRING;                       -- Наименование колонки для года
+    SPRJ_GROUP_NAME         PKG_STD.TSTRING;                       -- Наименование группы для проекта
+    BEXPANDED               boolean;                               -- Флаг раскрытости уровня
+    RDG                     PKG_P8PANELS_VISUAL.TDATA_GRID;        -- Описание таблицы
+    RDG_ROW                 PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы
+  begin
+    /* Определим даты начала и окончания проектов */
+    select TRUNC(min(DBEGPLAN), 'mm'),
+           LAST_DAY(max(DENDPLAN))
+      into DFROM,
+           DTO
+      from (select min(P.BEGPLAN) DBEGPLAN,
+                   max(P.ENDPLAN) DENDPLAN
+              from PROJECT P
+             where P.COMPANY = NCOMPANY
+               and P.STATE in (0, 1, 4)
+            union all
+            select min(PS.BEGPLAN) DBEGPLAN,
+                   max(PS.ENDPLAN) DENDPLAN
+              from PROJECT      P,
+                   PROJECTSTAGE PS
+             where P.COMPANY = NCOMPANY
+               and P.STATE in (0, 1, 4)
+               and P.RN = PS.PRN
+               and PS.STATE in (0, 1, 3)
+               and PS.HRN is null);
+    /* Инициализируем таблицу данных */
+    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE();
+    /* Формируем структуру заголовка */
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NRN',
+                                               SCAPTION   => 'Рег. номер',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SJOB',
+                                               SCAPTION   => 'Работы',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SRESP',
+                                               SCAPTION   => 'Ответственный',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NSTATE',
+                                               SCAPTION   => 'Состояние',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'DFROM',
+                                               SCAPTION   => 'Начало работы',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_DATE,
+                                               BVISIBLE   => false);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'DTO',
+                                               SCAPTION   => 'Окончание работы',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_DATE,
+                                               BVISIBLE   => false);
+    for Y in EXTRACT(year from DFROM) .. EXTRACT(year from DTO)
+    loop
+      SYEAR_COL_NAME := TO_CHAR(Y);
+      if (Y = EXTRACT(year from sysdate)) then
+        BEXPANDED := true;
+      else
+        BEXPANDED := false;
+      end if;
+      PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID  => RDG,
+                                                 SNAME       => SYEAR_COL_NAME,
+                                                 SCAPTION    => TO_CHAR(Y),
+                                                 SDATA_TYPE  => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                                 BEXPANDABLE => true,
+                                                 BEXPANDED   => BEXPANDED);
+      for M in 1 .. 12
+      loop
+        DFROM_CUR := TO_DATE('01.' || LPAD(TO_CHAR(M), 2, '0') || '.' || TO_CHAR(Y), 'dd.mm.yyyy');
+        DTO_CUR   := LAST_DAY(DFROM_CUR);
+        if ((DFROM_CUR >= DFROM) and (DTO_CUR <= DTO)) then
+          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                                     SNAME      => SYEAR_COL_NAME || '_' || TO_CHAR(M),
+                                                     SCAPTION   => LPAD(TO_CHAR(M), 2, '0'),
+                                                     SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                                     SPARENT    => SYEAR_COL_NAME);
+        end if;
+      end loop;
+    end loop;
+    /* Обходим открытые проекты */
+    for PR in (select P.*
+                 from PROJECT P
+                where P.COMPANY = NCOMPANY
+                  and P.STATE in (0, 1, 4)
+                order by P.BEGPLAN)
+    loop
+      /* Добвим группу для проекта */
+      SPRJ_GROUP_NAME := PR.RN;
+      PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_GROUP(RDATA_GRID  => RDG,
+                                               SNAME       => SPRJ_GROUP_NAME,
+                                               SCAPTION    => PR.CODE || ' - ' || PR.NAME,
+                                               BEXPANDABLE => true,
+                                               BEXPANDED   => true);
+      /* Обходим этапы проекта */
+      for ST in (select PS.RN NRN,
+                        trim(PS.NUMB) || ' - ' || PS.NAME SJOB,
+                        COALESCE(AG.AGNABBR, IND.NAME) SRESP,
+                        PS.STATE NSTATE,
+                        PS.BEGPLAN DFROM,
+                        PS.ENDPLAN DTO
+                   from PROJECTSTAGE   PS,
+                        AGNLIST        AG,
+                        INS_DEPARTMENT IND
+                  where PS.PRN = PR.RN
+                    and PS.STATE in (0, 1, 3)
+                    and PS.HRN is null
+                    and PS.RESPONSIBLE = AG.RN(+)
+                    and PS.SUBDIV_RESP = IND.RN(+)
+                  order by PS.NUMB)
+      loop
+        /* Инициализируем строку */
+        RDG_ROW := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SPRJ_GROUP_NAME);
+        /* Добавляем колонки с данными */
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NRN', NVALUE => ST.NRN);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SJOB', SVALUE => ST.SJOB);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SRESP', SVALUE => ST.SRESP);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NSTATE', NVALUE => ST.NSTATE);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'DFROM', DVALUE => ST.DFROM);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'DTO', DVALUE => ST.DTO);
+        /* Добавим строку для этапа */
+        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
+      end loop;
+    end loop;
+    /* Сериализуем описание */
+    COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => 1);
+  end GRAPH;
   
   /* График по данным проектов - "Топ проблем" */
   procedure CHART_PROBLEMS
