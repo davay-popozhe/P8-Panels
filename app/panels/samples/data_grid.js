@@ -74,6 +74,9 @@ const headCellRender = ({ columnDef }) => {
     }
 };
 
+//Генерация представления ячейки заголовка группы
+export const groupCellRender = () => ({ cellStyle: { padding: "2px" } });
+
 //-----------
 //Тело модуля
 //-----------
@@ -86,6 +89,7 @@ const DataGrid = ({ title }) => {
         columnsDef: [],
         filters: null,
         orders: null,
+        groups: [],
         rows: [],
         reload: true,
         pageNumber: 1,
@@ -113,6 +117,10 @@ const DataGrid = ({ title }) => {
                 ...pv,
                 columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
                 rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
+                groups:
+                    pv.pageNumber == 1
+                        ? [...(data.XGROUPS || [])]
+                        : [...pv.groups, ...(data.XGROUPS.filter(g => !pv.groups.find(pg => pg.name == g.name)) || [])],
                 dataLoaded: true,
                 reload: false,
                 morePages: (data.XROWS || []).length >= DATA_GRID_PAGE_SIZE
@@ -147,6 +155,7 @@ const DataGrid = ({ title }) => {
                             <P8PDataGrid
                                 {...P8P_DATA_GRID_CONFIG_PROPS}
                                 columnsDef={dataGrid.columnsDef}
+                                groups={dataGrid.groups}
                                 rows={dataGrid.rows}
                                 size={P8P_DATA_GRID_SIZE.LARGE}
                                 filtersInitial={dataGrid.filters}
@@ -155,6 +164,7 @@ const DataGrid = ({ title }) => {
                                 valueFormatter={valueFormatter}
                                 headCellRender={headCellRender}
                                 dataCellRender={dataCellRender}
+                                groupCellRender={groupCellRender}
                                 onOrderChanged={handleOrderChanged}
                                 onFilterChanged={handleFilterChanged}
                                 onPagesCountChanged={handlePagesCountChanged}

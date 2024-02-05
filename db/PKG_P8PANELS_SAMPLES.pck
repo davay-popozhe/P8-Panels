@@ -237,6 +237,10 @@ create or replace package body PKG_P8PANELS_SAMPLES as
     NROW_TO                 PKG_STD.TREF;                          -- Номер строки по
     CSQL                    clob;                                  -- Буфер для запроса
     ICURSOR                 integer;                               -- Курсор для исполнения запроса
+    SGROUP                  PKG_STD.TSTRING;                       -- Буфер для группы
+    SAGNINFO                PKG_STD.TSTRING;                       -- Буфер для "Сведений"
+    SAGNNAME                PKG_STD.TSTRING;                       -- Буфер для "Наименования"
+    NAGNTYPE                PKG_STD.TREF;                          -- Буфер для "Типа"
   begin
     /* Читаем фильтры */
     RF := PKG_P8PANELS_VISUAL.TFILTERS_FROM_XML(CFILTERS => CFILTERS);
@@ -258,6 +262,14 @@ create or replace package body PKG_P8PANELS_SAMPLES as
                                                BVISIBLE   => true,
                                                BORDER     => true,
                                                BFILTER    => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID  => RDG,
+                                               SNAME       => 'SAGNINFO',
+                                               SCAPTION    => 'Сведения',
+                                               SDATA_TYPE  => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE    => true,
+                                               BORDER      => false,
+                                               BFILTER     => false,
+                                               BEXPANDABLE => true);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'SAGNNAME',
                                                SCAPTION   => 'Наименование',
@@ -265,7 +277,8 @@ create or replace package body PKG_P8PANELS_SAMPLES as
                                                SCOND_FROM => 'AgentName',
                                                BVISIBLE   => true,
                                                BORDER     => true,
-                                               BFILTER    => true);
+                                               BFILTER    => true,
+                                               SPARENT    => 'SAGNINFO');
     PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RAGN_TYPES, NVALUE => 0);
     PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RAGN_TYPES, NVALUE => 1);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
@@ -276,6 +289,7 @@ create or replace package body PKG_P8PANELS_SAMPLES as
                                                BVISIBLE   => true,
                                                BORDER     => true,
                                                BFILTER    => true,
+                                               SPARENT    => 'SAGNINFO',
                                                RCOL_VALS  => RAGN_TYPES,
                                                SHINT      => 'В Системе бывают контрагенты двух типов:<br>' ||
                                                              '<b style="color:blue">Юридическое лицо</b> - организация, которая имеет в собственности, хозяйственном ведении ' ||
@@ -325,9 +339,30 @@ create or replace package body PKG_P8PANELS_SAMPLES as
       while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
       loop
         /* Добавляем колонки с данными */
-        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SAGNABBR', ICURSOR => ICURSOR, NPOSITION => 1, BCLEAR => true);
-        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SAGNNAME', ICURSOR => ICURSOR, NPOSITION => 2);
-        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW => RDG_ROW, SNAME => 'NAGNTYPE', ICURSOR => ICURSOR, NPOSITION => 3);
+        PKG_SQL_DML.COLUMN_VALUE_STR(ICURSOR => ICURSOR, IPOSITION => 2, SVALUE => SAGNNAME);
+        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 3, NVALUE => NAGNTYPE);
+        if (NAGNTYPE = 0) then
+          SGROUP   := 'JUR';
+          SAGNINFO := SAGNNAME || ', ЮЛ';
+          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_GROUP(RDATA_GRID  => RDG,
+                                                   SNAME       => SGROUP,
+                                                   SCAPTION    => 'Юридические лица',
+                                                   BEXPANDABLE => true,
+                                                   BEXPANDED   => false);
+        else
+          SGROUP   := 'PERS';
+          SAGNINFO := SAGNNAME || ', ФЛ';
+          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_GROUP(RDATA_GRID  => RDG,
+                                                   SNAME       => SGROUP,
+                                                   SCAPTION    => 'Физические лица',
+                                                   BEXPANDABLE => true,
+                                                   BEXPANDED   => false);
+        end if;
+        RDG_ROW := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SGROUP);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SAGNABBR', ICURSOR => ICURSOR, NPOSITION => 1);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SAGNINFO', SVALUE => SAGNINFO);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SAGNNAME', SVALUE => SAGNNAME);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NAGNTYPE', NVALUE => NAGNTYPE);
         /* Добавляем строку в таблицу */
         PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
       end loop;
