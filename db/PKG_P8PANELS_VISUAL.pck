@@ -951,17 +951,35 @@ text="Формат data_grid и gant как в chart"
     BCLEAR                  in boolean := false    -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
+    BFND                    boolean := false;      -- Флаг наличия группы в коллекции
   begin
     /* Инициализируем коллекцию если необходимо */
     if ((RGROUPS is null) or (BCLEAR)) then
       RGROUPS := TGROUPS();
     end if;
-    /* Добавляем элемент */
-    RGROUPS.EXTEND();
-    RGROUPS(RGROUPS.LAST) := TGROUP_MAKE(SNAME       => SNAME,
-                                         SCAPTION    => SCAPTION,
-                                         BEXPANDABLE => BEXPANDABLE,
-                                         BEXPANDED   => BEXPANDED);
+    /* Проверим наличие */
+    if (RGROUPS.COUNT > 0) then
+      for I in RGROUPS.FIRST .. RGROUPS.LAST
+      loop
+        if (RGROUPS(I).SNAME = SNAME) then
+          /* Элемент найден - обновим */
+          BFND := true;
+          RGROUPS(I) := TGROUP_MAKE(SNAME       => SNAME,
+                                    SCAPTION    => SCAPTION,
+                                    BEXPANDABLE => BEXPANDABLE,
+                                    BEXPANDED   => BEXPANDED);
+          exit;
+        end if;
+      end loop;
+    end if;
+    /* Добавляем элемент если такого нет */
+    if (not BFND) then
+      RGROUPS.EXTEND();
+      RGROUPS(RGROUPS.LAST) := TGROUP_MAKE(SNAME       => SNAME,
+                                           SCAPTION    => SCAPTION,
+                                           BEXPANDABLE => BEXPANDABLE,
+                                           BEXPANDED   => BEXPANDED);
+    end if;
   end TGROUPS_ADD;
   
   /* Сериализация описания групп таблицы данных */
