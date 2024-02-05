@@ -622,14 +622,6 @@ const P8PTable = ({
         setHeader({ columnsDef, expandable, objectsCopier });
     }, [columnsDef, expandable, objectsCopier]);
 
-    //При изменении состава групп
-    useEffect(() => {
-        let tmp = {};
-        groups.forEach(group => (!hasValue(expandedGroups[group.name]) ? (tmp[group.name] = group.expanded) : null));
-        setExpandedGroups(pv => ({ ...pv, ...tmp }));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [groups]);
-
     //Генерация заголовка группы
     const renderGroupCell = group => {
         let customRender = {};
