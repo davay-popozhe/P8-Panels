@@ -32,6 +32,7 @@ const RESP_STATUS_ERR = "ERR"; //Ошибка
 const ERR_APPSERVER = "Ошибка сервера приложений"; //Общая ошибка клиента
 const ERR_UNEXPECTED = "Неожиданный ответ сервера"; //Неожиданный ответ сервера
 const ERR_NETWORK = "Ошибка соединения с сервером"; //Ошибка сети
+const ERR_UNAUTH = "Сеанс завершен. Пройдите аутентификацию повторно."; //Ошибка аутентификации
 
 //Типовые пути конвертации в массив (при переводе XML -> JSON)
 const XML_ALWAYS_ARRAY_PATHS = [
@@ -136,6 +137,8 @@ const executeAction = async ({ serverURL, action, payload = {}, isArray, transfo
     }
     //Проверим на наличие ошибок HTTP - если есть вернём их
     if (!response.ok) throw new Error(`${ERR_APPSERVER}: ${response.statusText}`);
+    //Проверим на наличие редиректа к аутентификации (возникает, если сеанс окончен)
+    if (response.redirected && response.url.toLowerCase().includes("auth?returnurl")) throw new Error(ERR_UNAUTH);
     //Ошибок нет - пробуем разобрать
     try {
         let responseText = await response.text();
