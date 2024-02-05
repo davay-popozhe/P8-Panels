@@ -2019,6 +2019,9 @@ text="Формат data_grid и gant как в chart"
         if (RGANTT.RTASK_COLORS(I).STEXT_COLOR is not null) then
           PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_TEXT_COLOR, SVALUE => RGANTT.RTASK_COLORS(I).STEXT_COLOR);
         end if;
+        if (RGANTT.RTASK_COLORS(I).SBG_PROGRESS_COLOR is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_BG_PRG_COLOR, SVALUE => RGANTT.RTASK_COLORS(I).SBG_PROGRESS_COLOR);
+        end if;
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_DESC, SVALUE => RGANTT.RTASK_COLORS(I).SDESC);
         /* Закрываем описание цвета задачи */
         PKG_XFAST.UP();
