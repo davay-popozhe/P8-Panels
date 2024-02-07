@@ -59,7 +59,8 @@ const P8P_GANTT_TASK_SHAPE = PropTypes.shape({
     readOnlyDates: PropTypes.bool,
     readOnlyProgress: PropTypes.bool,
     bgColor: PropTypes.string,
-    textColor: PropTypes.string
+    textColor: PropTypes.string,
+    bgProgressColor: PropTypes.string
 });
 
 //Структура динамического атрибута задачи
@@ -72,6 +73,7 @@ const P8P_GANTT_TASK_ATTRIBUTE_SHAPE = PropTypes.shape({
 const P8P_GANTT_TASK_COLOR_SHAPE = PropTypes.shape({
     bgColor: PropTypes.string,
     textColor: PropTypes.string,
+    bgProgressColor: PropTypes.string,
     desc: PropTypes.string.isRequired
 });
 
@@ -126,14 +128,24 @@ const P8PGanttTaskEditor = ({
     //Описание легенды для задачи
     let legend = null;
     if (Array.isArray(taskColors)) {
-        const colorDesc = taskColors.find(color => task.bgColor === color.bgColor && task.textColor === color.textColor);
+        const colorDesc = taskColors.find(
+            color => task.bgColor === color.bgColor && task.textColor === color.textColor && task.bgProgressColor === color.bgProgressColor
+        );
         if (colorDesc)
             legend = (
                 <ListItemText
                     secondaryTypographyProps={{
                         p: 1,
                         sx: {
-                            ...(colorDesc.bgColor ? { backgroundColor: colorDesc.bgColor } : {}),
+                            ...(colorDesc.bgProgressColor
+                                ? {
+                                      background: `linear-gradient(to right, ${colorDesc.bgProgressColor} ,${
+                                          colorDesc.bgColor ? colorDesc.bgColor : "transparent"
+                                      })}`
+                                  }
+                                : colorDesc.bgColor
+                                ? { backgroundColor: colorDesc.bgColor }
+                                : {}),
                             ...(colorDesc.textColor ? { color: colorDesc.textColor } : {})
                         }
                     }}
