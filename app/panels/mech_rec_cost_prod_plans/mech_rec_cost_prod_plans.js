@@ -31,32 +31,50 @@ const GANTT_WIDTH = "98vw";
 
 //Стили
 const STYLES = {
-    PROJECTS_FINDER: { marginTop: "10px", marginLeft: "10px", width: "93%" },
-    PROJECTS_LIST_ITEM_PRIMARY: { wordWrap: "break-word" },
-    PROJECTS_LIST_ITEM_SECONDARY: { wordWrap: "break-word", fontSize: "0.5rem", textTransform: "uppercase" },
-    PROJECTS_LIST_ITEM_SECONDARY_NOJOBS: { color: "red" },
-    PROJECTS_LIST_ITEM_SECONDARY_NOEDIT: { color: "gray" },
-    PROJECTS_LIST_ITEM_SECONDARY_CHANGED: { color: "green" },
-    PROJECTS_BUTTON: { position: "absolute" },
-    PROJECTS_DRAWER: {
+    PLANS_FINDER: { marginTop: "10px", marginLeft: "10px", width: "93%" },
+    PLANS_LIST_ITEM_PRIMARY: { wordWrap: "break-word" },
+    PLANS_BUTTON: { position: "absolute" },
+    PLANS_DRAWER: {
         minWidth: "250px",
         display: "inline-block",
         flexShrink: 0,
         [`& .MuiDrawer-paper`]: { minWidth: "250px", display: "inline-block", boxSizing: "border-box" }
     },
     GANTT_CONTAINER: { height: GANTT_HEIGHT, width: GANTT_WIDTH },
-    GANTT_TITLE: { paddingLeft: "100px", paddingRight: "120px" },
-    PERIODS_BUTTON: { position: "absolute", right: "20px" },
-    PERIODS_DRAWER: { width: "1000px", flexShrink: 0, [`& .MuiDrawer-paper`]: { width: "1000px", boxSizing: "border-box" } }
+    GANTT_TITLE: { paddingLeft: "100px", paddingRight: "120px" }
 };
 
-//Список проектов
-const ProjectsList = ({ plans = [], selectedPlan, filter, setFilter, onClick } = {}) => {
+//------------------------------------
+//Вспомогательные функции и компоненты
+//------------------------------------
+
+//Разбор XML с данными спецификации производственной программы
+const parseProdPlanSpXML = xmlDoc => {
+    return new Promise((resolve, reject) => {
+        try {
+            const parser = new XMLParser({
+                ignoreDeclaration: true,
+                ignoreAttributes: false,
+                parseAttributeValue: true,
+                attributeNamePrefix: "",
+                attributeValueProcessor: (name, val) =>
+                    name == "numb" ? undefined : ["start", "end"].includes(name) ? formatDateJSONDateOnly(val) : val
+            });
+            const data = parser.parse(xmlDoc);
+            resolve(data.XDATA);
+        } catch (e) {
+            reject(e);
+        }
+    });
+};
+
+//Список планов
+const PlansList = ({ plans = [], selectedPlan, filter, setFilter, onClick } = {}) => {
     //Генерация содержимого
     return (
         <div>
             <TextField
-                sx={STYLES.PROJECTS_FINDER}
+                sx={STYLES.PLANS_FINDER}
                 name="planFilter"
                 label="План"
                 value={filter}
@@ -69,21 +87,7 @@ const ProjectsList = ({ plans = [], selectedPlan, filter, setFilter, onClick } =
             <List>
                 {plans.map(p => (
                     <ListItemButton key={p.NRN} selected={p.NRN === selectedPlan} onClick={() => (onClick ? onClick(p) : null)}>
-                        <ListItemText
-                            primary={<Typography sx={STYLES.PROJECTS_LIST_ITEM_PRIMARY}>{p.SDOC_INFO}</Typography>}
-                            secondary={
-                                <Typography
-                                    sx={{
-                                        ...STYLES.PROJECTS_LIST_ITEM_SECONDARY,
-                                        ...(p.NJOBS == 0
-                                            ? STYLES.PROJECTS_LIST_ITEM_SECONDARY_NOJOBS
-                                            : p.NCHANGED == 1
-                                            ? STYLES.PROJECTS_LIST_ITEM_SECONDARY_CHANGED
-                                            : STYLES.PROJECTS_LIST_ITEM_SECONDARY_NOEDIT)
-                                    }}
-                                ></Typography>
-                            }
-                        />
+                        <ListItemText primary={<Typography sx={STYLES.PLANS_LIST_ITEM_PRIMARY}>{p.SDOC_INFO}</Typography>} />
                     </ListItemButton>
                 ))}
             </List>
@@ -91,8 +95,8 @@ const ProjectsList = ({ plans = [], selectedPlan, filter, setFilter, onClick } =
     );
 };
 
-//Контроль свойств - Список проектов
-ProjectsList.propTypes = {
+//Контроль свойств - Список планов
+PlansList.propTypes = {
     plans: PropTypes.array,
     selectedPlan: PropTypes.number,
     onClick: PropTypes.func,
@@ -103,26 +107,6 @@ ProjectsList.propTypes = {
 //-----------
 //Тело модуля
 //-----------
-
-//Разбор XML
-const parseXML = (xmlDoc, attributeValueProcessor) => {
-    return new Promise((resolve, reject) => {
-        try {
-            let opts = {
-                ignoreDeclaration: true,
-                ignoreAttributes: false,
-                parseAttributeValue: true,
-                attributeNamePrefix: ""
-            };
-            if (attributeValueProcessor) opts.attributeValueProcessor = attributeValueProcessor;
-            const parser = new XMLParser(opts);
-            const data = parser.parse(xmlDoc);
-            resolve(data.XDATA);
-        } catch (e) {
-            reject(e);
-        }
-    });
-};
 
 //Корневая панель производственной программы
 const MechRecCostProdPlans = () => {
@@ -160,14 +144,10 @@ const MechRecCostProdPlans = () => {
             const data = await executeStored({
                 stored: "PKG_P8PANELS_MECHREC.PRODPLAN_INIT",
                 args: {},
-                respArg: "COUT"
+                respArg: "COUT",
+                isArray: name => name === "XFCPRODPLANS"
             });
-            setState(pv => ({
-                ...pv,
-                init: true,
-                plans: [...(data?.XFCPRODPLANS || [])],
-                plansLoaded: true
-            }));
+            setState(pv => ({ ...pv, init: true, plans: [...(data?.XFCPRODPLANS || [])], plansLoaded: true }));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.init, executeStored]);
@@ -208,11 +188,7 @@ const MechRecCostProdPlans = () => {
                 stored: "PKG_P8PANELS_MECHREC.FCPRODPLANSP_GET",
                 args: { NFCPRODPLAN: state.selectedPlan, NLEVEL: level }
             });
-            let doc = await parseXML(data.COUT, (name, val) =>
-                name == "numb" ? undefined : ["start", "end"].includes(name) ? formatDateJSONDateOnly(val) : val
-            );
-            console.log(doc.XGANTT_DEF);
-            console.log(doc.XGANTT_TASKS);
+            let doc = await parseProdPlanSpXML(data.COUT);
             setState(pv => ({
                 ...pv,
                 selectedPlanMaxLevel: data.NMAX_LEVEL,
@@ -256,19 +232,20 @@ const MechRecCostProdPlans = () => {
         loadPlanSpecs(selectedLevel);
         setState(pv => ({ ...pv, selectedPlanLevel: selectedLevel }));
     };
+
     //Генерация содержимого
     return (
         <Box p={2}>
-            <Fab variant="extended" sx={STYLES.PROJECTS_BUTTON} onClick={() => setState(pv => ({ ...pv, showPlanList: !pv.showPlanList }))}>
+            <Fab variant="extended" sx={STYLES.PLANS_BUTTON} onClick={() => setState(pv => ({ ...pv, showPlanList: !pv.showPlanList }))}>
                 Планы
             </Fab>
             <Drawer
                 anchor={"left"}
                 open={state.showPlanList}
                 onClose={() => setState(pv => ({ ...pv, showPlanList: false }))}
-                sx={STYLES.PROJECTS_DRAWER}
+                sx={STYLES.PLANS_DRAWER}
             >
-                <ProjectsList
+                <PlansList
                     plans={filteredPlans}
                     selectedPlan={state.selectedPlan}
                     filter={filter}
