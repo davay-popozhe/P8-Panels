@@ -473,7 +473,7 @@ var Gantt = (function () {
                 class: 'bar-progress',
                 append_to: this.bar_group,
             });
-			//ЦИТК
+            //ЦИТК
             if (this.task.bgProgressColor) this.$bar_progress.style.fill = this.task.bgProgressColor;
             //ЦИТК
 
