@@ -23,7 +23,7 @@ import { ResMon } from "./res_mon"; //Монитор ресурсов
 //---------
 
 //Высота диаграммы Ганта
-const GANTT_HEIGHT = "650px";
+const GANTT_HEIGHT = "75vh";
 
 //Ширина диаграммы Ганта
 const GANTT_WIDTH = "98vw";
@@ -192,7 +192,8 @@ const PrjJobs = () => {
                 const data = await executeStored({
                     stored: "PKG_P8PANELS_PROJECTS.JB_PRJCTS_LIST",
                     args: { NIDENT: state.ident },
-                    respArg: "COUT"
+                    respArg: "COUT",
+                    isArray: name => name === "XPROJECTS"
                 });
                 setState(pv => ({ ...pv, projectsLoaded: true, projects: [...(data?.XPROJECTS || [])] }));
             }
