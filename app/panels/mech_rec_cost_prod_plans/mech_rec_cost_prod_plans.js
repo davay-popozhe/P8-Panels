@@ -15,9 +15,8 @@ import { MessagingСtx } from "../../context/messaging"; //Контекст со
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { P8PGantt } from "../../components/p8p_gantt"; //Диаграмма Ганта
-import { formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
+import { xml2JSON, formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
 import { useFilteredPlans } from "./hooks"; //Вспомогательные хуки
-import { XMLParser } from "fast-xml-parser";
 
 //---------
 //Константы
@@ -49,23 +48,12 @@ const STYLES = {
 //------------------------------------
 
 //Разбор XML с данными спецификации производственной программы
-const parseProdPlanSpXML = xmlDoc => {
-    return new Promise((resolve, reject) => {
-        try {
-            const parser = new XMLParser({
-                ignoreDeclaration: true,
-                ignoreAttributes: false,
-                parseAttributeValue: true,
-                attributeNamePrefix: "",
-                attributeValueProcessor: (name, val) =>
-                    name == "numb" ? undefined : ["start", "end"].includes(name) ? formatDateJSONDateOnly(val) : val
-            });
-            const data = parser.parse(xmlDoc);
-            resolve(data.XDATA);
-        } catch (e) {
-            reject(e);
-        }
+const parseProdPlanSpXML = async xmlDoc => {
+    const data = await xml2JSON({
+        xmlDoc,
+        attributeValueProcessor: (name, val) => (name == "numb" ? undefined : ["start", "end"].includes(name) ? formatDateJSONDateOnly(val) : val)
     });
+    return data.XDATA;
 };
 
 //Список планов

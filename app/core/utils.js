@@ -7,7 +7,7 @@
 //Подключение библиотек
 //---------------------
 
-import { XMLBuilder } from "fast-xml-parser"; //Конвертация XML в JSON и JSON в XML
+import { XMLParser, XMLBuilder } from "fast-xml-parser"; //Конвертация XML в JSON и JSON в XML
 import dayjs from "dayjs"; //Работа с датами
 
 //---------
@@ -56,6 +56,26 @@ const object2Base64XML = (obj, builderOptions) => {
     return btoa(unescape(encodeURIComponent(builder.build(obj))));
 };
 
+//Конвертация XML в JSON
+const xml2JSON = ({ xmlDoc, attributeValueProcessor, isArray }) => {
+    return new Promise((resolve, reject) => {
+        try {
+            let opts = {
+                ignoreDeclaration: true,
+                ignoreAttributes: false,
+                parseAttributeValue: true,
+                attributeNamePrefix: ""
+            };
+            if (attributeValueProcessor) opts.attributeValueProcessor = attributeValueProcessor;
+            if (isArray) opts.isArray = isArray;
+            const parser = new XMLParser(opts);
+            resolve(parser.parse(xmlDoc));
+        } catch (e) {
+            reject(e);
+        }
+    });
+};
+
 //Форматирование даты в формат РФ
 const formatDateRF = value => (value ? dayjs(value).format("DD.MM.YYYY") : null);
 
@@ -75,4 +95,14 @@ const genGUID = () =>
 //Интерфейс модуля
 //----------------
 
-export { hasValue, getDisplaySize, deepCopyObject, object2Base64XML, formatDateRF, formatDateJSONDateOnly, formatNumberRFCurrency, genGUID };
+export {
+    hasValue,
+    getDisplaySize,
+    deepCopyObject,
+    object2Base64XML,
+    xml2JSON,
+    formatDateRF,
+    formatDateJSONDateOnly,
+    formatNumberRFCurrency,
+    genGUID
+};
