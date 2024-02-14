@@ -698,12 +698,14 @@ create or replace package body PKG_P8PANELS_BASE as
     SARG_NAME := PKG_CONTPRMLOC.FIRST_(RCONTAINER => ARGS_VALS);
     while (SARG_NAME is not null)
     loop
-      /* Считываем очередной параметр */
+      /* Считываем значение параметра */
       RARG_VAL := PKG_CONTPRMLOC.GET(RCONTAINER => ARGS_VALS, SNAME => SARG_NAME);
+      /* Считываем описание параметра */
+      RARG := PKG_OBJECT_DESC.FETCH_ARGUMENT(RARGUMENTS => ARGS, SARGUMENT_NAME => SARG_NAME);
       /* Если это выходной параметр */
-      if (RARG_VAL.IN_OUT in (PKG_STD.PARAM_TYPE_IN_OUT, PKG_STD.PARAM_TYPE_OUT)) then
+      if (RARG.IN_OUT in (PKG_STD.PARAM_TYPE_IN_OUT, PKG_STD.PARAM_TYPE_OUT)) then
         /* Сформируем для него значение в зависимости от его типа */
-        case RARG_VAL.DATA_TYPE
+        case RARG.DATA_TYPE
           /* Строка */
           when PKG_STD.DATA_TYPE_STR then
             RRESP_ARGUMENT_VALUE := PKG_XMAKE.VALUE(ICURSOR => XRESP,
