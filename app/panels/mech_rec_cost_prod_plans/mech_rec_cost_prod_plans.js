@@ -12,18 +12,21 @@ import PropTypes from "prop-types"; //Контроль свойств компо
 import { Drawer, Fab, Box, List, ListItemButton, ListItemText, Typography, Grid, TextField, Select, MenuItem, InputLabel } from "@mui/material"; //Интерфейсные элементы
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
-import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { P8PGantt } from "../../components/p8p_gantt"; //Диаграмма Ганта
 import { xml2JSON, formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
-import { useFilteredPlans } from "./hooks"; //Вспомогательные хуки
+import { useFilteredPlanCtlgs } from "./hooks"; //Вспомогательные хуки
 
 //---------
 //Константы
 //---------
 
+//Поля сортировки
+const SORT_REP_DATE = "DREP_DATE";
+const SORT_REP_DATE_TO = "DREP_DATE_TO";
+
 //Высота диаграммы Ганта
-const GANTT_HEIGHT = "650px";
+const GANTT_HEIGHT = "75vh";
 
 //Ширина диаграммы Ганта
 const GANTT_WIDTH = "98vw";
@@ -56,8 +59,8 @@ const parseProdPlanSpXML = async xmlDoc => {
     return data.XDATA;
 };
 
-//Список планов
-const PlansList = ({ plans = [], selectedPlan, filter, setFilter, onClick } = {}) => {
+//Список каталогов планов
+const PlanCtlgsList = ({ planCtlgs = [], selectedPlanCtlg, filter, setFilter, onClick } = {}) => {
     //Генерация содержимого
     return (
         <div>
@@ -73,9 +76,9 @@ const PlansList = ({ plans = [], selectedPlan, filter, setFilter, onClick } = {}
                 }}
             ></TextField>
             <List>
-                {plans.map(p => (
-                    <ListItemButton key={p.NRN} selected={p.NRN === selectedPlan} onClick={() => (onClick ? onClick(p) : null)}>
-                        <ListItemText primary={<Typography sx={STYLES.PLANS_LIST_ITEM_PRIMARY}>{p.SDOC_INFO}</Typography>} />
+                {planCtlgs.map(p => (
+                    <ListItemButton key={p.NRN} selected={p.NRN === selectedPlanCtlg} onClick={() => (onClick ? onClick(p) : null)}>
+                        <ListItemText primary={<Typography sx={STYLES.PLANS_LIST_ITEM_PRIMARY}>{p.SNAME}</Typography>} />
                     </ListItemButton>
                 ))}
             </List>
@@ -83,10 +86,10 @@ const PlansList = ({ plans = [], selectedPlan, filter, setFilter, onClick } = {}
     );
 };
 
-//Контроль свойств - Список планов
-PlansList.propTypes = {
-    plans: PropTypes.array,
-    selectedPlan: PropTypes.number,
+//Контроль свойств - Список каталогов планов
+PlanCtlgsList.propTypes = {
+    planCtlgs: PropTypes.array,
+    selectedPlanCtlg: PropTypes.number,
     onClick: PropTypes.func,
     filter: PropTypes.string,
     setFilter: PropTypes.func
@@ -102,23 +105,21 @@ const MechRecCostProdPlans = () => {
     let [state, setState] = useState({
         init: false,
         showPlanList: false,
-        plans: [],
-        plansLoaded: false,
-        selectedPlanSpecsLoaded: false,
-        selectedPlan: null,
-        selectedPlanMaxLevel: null,
-        selectedPlanLevel: null,
-        selectedPlanMenuItems: null,
-        selectedPlanGanttDef: {},
-        selectedPlanSpecs: []
+        planCtlgs: [],
+        planCtlgsLoaded: false,
+        selectedPlanCtlgSpecsLoaded: false,
+        selectedPlanCtlg: null,
+        selectedPlanCtlgMaxLevel: null,
+        selectedPlanCtlgLevel: null,
+        selectedPlanCtlgSort: null,
+        selectedPlanCtlgMenuItems: null,
+        selectedPlanCtlgGanttDef: {},
+        selectedPlanCtlgSpecs: []
     });
 
     const [filter, setFilter] = useState("");
 
-    const filteredPlans = useFilteredPlans(state.plans, filter);
-
-    //Подключение к контексту приложения
-    const { pOnlineShowDocument } = useContext(ApplicationСtx);
+    const filteredPlanCtgls = useFilteredPlanCtlgs(state.planCtlgs, filter);
 
     //Подключение к контексту сообщений
     const { InlineMsgInfo } = useContext(MessagingСtx);
@@ -126,106 +127,110 @@ const MechRecCostProdPlans = () => {
     //Подключение к контексту взаимодействия с сервером
     const { executeStored } = useContext(BackEndСtx);
 
-    // Инициализация планов
-    const initPlans = useCallback(async () => {
+    // Инициализация каталогов планов
+    const initPlanCtlgs = useCallback(async () => {
         if (!state.init) {
             const data = await executeStored({
-                stored: "PKG_P8PANELS_MECHREC.PRODPLAN_INIT",
+                stored: "PKG_P8PANELS_MECHREC.ACATALOG_INIT",
                 args: {},
                 respArg: "COUT",
-                isArray: name => name === "XFCPRODPLANS"
+                isArray: name => name === "XFCPRODPLAN_CRNS"
             });
-            setState(pv => ({ ...pv, init: true, plans: [...(data?.XFCPRODPLANS || [])], plansLoaded: true }));
+            setState(pv => ({ ...pv, init: true, planCtlgs: [...(data?.XFCPRODPLAN_CRNS || [])], planCtlgsLoaded: true }));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.init, executeStored]);
 
-    //Выбор плана
+    //Выбор каталога планов
     const selectPlan = project => {
         setState(pv => ({
             ...pv,
-            selectedPlan: project,
-            selectedPlanSpecsLoaded: false,
-            selectedPlanMaxLevel: null,
-            selectedPlanLevel: null,
-            selectedPlanMenuItems: null,
-            selectedPlanSpecs: [],
-            selectedPlanGanttDef: {},
+            selectedPlanCtlg: project,
+            selectedPlanCtlgSpecsLoaded: false,
+            selectedPlanCtlgMaxLevel: null,
+            selectedPlanCtlgLevel: null,
+            selectedPlanCtlgSort: null,
+            selectedPlanCtlgMenuItems: null,
+            selectedPlanCtlgSpecs: [],
+            selectedPlanCtlgGanttDef: {},
             showPlanList: false
         }));
     };
 
-    //Сброс выбора плана
+    //Сброс выбора каталога планов
     const unselectPlan = () =>
         setState(pv => ({
             ...pv,
-            selectedPlanSpecsLoaded: false,
-            selectedPlan: null,
-            selectedPlanMaxLevel: null,
-            selectedPlanLevel: null,
-            selectedPlanMenuItems: null,
-            selectedPlanSpecs: [],
-            selectedPlanGanttDef: {},
+            selectedPlanCtlgSpecsLoaded: false,
+            selectedPlanCtlg: null,
+            selectedPlanCtlgMaxLevel: null,
+            selectedPlanCtlgLevel: null,
+            selectedPlanCtlgSort: null,
+            selectedPlanCtlgMenuItems: null,
+            selectedPlanCtlgSpecs: [],
+            selectedPlanCtlgGanttDef: {},
             showPlanList: false
         }));
 
-    //Загрузка списка спецификаций плана
-    const loadPlanSpecs = useCallback(
-        async (level = null) => {
+    //Загрузка списка спецификаций каталога планов
+    const loadPlanCtglSpecs = useCallback(
+        async (level = null, sort = null) => {
             const data = await executeStored({
                 stored: "PKG_P8PANELS_MECHREC.FCPRODPLANSP_GET",
-                args: { NFCPRODPLAN: state.selectedPlan, NLEVEL: level }
+                args: { NCRN: state.selectedPlanCtlg, NLEVEL: level, SSORT_FIELD: sort }
             });
             let doc = await parseProdPlanSpXML(data.COUT);
             setState(pv => ({
                 ...pv,
-                selectedPlanMaxLevel: data.NMAX_LEVEL,
-                selectedPlanLevel: level || level === 0 ? level : data.NMAX_LEVEL,
-                selectedPlanMenuItems: state.selectedPlanMenuItems
-                    ? state.selectedPlanMenuItems
+                selectedPlanCtlgMaxLevel: data.NMAX_LEVEL,
+                selectedPlanCtlgLevel: level || level === 0 ? level : data.NMAX_LEVEL,
+                selectedPlanCtlgSort: sort,
+                selectedPlanCtlgMenuItems: state.selectedPlanCtlgMenuItems
+                    ? state.selectedPlanCtlgMenuItems
                     : [...Array(data.NMAX_LEVEL).keys()].map(el => el + 1),
-                selectedPlanSpecsLoaded: true,
-                selectedPlanGanttDef: doc.XGANTT_DEF ? { ...doc.XGANTT_DEF } : {},
-                selectedPlanSpecs: [...(doc?.XGANTT_TASKS || [])]
+                selectedPlanCtlgSpecsLoaded: true,
+                selectedPlanCtlgGanttDef: doc.XGANTT_DEF ? { ...doc.XGANTT_DEF } : {},
+                selectedPlanCtlgSpecs: [...(doc?.XGANTT_TASKS || [])]
             }));
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [executeStored, state.ident, state.selectedPlan]
+        [executeStored, state.ident, state.selectedPlanCtlg]
     );
 
-    //Обработка нажатия на элемент в списке планов
+    //Обработка нажатия на элемент в списке каталогов планов
     const handleProjectClick = project => {
-        if (state.selectedPlan != project.NRN) selectPlan(project.NRN);
+        if (state.selectedPlanCtlg != project.NRN) selectPlan(project.NRN);
         else unselectPlan();
-    };
-
-    //Отработка нажатия на заголовок плана
-    const handleTitleClick = () => {
-        state.selectedPlan ? pOnlineShowDocument({ unitCode: "CostProductPlans", document: state.selectedPlan }) : null;
     };
 
     //При подключении компонента к странице
     useEffect(() => {
-        initPlans();
+        initPlanCtlgs();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    //При смене выбранного плана
+    //При смене выбранного каталога плана
     useEffect(() => {
-        if (state.selectedPlan) loadPlanSpecs();
-    }, [state.selectedPlan, loadPlanSpecs]);
+        if (state.selectedPlanCtlg) loadPlanCtglSpecs(null, SORT_REP_DATE_TO);
+    }, [state.selectedPlanCtlg, loadPlanCtglSpecs]);
 
     //Выбор уровня
-    const handleChangeSelectList = selectedLevel => {
-        loadPlanSpecs(selectedLevel);
-        setState(pv => ({ ...pv, selectedPlanLevel: selectedLevel }));
+    const handleChangeSelectLevel = selectedLevel => {
+        loadPlanCtglSpecs(selectedLevel, state.selectedPlanCtlgSort);
+        setState(pv => ({ ...pv, selectedPlanCtlgLevel: selectedLevel }));
+    };
+
+    //Выбор сортировки
+    const handleChangeSelectSort = selectedSort => {
+        loadPlanCtglSpecs(state.selectedPlanCtlgLevel, selectedSort);
+        setState(pv => ({ ...pv, selectedPlanCtlgSort: selectedSort }));
     };
 
     //Генерация содержимого
     return (
         <Box p={2}>
             <Fab variant="extended" sx={STYLES.PLANS_BUTTON} onClick={() => setState(pv => ({ ...pv, showPlanList: !pv.showPlanList }))}>
-                Планы
+                Каталоги планов
             </Fab>
             <Drawer
                 anchor={"left"}
@@ -233,9 +238,9 @@ const MechRecCostProdPlans = () => {
                 onClose={() => setState(pv => ({ ...pv, showPlanList: false }))}
                 sx={STYLES.PLANS_DRAWER}
             >
-                <PlansList
-                    plans={filteredPlans}
-                    selectedPlan={state.selectedPlan}
+                <PlanCtlgsList
+                    planCtlgs={filteredPlanCtgls}
+                    selectedPlanCtlg={state.selectedPlanCtlg}
                     filter={filter}
                     setFilter={setFilter}
                     onClick={handleProjectClick}
@@ -244,44 +249,66 @@ const MechRecCostProdPlans = () => {
             {state.init == true ? (
                 <Grid container spacing={1}>
                     <Grid item xs={12}>
-                        {state.selectedPlanSpecsLoaded ? (
-                            state.selectedPlanSpecs.length === 0 ? (
-                                <InlineMsgInfo okBtn={false} text={"В плане отсутствуют записи спецификации"} />
+                        {state.selectedPlanCtlgSpecsLoaded ? (
+                            state.selectedPlanCtlgSpecs.length === 0 ? (
+                                <InlineMsgInfo okBtn={false} text={"В каталоге планов отсутствуют записи спецификации"} />
                             ) : (
                                 <Box sx={STYLES.GANTT_CONTAINER} p={1}>
-                                    {state.selectedPlanMaxLevel ? (
-                                        <Box sx={{ float: "right" }}>
-                                            <InputLabel id="demo-simple-select-label">Уровень</InputLabel>
-                                            <Select
-                                                labelId="demo-simple-select-label"
-                                                id="demo-simple-select"
-                                                value={state.selectedPlanLevel}
-                                                label="Уровень"
-                                                onChange={event => {
-                                                    handleChangeSelectList(event.target.value);
-                                                }}
-                                                defaultValue={state.selectedPlanLevel}
-                                            >
-                                                {state.selectedPlanMenuItems.map(el => (
-                                                    <MenuItem value={el} key={el}>
-                                                        {el}
+                                    {state.selectedPlanCtlgMaxLevel ? (
+                                        <Box sx={{ display: "table", float: "right" }}>
+                                            <Box sx={{ display: "table-cell", verticalAlign: "middle" }}>
+                                                <InputLabel id="select-label-sort">Сортировка</InputLabel>
+                                                <Select
+                                                    labelId="select-label-sort"
+                                                    id="select-sort"
+                                                    value={state.selectedPlanCtlgSort}
+                                                    label="Сортировка"
+                                                    onChange={event => {
+                                                        handleChangeSelectSort(event.target.value);
+                                                    }}
+                                                    defaultValue={state.selectedPlanCtlgLevel}
+                                                >
+                                                    <MenuItem value={SORT_REP_DATE_TO} key="1">
+                                                        Дата выпуска
                                                     </MenuItem>
-                                                ))}
-                                            </Select>
+                                                    <MenuItem value={SORT_REP_DATE} key="2">
+                                                        Дата запуска
+                                                    </MenuItem>
+                                                </Select>
+                                            </Box>
+                                            <Box sx={{ display: "table-cell", verticalAlign: "middle", paddingLeft: "15px" }}>
+                                                <InputLabel id="select-label-level">До уровня</InputLabel>
+                                                <Select
+                                                    labelId="select-label-level"
+                                                    id="select-level"
+                                                    value={state.selectedPlanCtlgLevel}
+                                                    label="Уровень"
+                                                    onChange={event => {
+                                                        handleChangeSelectLevel(event.target.value);
+                                                    }}
+                                                    defaultValue={state.selectedPlanCtlgLevel}
+                                                >
+                                                    {state.selectedPlanCtlgMenuItems.map(el => (
+                                                        <MenuItem value={el} key={el}>
+                                                            {el}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </Box>
                                         </Box>
-                                    ) : null}
+                                    ) : // </Grid>
+                                    null}
                                     <P8PGantt
                                         {...P8P_GANTT_CONFIG_PROPS}
-                                        {...state.selectedPlanGanttDef}
+                                        {...state.selectedPlanCtlgGanttDef}
                                         height={GANTT_HEIGHT}
-                                        onTitleClick={handleTitleClick}
                                         titleStyle={STYLES.GANTT_TITLE}
-                                        tasks={state.selectedPlanSpecs}
+                                        tasks={state.selectedPlanCtlgSpecs}
                                     />
                                 </Box>
                             )
-                        ) : !state.selectedPlan ? (
-                            <InlineMsgInfo okBtn={false} text={"Укажите план для отображения его спецификации"} />
+                        ) : !state.selectedPlanCtlg ? (
+                            <InlineMsgInfo okBtn={false} text={"Укажите каталог планов для отображения их спецификаций"} />
                         ) : null}
                     </Grid>
                 </Grid>

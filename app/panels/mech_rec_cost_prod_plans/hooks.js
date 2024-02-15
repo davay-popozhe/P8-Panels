@@ -14,10 +14,10 @@ import React from "react"; //Классы React
 //-----------
 
 //Клиентский отбор загруженных планов по поисковой фразе
-export const useFilteredPlans = (plans, filter) => {
-    const filteredPlans = React.useMemo(() => {
-        return plans.filter(project => project.SDOC_INFO.toLowerCase().includes(filter));
-    }, [plans, filter]);
+export const useFilteredPlanCtlgs = (planCtlgs, filter) => {
+    const filteredPlanCtlgs = React.useMemo(() => {
+        return planCtlgs.filter(catalog => catalog.SNAME.toString().toLowerCase().includes(filter));
+    }, [planCtlgs, filter]);
 
-    return filteredPlans;
+    return filteredPlanCtlgs;
 };
