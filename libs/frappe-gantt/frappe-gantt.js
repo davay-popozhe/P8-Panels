@@ -1261,7 +1261,9 @@ var Gantt = (function () {
 
         setup_layers() {
             this.layers = {};
-            const layers = ['grid', 'date', 'arrow', 'progress', 'bar', 'details'];
+            //ЦИТК
+            const layers = ['grid', 'arrow', 'progress', 'bar', 'details', 'date'];
+            //ЦИТК
             // make group layers
             for (let layer of layers) {
                 this.layers[layer] = createSVG('g', {
@@ -1343,7 +1345,9 @@ var Gantt = (function () {
                 width: header_width,
                 height: header_height,
                 class: 'grid-header',
-                append_to: this.layers.grid,
+                //ЦИТК
+                append_to: this.layers.date
+                //ЦИТК
             });
         }
 
@@ -1716,7 +1720,11 @@ var Gantt = (function () {
                 is_resizing_left = false;
                 is_resizing_right = false;
             });
-
+			
+            //ЦИТК
+            $.on(this.$container, 'scroll', e => { this.layers.date.setAttribute('transform', 'translate(0,'+ e.currentTarget.scrollTop +')'); });
+            //ЦИТК
+			
             $.on(this.$svg, 'mouseup', (e) => {
                 //ЦИТК
                 const fireId = this.bar_being_dragged;
