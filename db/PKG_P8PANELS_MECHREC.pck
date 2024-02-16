@@ -207,8 +207,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
     CSQL                    clob;                            -- Буфер для запроса
     ICURSOR                 integer;                         -- Курсор для исполнения запроса
     /* Значения спецификации */
-    NTASK_RN               PKG_STD.TREF;                     -- Рег. номер спецификации
-    NTASK_PRN              PKG_STD.TREF;                     -- Рег. номер родителя спецификации
+    NTASK_RN                PKG_STD.TREF;                    -- Рег. номер спецификации
+    NTASK_PRN               PKG_STD.TREF;                    -- Рег. номер родителя спецификации
     STASK_PROD_ORDER        PKG_STD.TSTRING;                 -- Заказ
     DTASK_REP_DATE          PKG_STD.TLDATE;                  -- Дата запуска
     DTASK_REP_DATE_TO       PKG_STD.TLDATE;                  -- Дата выпуска
@@ -557,7 +557,32 @@ create or replace package body PKG_P8PANELS_MECHREC as
     PKG_XFAST.DOWN_NODE(SNAME => 'XDATA');
     /* Цикл по планам и отчетам производства изделий */
     for REC in (select T.RN   as NRN,
-                       T.NAME as SNAME
+                       T.NAME as SNAME,
+                       (select count(P.RN)
+                          from FCPRODPLAN P,
+                               FINSTATE   FS
+                         where P.CRN = T.RN
+                           and P.CATEGORY = NFCPRODPLAN_CATEGORY
+                           and P.STATUS = NFCPRODPLAN_STATUS
+                           and FS.RN = P.TYPE
+                           and FS.CODE = SFCPRODPLAN_TYPE
+                           and exists
+                         (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
+                                 null
+                                  from USERPRIV UP
+                                 where UP.JUR_PERS = P.JUR_PERS
+                                   and UP.UNITCODE = 'CostProductPlans'
+                                   and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                                      UR.ROLEID
+                                                       from USERROLES UR
+                                                      where UR.AUTHID = UTILIZER)
+                                union all
+                                select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
+                                 null
+                                  from USERPRIV UP
+                                 where UP.JUR_PERS = P.JUR_PERS
+                                   and UP.UNITCODE = 'CostProductPlans'
+                                   and UP.AUTHID = UTILIZER)) as NCOUNT_DOCS
                   from ACATALOG T,
                        UNITLIST UL
                  where T.DOCNAME = 'CostProductPlans'
@@ -577,6 +602,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       /* Описываем план */
       PKG_XFAST.ATTR(SNAME => 'NRN', NVALUE => REC.NRN);
       PKG_XFAST.ATTR(SNAME => 'SNAME', SVALUE => REC.SNAME);
+      PKG_XFAST.ATTR(SNAME => 'NCOUNT_DOCS', NVALUE => REC.NCOUNT_DOCS);
       /* Закрываем план */
       PKG_XFAST.UP();
     end loop;

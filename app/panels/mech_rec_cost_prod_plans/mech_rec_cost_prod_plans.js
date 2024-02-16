@@ -9,7 +9,23 @@
 
 import React, { useContext, useState, useCallback, useEffect } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Drawer, Fab, Box, List, ListItemButton, ListItemText, Typography, Grid, TextField, Select, MenuItem, InputLabel } from "@mui/material"; //Интерфейсные элементы
+import {
+    Drawer,
+    Fab,
+    Box,
+    List,
+    ListItemButton,
+    ListItemText,
+    Typography,
+    Grid,
+    TextField,
+    Select,
+    MenuItem,
+    InputLabel,
+    FormGroup,
+    FormControlLabel,
+    Checkbox
+} from "@mui/material"; //Интерфейсные элементы
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
@@ -20,6 +36,9 @@ import { useFilteredPlanCtlgs } from "./hooks"; //Вспомогательные
 //---------
 //Константы
 //---------
+
+//Склонения для документов
+const DECLINATIONS = ["план", "плана", "планов"];
 
 //Поля сортировки
 const SORT_REP_DATE = "DREP_DATE";
@@ -34,13 +53,16 @@ const GANTT_WIDTH = "98vw";
 //Стили
 const STYLES = {
     PLANS_FINDER: { marginTop: "10px", marginLeft: "10px", width: "93%" },
+    PLANS_CHECKBOX_HAVEDOCS: { alignContent: "space-around" },
+    PLANS_LIST_ITEM_ZERODOCS: { backgroundColor: "#ebecec" },
     PLANS_LIST_ITEM_PRIMARY: { wordWrap: "break-word" },
+    PLANS_LIST_ITEM_SECONDARY: { wordWrap: "break-word", fontSize: "0.6rem", textTransform: "uppercase" },
     PLANS_BUTTON: { position: "absolute" },
     PLANS_DRAWER: {
-        minWidth: "250px",
+        width: "350px",
         display: "inline-block",
         flexShrink: 0,
-        [`& .MuiDrawer-paper`]: { minWidth: "250px", display: "inline-block", boxSizing: "border-box" }
+        [`& .MuiDrawer-paper`]: { width: "350px", display: "inline-block", boxSizing: "border-box" }
     },
     GANTT_CONTAINER: { height: GANTT_HEIGHT, width: GANTT_WIDTH },
     GANTT_TITLE: { paddingLeft: "100px", paddingRight: "120px" }
@@ -59,6 +81,26 @@ const parseProdPlanSpXML = async xmlDoc => {
     return data.XDATA;
 };
 
+//Форматирование для отображения количества документов
+const formatCountDocs = nCountDocs => {
+    //Получаем последнюю цифру в значении
+    let num = (nCountDocs % 100) % 10;
+    //Документов
+    if (nCountDocs > 10 && nCountDocs < 20) {
+        return `${nCountDocs} ${DECLINATIONS[2]}`;
+    }
+    //Документа
+    if (num > 1 && num < 5) {
+        return `${nCountDocs} ${DECLINATIONS[1]}`;
+    }
+    //Документ
+    if (num == 1) {
+        return `${nCountDocs} ${DECLINATIONS[0]}`;
+    }
+    //Документов
+    return `${nCountDocs} ${DECLINATIONS[2]}`;
+};
+
 //Список каталогов планов
 const PlanCtlgsList = ({ planCtlgs = [], selectedPlanCtlg, filter, setFilter, onClick } = {}) => {
     //Генерация содержимого
@@ -67,18 +109,48 @@ const PlanCtlgsList = ({ planCtlgs = [], selectedPlanCtlg, filter, setFilter, on
             <TextField
                 sx={STYLES.PLANS_FINDER}
                 name="planFilter"
-                label="План"
-                value={filter}
+                label="Каталог"
+                value={filter.ctlgName}
                 variant="standard"
                 fullWidth
                 onChange={event => {
-                    setFilter(event.target.value);
+                    setFilter(pv => ({ ...pv, ctlgName: event.target.value }));
                 }}
             ></TextField>
+            <FormGroup sx={STYLES.PLANS_CHECKBOX_HAVEDOCS}>
+                <FormControlLabel
+                    control={
+                        <Checkbox
+                            checked={filter.haveDocs}
+                            onChange={event => {
+                                setFilter(pv => ({ ...pv, haveDocs: event.target.checked }));
+                            }}
+                        />
+                    }
+                    label="Только с планами"
+                    labelPlacement="end"
+                />
+            </FormGroup>
             <List>
                 {planCtlgs.map(p => (
-                    <ListItemButton key={p.NRN} selected={p.NRN === selectedPlanCtlg} onClick={() => (onClick ? onClick(p) : null)}>
-                        <ListItemText primary={<Typography sx={STYLES.PLANS_LIST_ITEM_PRIMARY}>{p.SNAME}</Typography>} />
+                    <ListItemButton
+                        sx={p.NCOUNT_DOCS == 0 ? STYLES.PLANS_LIST_ITEM_ZERODOCS : null}
+                        key={p.NRN}
+                        selected={p.NRN === selectedPlanCtlg}
+                        onClick={() => (onClick ? onClick(p) : null)}
+                    >
+                        <ListItemText
+                            primary={<Typography sx={STYLES.PLANS_LIST_ITEM_PRIMARY}>{p.SNAME}</Typography>}
+                            secondary={
+                                <Typography
+                                    sx={{
+                                        ...STYLES.PLANS_LIST_ITEM_SECONDARY
+                                    }}
+                                >
+                                    {formatCountDocs(p.NCOUNT_DOCS)}
+                                </Typography>
+                            }
+                        />
                     </ListItemButton>
                 ))}
             </List>
@@ -116,9 +188,10 @@ const MechRecCostProdPlans = () => {
         selectedPlanCtlgGanttDef: {},
         selectedPlanCtlgSpecs: []
     });
+    //Состояние для фильтра каталогов
+    const [filter, setFilter] = useState({ ctlgName: "", haveLinks: false });
 
-    const [filter, setFilter] = useState("");
-
+    //Массив отфильтрованных каталогов
     const filteredPlanCtgls = useFilteredPlanCtlgs(state.planCtlgs, filter);
 
     //Подключение к контексту сообщений
