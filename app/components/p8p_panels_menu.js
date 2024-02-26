@@ -61,9 +61,18 @@ const STYLES = {
     GRID_PANEL_CARD_CONTENT_TITLE: { alignItems: "center" },
     GRID_PANEL_CARD_ACTIONS: { marginTop: "auto", display: "flex", justifyContent: "flex-end", alignItems: "flex-start" },
     DESKTOP_GROUP_HEADER: { fontWeight: "bold", fontFamily: "tahoma, arial, verdana, sans-serif!important", fontSize: "13px!important" },
-    DESKTOP_ITEM_BUTTON: { fontSize: "12px", textTransform: "none", "&:hover": { backgroundColor: "#c3e1ff" } },
-    DESKTOP_ITEM_STACK: { justifyContent: "center", alignItems: "center" },
-    DESKTOP_ITEM_ICON: { width: "64px", height: "64px", fontSize: "64px" }
+    DESKTOP_ITEM_BUTTON: { fontSize: "12px", textTransform: "none", "&:hover": { backgroundColor: "#c3e1ff" }, maxWidth: "150px" },
+    DESKTOP_ITEM_STACK: { justifyContent: "center", alignItems: "center", fontSize: "12px" },
+    DESKTOP_ITEM_ICON: { width: "48px", height: "48px", fontSize: "48px" },
+    DESKTOP_ITEM_CATION: {
+        display: "-webkit-box",
+        overflow: "hidden",
+        WebkitBoxOrient: "vertical",
+        WebkitLineClamp: 2,
+        fontSize: "12px",
+        maxWidth: "140px",
+        lineHeight: "1.2"
+    }
 };
 
 //--------------------------------
@@ -153,10 +162,13 @@ const getPanelsLinks = ({ variant, panels, selectedPanel, group, defaultGroupTyt
                             key={panel.name}
                             onClick={() => (onItemNavigate ? onItemNavigate(panel) : null)}
                             sx={STYLES.DESKTOP_ITEM_BUTTON}
+                            title={panel.caption}
                         >
                             <Stack sx={STYLES.DESKTOP_ITEM_STACK}>
                                 <Icon sx={STYLES.DESKTOP_ITEM_ICON}>{panel.icon}</Icon>
-                                {panel.caption}
+                                <Typography sx={STYLES.DESKTOP_ITEM_CATION} variant="body1">
+                                    {panel.caption}
+                                </Typography>
                             </Stack>
                         </Button>
                     )

@@ -455,7 +455,7 @@ P8PTableFiltersChips.propTypes = {
 //Таблица
 const P8PTable = ({
     columnsDef,
-    groups = [{}],
+    groups,
     rows,
     orders,
     filters,
@@ -744,7 +744,7 @@ const P8PTable = ({
                     </TableHead>
                     <TableBody>
                         {rows.length > 0
-                            ? groups.map((group, g) => {
+                            ? (Array.isArray(groups) && groups.length > 0 ? groups : [{}]).map((group, g) => {
                                   const rowsView = rows.map((row, i) =>
                                       !group?.name || group?.name == row.groupName ? (
                                           <React.Fragment key={`data-${i}`}>
