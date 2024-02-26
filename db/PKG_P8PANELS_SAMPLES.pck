@@ -74,28 +74,30 @@ create or replace package body PKG_P8PANELS_SAMPLES as
     NVERSION := GET_SESSION_VERSION(SUNITCODE => 'AGNLIST');
     PKG_XFAST.PROLOGUE(ITYPE => PKG_XFAST.CONTENT_);
     PKG_XFAST.DOWN_NODE(SNAME => 'DATA');
-    for C in (select D.*
-                from (select T.RN      NRN,
-                             T.AGNABBR SAGNABBR,
-                             T.AGNNAME SAGNNAME
-                        from AGNLIST T
-                       where T.VERSION = NVERSION
-                         and exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */
-                               null
-                                from USERPRIV UP
-                               where UP.CATALOG = T.CRN
-                                 and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
-                                                    UR.ROLEID
-                                                     from USERROLES UR
-                                                    where UR.AUTHID = UTILIZER)
-                              union all
-                              select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */
-                               null
-                                from USERPRIV UP
-                               where UP.CATALOG = T.CRN
-                                 and UP.AUTHID = UTILIZER)
-                       order by T.RN desc) D
-               where ROWNUM <= 10)
+    for C in (select TMP.*
+                from (select D.*,
+                             ROWNUM NROWNUM
+                        from (select T.RN      NRN,
+                                     T.AGNABBR SAGNABBR,
+                                     T.AGNNAME SAGNNAME
+                                from AGNLIST T
+                               where T.VERSION = NVERSION
+                                 and exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */
+                                       null
+                                        from USERPRIV UP
+                                       where UP.CATALOG = T.CRN
+                                         and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                                            UR.ROLEID
+                                                             from USERROLES UR
+                                                            where UR.AUTHID = UTILIZER)
+                                      union all
+                                      select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */
+                                       null
+                                        from USERPRIV UP
+                                       where UP.CATALOG = T.CRN
+                                         and UP.AUTHID = UTILIZER)
+                               order by T.RN desc) D) TMP
+               where TMP.NROWNUM <= 10)
     loop
       PKG_XFAST.DOWN_NODE(SNAME => 'AGENTS');
       PKG_XFAST.ATTR(SNAME => 'NRN', NVALUE => C.NRN);
@@ -301,16 +303,22 @@ create or replace package body PKG_P8PANELS_SAMPLES as
       /* Собираем запрос */
       CSQL := 'select *
             from (select D.*,
-                         ROWNUM NROW
+                         %ROWNUM% NROW
                     from (select AG.AGNABBR SAGNABBR,
                                  AG.AGNNAME SAGNNAME,
                                  AG.AGNTYPE NAGNTYPE
                             from AGNLIST AG
-                           where exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */ null from USERPRIV UP where UP.CATALOG = AG.CRN and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */ UR.ROLEID from USERROLES UR where UR.AUTHID = UTILIZER)
+                           where exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */ null from USERPRIV UP where UP."CATALOG" = AG.CRN and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */ UR.ROLEID from USERROLES UR where UR.AUTHID = UTILIZER())
                                          union all
-                                         select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */ null from USERPRIV UP where UP.CATALOG = AG.CRN and UP.AUTHID = UTILIZER)
+                                         select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */ null from USERPRIV UP where UP."CATALOG" = AG.CRN and UP.AUTHID = UTILIZER())
                              and AG.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
            where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Корректировка запроса под СУБД */
+      if (PKG_COMPATIBLE.DATABASE_() = 0) then
+        CSQL := replace(csql, '%ROWNUM%', 'ROWNUM');
+      else
+        CSQL := replace(csql, '%ROWNUM%', '(row_number() over())::numeric');
+      end if;
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
       /* Учтём фильтры */
@@ -331,6 +339,7 @@ create or replace package body PKG_P8PANELS_SAMPLES as
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 1);
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 2);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 3);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 4);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;

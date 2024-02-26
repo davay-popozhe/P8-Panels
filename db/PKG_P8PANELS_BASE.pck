@@ -168,7 +168,9 @@ create or replace package body PKG_P8PANELS_BASE as
         SRES := SDATA_TYPE_CLOB;
       /* Неизвестный тип данных */
       else
-        P_EXCEPTION(0, 'Тип данных "%s" не поддерживается.', TO_CHAR(NSTD_DATA_TYPE));
+        P_EXCEPTION(0,
+                    'Тип данных "%s" не поддерживается.',
+                    COALESCE(TO_CHAR(NSTD_DATA_TYPE), '<НЕ ОПРЕДЕЛЁН>'));
     end case;
     /* Возвращаем результат */
     return SRES;
@@ -753,7 +755,7 @@ create or replace package body PKG_P8PANELS_BASE as
                                                                              RNODE02 => PKG_XMAKE.ELEMENT(ICURSOR  => XRESP,
                                                                                                           SNAME    => SRESP_TAG_SDATA_TYPE,
                                                                                                           RVALUE00 => PKG_XMAKE.VALUE(ICURSOR => XRESP,
-                                                                                                                                      SVALUE  => STD_DATA_TYPE_TO_STR(NSTD_DATA_TYPE => RARG_VAL.DATA_TYPE)))));
+                                                                                                                                      SVALUE  => STD_DATA_TYPE_TO_STR(NSTD_DATA_TYPE => RARG.DATA_TYPE)))));
       end if;
       /* Считываем наименование следующего параметра */
       SARG_NAME := PKG_CONTPRMLOC.NEXT_(RCONTAINER => ARGS_VALS, SNAME => SARG_NAME);
@@ -796,7 +798,6 @@ create or replace package body PKG_P8PANELS_BASE as
     XRQ_ROOT                PKG_XPATH.TNODE; -- Корневой элемент тела документа запроса
     SRQ_ACTION              PKG_STD.TSTRING; -- Код действия из запроса
   begin
-    PKG_TRACE.REGISTER(SDATA => 'P8PANELS', SDATA1 => CIN);
     /* Разбираем запрос */
     XRQ_ROOT := RQ_ROOT_GET(CRQ => CIN);
     /* Считываем код действия из запроса */

@@ -123,14 +123,14 @@ create or replace package body PKG_P8PANELS_MECHREC as
                          and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
                                             UR.ROLEID
                                              from USERROLES UR
-                                            where UR.AUTHID = UTILIZER)
+                                            where UR.AUTHID = UTILIZER())
                       union all
                       select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
                        null
                         from USERPRIV UP
                        where UP.JUR_PERS = P.JUR_PERS
                          and UP.UNITCODE = 'CostProductPlans'
-                         and UP.AUTHID = UTILIZER)
+                         and UP.AUTHID = UTILIZER())
                  and T.PRN = P.RN) TMP
       connect by prior TMP.RN = TMP.UP_LEVEL
        start with TMP.UP_LEVEL is null;
@@ -203,26 +203,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     NTASK_PROGRESS          PKG_STD.TNUMBER;                 -- Прогресс выполнения задачи
     DDATE_FROM              PKG_STD.TLDATE;                  -- Дата запуска спецификации
     DDATE_TO                PKG_STD.TLDATE;                  -- Дата выпуска спецификации
-    STASK_CAPTION           PKG_STD.TSTRING;                 -- Описание задачи в Ганте
-    CSQL                    clob;                            -- Буфер для запроса
-    ICURSOR                 integer;                         -- Курсор для исполнения запроса
-    /* Значения спецификации */
-    NTASK_RN                PKG_STD.TREF;                    -- Рег. номер спецификации
-    NTASK_PRN               PKG_STD.TREF;                    -- Рег. номер родителя спецификации
-    STASK_PROD_ORDER        PKG_STD.TSTRING;                 -- Заказ
-    DTASK_REP_DATE          PKG_STD.TLDATE;                  -- Дата запуска
-    DTASK_REP_DATE_TO       PKG_STD.TLDATE;                  -- Дата выпуска
-    DTASK_INCL_DATE         PKG_STD.TLDATE;                  -- Дата включения в план
-    STASK_ROUTE             PKG_STD.TSTRING;                 -- Маршрут
-    STASK_NOMEN_NAME        PKG_STD.TSTRING;                 -- Наименование номенклатуры
-    NTASK_DEFRESLIZ         number;                          -- Дефицит запуска
-    NTASK_REL_FACT          number;                          -- Выпуск факт
-    NTASK_DEFSTART          number;                          -- Дефицит выпуска
-    NTASK_MAIN_QUANT        number;                          -- Выпуск
-    STASK_SUBDIV_DLVR       PKG_STD.TSTRING;                 -- Сдающее подразделение
-    NTASK_HAVE_LINK         PKG_STD.TNUMBER;                 -- Наличие ссылок (0 - нет, 1 - да)
-    NTASK_UP_LEVEL          PKG_STD.TREF;                    -- Рег. номер родительской записи в иерархии
-    NTASK_LEVEL             PKG_STD.TNUMBER;                 -- Уровень в иерархии
+    STASK_CAPTION           PKG_STD.TSTRING;                 -- Описание задачи в Ганте    
     
     /* Объединение значений в строковое представление */
     function MAKE_INFO
@@ -356,190 +337,134 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Определяем максимальный уровень иерархии */
     NMAX_LEVEL := PRODPLAN_MAX_LEVEL_GET(NCRN => NCRN);
     /* Обходим данные */
-    begin
-      CSQL := 'select TMP.*,
-                      level NTASK_LEVEL
-                  from (select T.RN NRN,
-                               T.PRN NPRN,
-                               (select PORD.NUMB from FACEACC PORD where PORD.RN = T.PROD_ORDER) SPROD_ORDER,
-                               T.REP_DATE DREP_DATE,
-                               T.REP_DATE_TO DREP_DATE_TO,
-                               T.INCL_DATE DINCL_DATE,
-                               T.ROUTE SROUTE,
-                               D.NOMEN_NAME SNOMEN_NAME,
-                               (T.QUANT_REST - T.START_FACT) NDEFRESLIZ,
-                               T.REL_FACT NREL_FACT,
-                               (T.MAIN_QUANT - T.REL_FACT) NDEFSTART,
-                               T.MAIN_QUANT NMAIN_QUANT,
-                               (select IDD.CODE from INS_DEPARTMENT IDD where IDD.RN = T.SUBDIV_DLVR) SSUBDIV_DLVR,
-                               (select 1
-                                  from DUAL
-                                 where exists
-                                 (select null
-                                          from DOCLINKS L
-                                         where L.IN_DOCUMENT = T.RN
-                                           and L.IN_UNITCODE = ''CostProductPlansSpecs''
-                                           and (L.OUT_UNITCODE = ''CostRouteLists'' or L.OUT_UNITCODE = ''IncomFromDeps'')
-                                           and ROWNUM = 1)) NHAVE_LINK,
-                               T.UP_LEVEL NUP_LEVEL
-                          from FCPRODPLAN    P,
-                               FINSTATE      FS,
-                               FCPRODPLANSP  T,
-                               FCMATRESOURCE FM,
-                               DICNOMNS      D
-                         where P.CRN = :NCRN
-                           and P.CATEGORY = :NFCPRODPLAN_CATEGORY
-                           and P.STATUS = :NFCPRODPLAN_STATUS
-                           and FS.RN = P.TYPE
-                           and FS.CODE = :SFCPRODPLAN_TYPE
-                           and exists
-                         (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
-                                 null
-                                  from USERPRIV UP
-                                 where UP.JUR_PERS = P.JUR_PERS
-                                   and UP.UNITCODE = ''CostProductPlans''
-                                   and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
-                                                      UR.ROLEID
-                                                       from USERROLES UR
-                                                      where UR.AUTHID = UTILIZER)
-                                union all
-                                select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
-                                 null
-                                  from USERPRIV UP
-                                 where UP.JUR_PERS = P.JUR_PERS
-                                   and UP.UNITCODE = ''CostProductPlans''
-                                   and UP.AUTHID = UTILIZER)
-                           and T.PRN = P.RN
-                           and ((T.REP_DATE is not null) or (T.REP_DATE_TO is not null) or (T.INCL_DATE is not null))
-                           and FM.RN = T.MATRES
-                           and D.RN = FM.NOMENCLATURE) TMP
-                 where ((:NLEVEL is null) or ((:NLEVEL is not null) and (level <= :NLEVEL)))
-                connect by prior TMP.NRN = TMP.NUP_LEVEL
-                 start with TMP.NUP_LEVEL is null
-                 order siblings by TMP.%SORT_FIELD% asc';
-      /* Подставляем поле сортировки */
-      CSQL := replace(CSQL, '%SORT_FIELD%', SSORT_FIELD);
-      /* Разбираем его */
-      ICURSOR := PKG_SQL_DML.OPEN_CURSOR(SWHAT => 'SELECT');
-      PKG_SQL_DML.PARSE(ICURSOR => ICURSOR, SQUERY => CSQL);
-      /* Делаем подстановку параметров */
-      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NCRN', NVALUE => NCRN);
-      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR,
-                                    SNAME   => 'NFCPRODPLAN_CATEGORY',
-                                    NVALUE  => NFCPRODPLAN_CATEGORY);
-      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NFCPRODPLAN_STATUS', NVALUE => NFCPRODPLAN_STATUS);
-      PKG_SQL_DML.BIND_VARIABLE_STR(ICURSOR => ICURSOR, SNAME => 'SFCPRODPLAN_TYPE', SVALUE => SFCPRODPLAN_TYPE);
-      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NLEVEL', NVALUE => NLEVEL);
-      /* Описываем структуру записи курсора */
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 1);
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 2);
-      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 3);
-      PKG_SQL_DML.DEFINE_COLUMN_DATE(ICURSOR => ICURSOR, IPOSITION => 4);
-      PKG_SQL_DML.DEFINE_COLUMN_DATE(ICURSOR => ICURSOR, IPOSITION => 5);
-      PKG_SQL_DML.DEFINE_COLUMN_DATE(ICURSOR => ICURSOR, IPOSITION => 6);
-      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 7);
-      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 8);
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 9);
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 10);
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 11);
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 12);
-      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 13);
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 14);
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 15);
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 16);
-      /* Делаем выборку */
-      if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
-        null;
+    for C in (select TMP.*,
+                     level NTASK_LEVEL
+                from (select T.RN NRN,
+                             T.PRN NPRN,
+                             (select PORD.NUMB from FACEACC PORD where PORD.RN = T.PROD_ORDER) SPROD_ORDER,
+                             T.REP_DATE DREP_DATE,
+                             T.REP_DATE_TO DREP_DATE_TO,
+                             T.INCL_DATE DINCL_DATE,
+                             T.ROUTE SROUTE,
+                             D.NOMEN_NAME SNOMEN_NAME,
+                             (T.QUANT_REST - T.START_FACT) NDEFRESLIZ,
+                             T.REL_FACT NREL_FACT,
+                             (T.MAIN_QUANT - T.REL_FACT) NDEFSTART,
+                             T.MAIN_QUANT NMAIN_QUANT,
+                             (select IDD.CODE from INS_DEPARTMENT IDD where IDD.RN = T.SUBDIV_DLVR) SSUBDIV_DLVR,
+                             (select 1
+                                from DUAL
+                               where exists (select null
+                                        from DOCLINKS L
+                                       where L.IN_DOCUMENT = T.RN
+                                         and L.IN_UNITCODE = 'CostProductPlansSpecs'
+                                         and (L.OUT_UNITCODE = 'CostRouteLists' or L.OUT_UNITCODE = 'IncomFromDeps')
+                                         and ROWNUM = 1)) NHAVE_LINK,
+                             T.UP_LEVEL NUP_LEVEL,
+                             case SSORT_FIELD
+                               when 'DREP_DATE_TO' then
+                                T.REP_DATE_TO
+                               else
+                                T.REP_DATE
+                             end DORDER_DATE
+                        from FCPRODPLAN    P,
+                             FINSTATE      FS,
+                             FCPRODPLANSP  T,
+                             FCMATRESOURCE FM,
+                             DICNOMNS      D
+                       where P.CRN = NCRN
+                         and P.CATEGORY = NFCPRODPLAN_CATEGORY
+                         and P.STATUS = NFCPRODPLAN_STATUS
+                         and FS.RN = P.TYPE
+                         and FS.CODE = SFCPRODPLAN_TYPE
+                         and exists
+                       (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
+                               null
+                                from USERPRIV UP
+                               where UP.JUR_PERS = P.JUR_PERS
+                                 and UP.UNITCODE = 'CostProductPlans'
+                                 and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                                    UR.ROLEID
+                                                     from USERROLES UR
+                                                    where UR.AUTHID = UTILIZER())
+                              union all
+                              select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
+                               null
+                                from USERPRIV UP
+                               where UP.JUR_PERS = P.JUR_PERS
+                                 and UP.UNITCODE = 'CostProductPlans'
+                                 and UP.AUTHID = UTILIZER())
+                         and T.PRN = P.RN
+                         and ((T.REP_DATE is not null) or (T.REP_DATE_TO is not null) or (T.INCL_DATE is not null))
+                         and FM.RN = T.MATRES
+                         and D.RN = FM.NOMENCLATURE) TMP
+               where ((NLEVEL is null) or ((NLEVEL is not null) and (level <= NLEVEL)))
+              connect by prior TMP.NRN = TMP.NUP_LEVEL
+               start with TMP.NUP_LEVEL is null
+               order siblings by TMP.DORDER_DATE asc)
+    loop
+      /* Формируем описание задачи в Ганте */
+      STASK_CAPTION := MAKE_INFO(SPROD_ORDER  => C.SPROD_ORDER,
+                                 SNOMEN_NAME  => C.SNOMEN_NAME,
+                                 SSUBDIV_DLVR => C.SSUBDIV_DLVR,
+                                 NMAIN_QUANT  => C.NMAIN_QUANT);
+      /* Инициализируем даты и цвет (если необходимо) */
+      FCPRODPLANSP_DATES_GET(DREP_DATE        => C.DREP_DATE,
+                             DREP_DATE_TO     => C.DREP_DATE_TO,
+                             DINCL_DATE       => C.DINCL_DATE,
+                             NHAVE_LINK       => COALESCE(C.NHAVE_LINK, 0),
+                             DDATE_FROM       => DDATE_FROM,
+                             DDATE_TO         => DDATE_TO,
+                             STASK_BG_COLOR   => STASK_BG_COLOR,
+                             STASK_TEXT_COLOR => STASK_TEXT_COLOR,
+                             NTASK_PROGRESS   => NTASK_PROGRESS);
+      /* Если цвет изначально не указан и требуется анализирование */
+      if (STASK_BG_COLOR is null) then
+        /* Формирование характеристик элемента ганта */
+        MAKE_GANT_ITEM(NDEFRESLIZ              => C.NDEFRESLIZ,
+                       NREL_FACT               => C.NREL_FACT,
+                       NDEFSTART               => C.NDEFSTART,
+                       STASK_BG_COLOR          => STASK_BG_COLOR,
+                       STASK_BG_PROGRESS_COLOR => STASK_BG_PROGRESS_COLOR,
+                       NTASK_PROGRESS          => NTASK_PROGRESS);
       end if;
-      /* Обходим выбранные записи */
-      while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
+      /* Сформируем основную спецификацию */
+      RGT := PKG_P8PANELS_VISUAL.TGANTT_TASK_MAKE(NRN                 => C.NRN,
+                                                  SNUMB               => COALESCE(C.SROUTE, 'Отсутствует'),
+                                                  SCAPTION            => STASK_CAPTION,
+                                                  SNAME               => C.SNOMEN_NAME,
+                                                  DSTART              => DDATE_FROM,
+                                                  DEND                => DDATE_TO,
+                                                  NPROGRESS           => NTASK_PROGRESS,
+                                                  SBG_COLOR           => STASK_BG_COLOR,
+                                                  STEXT_COLOR         => STASK_TEXT_COLOR,
+                                                  SBG_PROGRESS_COLOR  => STASK_BG_PROGRESS_COLOR,
+                                                  BREAD_ONLY          => true,
+                                                  BREAD_ONLY_DATES    => true,
+                                                  BREAD_ONLY_PROGRESS => true);
+      /* Заполним значение динамических атрибутов */
+      FILL_TASK_ATTRS(RG           => RG,
+                      RGT          => RGT,
+                      SPROD_ORDER  => C.SPROD_ORDER,
+                      SSUBDIV_DLVR => C.SSUBDIV_DLVR,
+                      NMAIN_QUANT  => C.NMAIN_QUANT,
+                      NDEFRESLIZ   => C.NDEFRESLIZ,
+                      NREL_FACT    => C.NREL_FACT,
+                      NDEFSTART    => C.NDEFSTART,
+                      NLEVEL       => C.NTASK_LEVEL);
+      /* Собираем зависимости */
+      for LINK in (select T.RN
+                     from FCPRODPLANSP T
+                    where T.PRN = C.NPRN
+                      and T.UP_LEVEL = C.NRN
+                      and ((NLEVEL is null) or ((NLEVEL is not null) and (NLEVEL >= C.NTASK_LEVEL + 1))))
       loop
-        /* Читаем данные из курсора */
-        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 1, NVALUE => NTASK_RN);
-        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 2, NVALUE => NTASK_PRN);
-        PKG_SQL_DML.COLUMN_VALUE_STR(ICURSOR => ICURSOR, IPOSITION => 3, SVALUE => STASK_PROD_ORDER);
-        PKG_SQL_DML.COLUMN_VALUE_DATE(ICURSOR => ICURSOR, IPOSITION => 4, DVALUE => DTASK_REP_DATE);
-        PKG_SQL_DML.COLUMN_VALUE_DATE(ICURSOR => ICURSOR, IPOSITION => 5, DVALUE => DTASK_REP_DATE_TO);
-        PKG_SQL_DML.COLUMN_VALUE_DATE(ICURSOR => ICURSOR, IPOSITION => 6, DVALUE => DTASK_INCL_DATE);
-        PKG_SQL_DML.COLUMN_VALUE_STR(ICURSOR => ICURSOR, IPOSITION => 7, SVALUE => STASK_ROUTE);
-        PKG_SQL_DML.COLUMN_VALUE_STR(ICURSOR => ICURSOR, IPOSITION => 8, SVALUE => STASK_NOMEN_NAME);
-        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 9, NVALUE => NTASK_DEFRESLIZ);
-        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 10, NVALUE => NTASK_REL_FACT);
-        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 11, NVALUE => NTASK_DEFSTART);
-        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 12, NVALUE => NTASK_MAIN_QUANT);
-        PKG_SQL_DML.COLUMN_VALUE_STR(ICURSOR => ICURSOR, IPOSITION => 13, SVALUE => STASK_SUBDIV_DLVR);
-        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 14, NVALUE => NTASK_HAVE_LINK);
-        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 15, NVALUE => NTASK_UP_LEVEL);
-        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 16, NVALUE => NTASK_LEVEL);
-        /* Формируем описание задачи в Ганте */
-        STASK_CAPTION := MAKE_INFO(SPROD_ORDER  => STASK_PROD_ORDER,
-                                   SNOMEN_NAME  => STASK_NOMEN_NAME,
-                                   SSUBDIV_DLVR => STASK_SUBDIV_DLVR,
-                                   NMAIN_QUANT  => NTASK_MAIN_QUANT);
-        /* Инициализируем даты и цвет (если необходимо) */
-        FCPRODPLANSP_DATES_GET(DREP_DATE        => DTASK_REP_DATE,
-                               DREP_DATE_TO     => DTASK_REP_DATE_TO,
-                               DINCL_DATE       => DTASK_INCL_DATE,
-                               NHAVE_LINK       => COALESCE(NTASK_HAVE_LINK, 0),
-                               DDATE_FROM       => DDATE_FROM,
-                               DDATE_TO         => DDATE_TO,
-                               STASK_BG_COLOR   => STASK_BG_COLOR,
-                               STASK_TEXT_COLOR => STASK_TEXT_COLOR,
-                               NTASK_PROGRESS   => NTASK_PROGRESS);
-        /* Если цвет изначально не указан и требуется анализирование */
-        if (STASK_BG_COLOR is null) then
-          /* Формирование характеристик элемента ганта */
-          MAKE_GANT_ITEM(NDEFRESLIZ              => NTASK_DEFRESLIZ,
-                         NREL_FACT               => NTASK_REL_FACT,
-                         NDEFSTART               => NTASK_DEFSTART,
-                         STASK_BG_COLOR          => STASK_BG_COLOR,
-                         STASK_BG_PROGRESS_COLOR => STASK_BG_PROGRESS_COLOR,
-                         NTASK_PROGRESS          => NTASK_PROGRESS);
-        end if;
-        /* Сформируем основную спецификацию */
-        RGT := PKG_P8PANELS_VISUAL.TGANTT_TASK_MAKE(NRN                 => NTASK_RN,
-                                                    SNUMB               => COALESCE(STASK_ROUTE, 'Отсутствует'),
-                                                    SCAPTION            => STASK_CAPTION,
-                                                    SNAME               => STASK_NOMEN_NAME,
-                                                    DSTART              => DDATE_FROM,
-                                                    DEND                => DDATE_TO,
-                                                    NPROGRESS           => NTASK_PROGRESS,
-                                                    SBG_COLOR           => STASK_BG_COLOR,
-                                                    STEXT_COLOR         => STASK_TEXT_COLOR,
-                                                    SBG_PROGRESS_COLOR  => STASK_BG_PROGRESS_COLOR,
-                                                    BREAD_ONLY          => true,
-                                                    BREAD_ONLY_DATES    => true,
-                                                    BREAD_ONLY_PROGRESS => true);
-        /* Заполним значение динамических атрибутов */
-        FILL_TASK_ATTRS(RG           => RG,
-                        RGT          => RGT,
-                        SPROD_ORDER  => STASK_PROD_ORDER,
-                        SSUBDIV_DLVR => STASK_SUBDIV_DLVR,
-                        NMAIN_QUANT  => NTASK_MAIN_QUANT,
-                        NDEFRESLIZ   => NTASK_DEFRESLIZ,
-                        NREL_FACT    => NTASK_REL_FACT,
-                        NDEFSTART    => NTASK_DEFSTART,
-                        NLEVEL       => NTASK_LEVEL);
-        /* Собираем зависимости */
-        for LINK in (select T.RN
-                       from FCPRODPLANSP T
-                      where T.PRN = NTASK_PRN
-                        and T.UP_LEVEL = NTASK_RN
-                        and ((NLEVEL is null) or ((NLEVEL is not null) and (NLEVEL >= NTASK_LEVEL + 1))))
-        loop
-          /* Добавляем зависимости */
-          PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_DEPENDENCY(RTASK => RGT, NDEPENDENCY => LINK.RN);
-        end loop;
-        /* Добавляем основную спецификацию в диаграмму */
-        PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK(RGANTT => RG, RTASK => RGT);
+        /* Добавляем зависимости */
+        PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_DEPENDENCY(RTASK => RGT, NDEPENDENCY => LINK.RN);
       end loop;
-      /* Освобождаем курсор */
-      PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
-    exception
-      when others then
-        PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
-        raise;
-    end;
+      /* Добавляем основную спецификацию в диаграмму */
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK(RGANTT => RG, RTASK => RGT);
+    end loop;
     /* Формируем список */
     COUT := PKG_P8PANELS_VISUAL.TGANTT_TO_XML(RGANTT => RG);
   end FCPRODPLANSP_GET;
@@ -575,14 +500,14 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                    and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
                                                       UR.ROLEID
                                                        from USERROLES UR
-                                                      where UR.AUTHID = UTILIZER)
+                                                      where UR.AUTHID = UTILIZER())
                                 union all
                                 select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
                                  null
                                   from USERPRIV UP
                                  where UP.JUR_PERS = P.JUR_PERS
                                    and UP.UNITCODE = 'CostProductPlans'
-                                   and UP.AUTHID = UTILIZER)) as NCOUNT_DOCS
+                                   and UP.AUTHID = UTILIZER())) as NCOUNT_DOCS
                   from ACATALOG T,
                        UNITLIST UL
                  where T.DOCNAME = 'CostProductPlans'
