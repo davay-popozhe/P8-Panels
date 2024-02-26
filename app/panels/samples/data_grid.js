@@ -117,10 +117,11 @@ const DataGrid = ({ title }) => {
                 ...pv,
                 columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
                 rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
-                groups:
-                    pv.pageNumber == 1
-                        ? [...(data.XGROUPS || [])]
-                        : [...pv.groups, ...(data.XGROUPS.filter(g => !pv.groups.find(pg => pg.name == g.name)) || [])],
+                groups: data.XGROUPS
+                    ? pv.pageNumber == 1
+                        ? [...data.XGROUPS]
+                        : [...pv.groups, ...data.XGROUPS.filter(g => !pv.groups.find(pg => pg.name == g.name))]
+                    : [...pv.groups],
                 dataLoaded: true,
                 reload: false,
                 morePages: (data.XROWS || []).length >= DATA_GRID_PAGE_SIZE

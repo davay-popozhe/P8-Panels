@@ -20,7 +20,7 @@ import { BackEndСtx } from "../../context/backend"; //Контекст взаи
 //---------
 
 //Высота диаграммы Ганта
-const GANTT_HEIGHT = "600px";
+const GANTT_HEIGHT = "70vh";
 
 //Ширина диаграммы Ганта
 const GANTT_WIDTH = "98vw";
