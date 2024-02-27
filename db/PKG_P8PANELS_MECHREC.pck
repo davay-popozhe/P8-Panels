@@ -47,6 +47,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     NDEFRESLIZ              in number,    -- Дефицит запуска
     NREL_FACT               in number,    -- Выпуск факт
     NDEFSTART               in number,    -- Дефицит выпуска
+    NMAIN_QUANT             in number,    -- Выпуск
     STASK_BG_COLOR          out varchar2, -- Цвет заливки спецификации
     STASK_BG_PROGRESS_COLOR out varchar2, -- Цвет заливки прогресса спецификации 
     NTASK_PROGRESS          out number    -- Прогресс спецификации
@@ -87,7 +88,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
           /* Частично зелёный, прогресс жёлтый */
           STASK_BG_COLOR          := SBG_COLOR_GREEN;
           STASK_BG_PROGRESS_COLOR := SBG_COLOR_YELLOW;
-          NTASK_PROGRESS          := 50;
+          NTASK_PROGRESS          := ROUND(NREL_FACT / NMAIN_QUANT * 100);
         end if;
       end if;
     end if;
@@ -131,7 +132,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
                        where UP.JUR_PERS = P.JUR_PERS
                          and UP.UNITCODE = 'CostProductPlans'
                          and UP.AUTHID = UTILIZER())
-                 and T.PRN = P.RN) TMP
+                 and T.PRN = P.RN
+                 and T.MAIN_QUANT > 0) TMP
       connect by prior TMP.RN = TMP.UP_LEVEL
        start with TMP.UP_LEVEL is null;
     exception
@@ -395,6 +397,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                  and UP.UNITCODE = 'CostProductPlans'
                                  and UP.AUTHID = UTILIZER())
                          and T.PRN = P.RN
+                         and T.MAIN_QUANT > 0
                          and ((T.REP_DATE is not null) or (T.REP_DATE_TO is not null) or (T.INCL_DATE is not null))
                          and FM.RN = T.MATRES
                          and D.RN = FM.NOMENCLATURE) TMP
@@ -424,6 +427,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
         MAKE_GANT_ITEM(NDEFRESLIZ              => C.NDEFRESLIZ,
                        NREL_FACT               => C.NREL_FACT,
                        NDEFSTART               => C.NDEFSTART,
+                       NMAIN_QUANT             => C.NMAIN_QUANT,
                        STASK_BG_COLOR          => STASK_BG_COLOR,
                        STASK_BG_PROGRESS_COLOR => STASK_BG_PROGRESS_COLOR,
                        NTASK_PROGRESS          => NTASK_PROGRESS);
@@ -457,6 +461,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                      from FCPRODPLANSP T
                     where T.PRN = C.NPRN
                       and T.UP_LEVEL = C.NRN
+                      and T.MAIN_QUANT > 0
                       and ((NLEVEL is null) or ((NLEVEL is not null) and (NLEVEL >= C.NTASK_LEVEL + 1))))
       loop
         /* Добавляем зависимости */
@@ -481,7 +486,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Открываем корень */
     PKG_XFAST.DOWN_NODE(SNAME => 'XDATA');
     /* Цикл по планам и отчетам производства изделий */
-    for REC in (select T.RN   as NRN,
+    for REC in (select T.RN as NRN,
                        T.NAME as SNAME,
                        (select count(P.RN)
                           from FCPRODPLAN P,
@@ -491,8 +496,11 @@ create or replace package body PKG_P8PANELS_MECHREC as
                            and P.STATUS = NFCPRODPLAN_STATUS
                            and FS.RN = P.TYPE
                            and FS.CODE = SFCPRODPLAN_TYPE
-                           and exists
-                         (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
+                           and exists (select PSP.RN
+                                  from FCPRODPLANSP PSP
+                                 where PSP.PRN = P.RN
+                                   and PSP.MAIN_QUANT > 0)
+                           and exists (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
                                  null
                                   from USERPRIV UP
                                  where UP.JUR_PERS = P.JUR_PERS
