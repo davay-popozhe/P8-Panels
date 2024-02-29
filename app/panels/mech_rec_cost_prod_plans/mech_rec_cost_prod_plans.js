@@ -163,7 +163,7 @@ PlanCtlgsList.propTypes = {
     planCtlgs: PropTypes.array,
     selectedPlanCtlg: PropTypes.number,
     onClick: PropTypes.func,
-    filter: PropTypes.string,
+    filter: PropTypes.object,
     setFilter: PropTypes.func
 };
 
@@ -189,7 +189,7 @@ const MechRecCostProdPlans = () => {
         selectedPlanCtlgSpecs: []
     });
     //Состояние для фильтра каталогов
-    const [filter, setFilter] = useState({ ctlgName: "", haveLinks: false });
+    const [filter, setFilter] = useState({ ctlgName: "", haveDocs: false });
 
     //Массив отфильтрованных каталогов
     const filteredPlanCtgls = useFilteredPlanCtlgs(state.planCtlgs, filter);
