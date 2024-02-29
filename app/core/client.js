@@ -7,9 +7,10 @@
 //Подключение библиотек
 //---------------------
 
-import { XMLParser, XMLBuilder } from "fast-xml-parser"; //Конвертация XML в JSON и JSON в XML
+import { XMLBuilder } from "fast-xml-parser"; //Конвертация XML в JSON и JSON в XML
 import dayjs from "dayjs"; //Работа с датами
 import config from "../../app.config"; //Настройки приложения
+import { xml2JSON } from "./utils"; //Вспомогательные функции
 
 //---------
 //Константы
@@ -34,26 +35,6 @@ const ERR_UNEXPECTED = "Неожиданный ответ сервера"; //Н�
 const ERR_NETWORK = "Ошибка соединения с сервером"; //Ошибка сети
 const ERR_UNAUTH = "Сеанс завершен. Пройдите аутентификацию повторно."; //Ошибка аутентификации
 
-//Типовые пути конвертации в массив (при переводе XML -> JSON)
-const XML_ALWAYS_ARRAY_PATHS = [
-    "XRESPOND.XPAYLOAD.XOUT_ARGUMENTS",
-    "XRESPOND.XPAYLOAD.XROWS",
-    "XRESPOND.XPAYLOAD.XCOLUMNS_DEF",
-    "XRESPOND.XPAYLOAD.XCOLUMNS_DEF.values",
-    "XRESPOND.XPAYLOAD.XGROUPS",
-    "XRESPOND.XPAYLOAD.XGANTT_DEF.taskAttributes",
-    "XRESPOND.XPAYLOAD.XGANTT_DEF.taskColors",
-    "XRESPOND.XPAYLOAD.XGANTT_TASKS",
-    "XRESPOND.XPAYLOAD.XGANTT_TASKS.dependencies",
-    "XRESPOND.XPAYLOAD.XCHART.labels",
-    "XRESPOND.XPAYLOAD.XCHART.datasets",
-    "XRESPOND.XPAYLOAD.XCHART.datasets.data",
-    "XRESPOND.XPAYLOAD.XCHART.datasets.items"
-];
-
-//Типовой постфикс тега для массива (при переводе XML -> JSON)
-const XML_ALWAYS_ARRAY_POSTFIX = "__SYSTEM__ARRAY__";
-
 //-----------
 //Тело модуля
 //-----------
@@ -70,26 +51,8 @@ const getServerDataType = value => {
 const makeRespErr = ({ message }) => ({ SSTATUS: RESP_STATUS_ERR, SMESSAGE: message });
 
 //Разбор XML
-const parseXML = (xmlDoc, isArray, transformTagName, tagValueProcessor, attributeValueProcessor) => {
-    return new Promise((resolve, reject) => {
-        try {
-            let opts = {
-                ignoreDeclaration: true,
-                ignoreAttributes: false,
-                parseAttributeValue: true,
-                attributeNamePrefix: ""
-            };
-            if (isArray) opts.isArray = isArray;
-            if (transformTagName) opts.transformTagName = transformTagName;
-            if (tagValueProcessor) opts.tagValueProcessor = tagValueProcessor;
-            if (attributeValueProcessor) opts.attributeValueProcessor = attributeValueProcessor;
-            const parser = new XMLParser(opts);
-            resolve(parser.parse(xmlDoc));
-        } catch (e) {
-            reject(e);
-        }
-    });
-};
+const parseXML = async (xmlDoc, isArray, transformTagName, tagValueProcessor, attributeValueProcessor) =>
+    await xml2JSON({ xmlDoc, isArray, transformTagName, tagValueProcessor, attributeValueProcessor, useDefaultPatterns: true });
 
 //Формирование XML
 const buildXML = jsonObj => {
@@ -160,7 +123,7 @@ const executeAction = async ({ serverURL, action, payload = {}, isArray, transfo
         throw new Error(ERR_UNEXPECTED);
     //Всё хорошо - возвращаем (без корня, он не нужен)
     console.log("SERVER RESPONSE JSON:");
-    console.log(responseJSON.XRESPOND);
+    console.log(JSON.parse(JSON.stringify(responseJSON.XRESPOND)));
     return responseJSON.XRESPOND;
 };
 
@@ -192,8 +155,7 @@ const executeStored = async ({
             serverURL: `${config.SYSTEM.SERVER}${!config.SYSTEM.SERVER.endsWith("/") ? "/" : ""}Process`,
             action: SRV_FN_CODE_EXEC_STORED,
             payload: { SSTORED: stored, XARGUMENTS: serverArgs, SRESP_ARG: respArg },
-            isArray: (name, jPath) =>
-                XML_ALWAYS_ARRAY_PATHS.indexOf(jPath) !== -1 || jPath.endsWith(XML_ALWAYS_ARRAY_POSTFIX) || (isArray ? isArray(name, jPath) : false),
+            isArray,
             tagValueProcessor,
             attributeValueProcessor
         });

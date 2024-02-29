@@ -30,6 +30,42 @@ const DISPLAY_SIZE = {
     [DISPLAY_SIZE_CODE.LG]: { WIDTH_FROM: 1200, WIDTH_TO: 1000000 } //Large - большой экран >= 1200px
 };
 
+//Типовые пути конвертации в массив (при переводе XML -> JSON)
+const XML_ALWAYS_ARRAY_PATHS = [
+    "XRESPOND.XPAYLOAD.XOUT_ARGUMENTS",
+    "XRESPOND.XPAYLOAD.XROWS",
+    "XRESPOND.XPAYLOAD.XCOLUMNS_DEF",
+    "XRESPOND.XPAYLOAD.XCOLUMNS_DEF.values",
+    "XRESPOND.XPAYLOAD.XGROUPS",
+    "XRESPOND.XPAYLOAD.XGANTT_DEF.taskAttributes",
+    "XRESPOND.XPAYLOAD.XGANTT_DEF.taskColors",
+    "XRESPOND.XPAYLOAD.XGANTT_TASKS",
+    "XRESPOND.XPAYLOAD.XGANTT_TASKS.dependencies",
+    "XRESPOND.XPAYLOAD.XCHART.labels",
+    "XRESPOND.XPAYLOAD.XCHART.datasets",
+    "XRESPOND.XPAYLOAD.XCHART.datasets.data",
+    "XRESPOND.XPAYLOAD.XCHART.datasets.items"
+];
+
+//Типовые шаблоны конвертации в массив (при переводе XML -> JSON)
+const XML_ALWAYS_ARRAY_PATH_PATTERNS = [
+    /(.*)XROWS$/,
+    /(.*)XCOLUMNS_DEF$/,
+    /(.*)XCOLUMNS_DEF.values$/,
+    /(.*)XGROUPS$/,
+    /(.*)XGANTT_DEF.taskAttributes$/,
+    /(.*)XGANTT_DEF.taskColors$/,
+    /(.*)XGANTT_TASKS$/,
+    /(.*)XGANTT_TASKS.dependencies$/,
+    /(.*)XCHART.labels$/,
+    /(.*)XCHART.datasets$/,
+    /(.*)XCHART.datasets.data$/,
+    /(.*)XCHART.datasets.items$/
+];
+
+//Типовой постфикс тега для массива (при переводе XML -> JSON)
+const XML_ALWAYS_ARRAY_POSTFIX = "__SYSTEM__ARRAY__";
+
 //-----------
 //Тело модуля
 //-----------
@@ -57,7 +93,7 @@ const object2Base64XML = (obj, builderOptions) => {
 };
 
 //Конвертация XML в JSON
-const xml2JSON = ({ xmlDoc, attributeValueProcessor, isArray }) => {
+const xml2JSON = ({ xmlDoc, isArray, transformTagName, tagValueProcessor, attributeValueProcessor, useDefaultPatterns = true }) => {
     return new Promise((resolve, reject) => {
         try {
             let opts = {
@@ -66,8 +102,16 @@ const xml2JSON = ({ xmlDoc, attributeValueProcessor, isArray }) => {
                 parseAttributeValue: true,
                 attributeNamePrefix: ""
             };
+            if (useDefaultPatterns)
+                opts.isArray = (name, jPath, isLeafNode, isAttribute) =>
+                    XML_ALWAYS_ARRAY_PATHS.indexOf(jPath) !== -1 ||
+                    XML_ALWAYS_ARRAY_PATH_PATTERNS.some(pattern => pattern.test(jPath)) ||
+                    jPath.endsWith(XML_ALWAYS_ARRAY_POSTFIX) ||
+                    (isArray ? isArray(name, jPath, isLeafNode, isAttribute) : undefined);
+            else if (isArray) opts.isArray = isArray;
+            if (transformTagName) opts.transformTagName = transformTagName;
+            if (tagValueProcessor) opts.tagValueProcessor = tagValueProcessor;
             if (attributeValueProcessor) opts.attributeValueProcessor = attributeValueProcessor;
-            if (isArray) opts.isArray = isArray;
             const parser = new XMLParser(opts);
             resolve(parser.parse(xmlDoc));
         } catch (e) {
