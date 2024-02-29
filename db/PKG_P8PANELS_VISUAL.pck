@@ -1805,8 +1805,7 @@ text="Формат data_grid и gant как в chart"
   (
     RTASKS                  in TGANTT_TASKS   -- Коллекция задач диаграммы Ганта
   )
-  is
-    SDEPS                   PKG_STD.TLSTRING; -- Буфер для списка зависимых
+  is    
   begin
     /* Обходим задачи из коллекции */
     if ((RTASKS is not null) and (RTASKS.COUNT > 0)) then
@@ -1843,19 +1842,20 @@ text="Формат data_grid и gant как в chart"
         if (RTASKS(I).BREAD_ONLY_PROGRESS is not null) then
           PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_RO_PRGRS, BVALUE => RTASKS(I).BREAD_ONLY_PROGRESS);
         end if;
-        if ((RTASKS(I).RDEPENDENCIES is not null) and (RTASKS(I).RDEPENDENCIES.COUNT > 0)) then
-          SDEPS := null;
-          for J in RTASKS(I).RDEPENDENCIES.FIRST .. RTASKS(I).RDEPENDENCIES.LAST
-          loop
-            SDEPS := COALESCE(SDEPS, '') || 'taskId' || TO_CHAR(RTASKS(I).RDEPENDENCIES(J)) || ',';
-          end loop;
-          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_TASK_DEPS, SVALUE => RTRIM(SDEPS, ','));
-        end if;
         /* Динамические атрибуты */
         if ((RTASKS(I).RATTR_VALS is not null) and (RTASKS(I).RATTR_VALS.COUNT > 0)) then
           for J in RTASKS(I).RATTR_VALS.FIRST .. RTASKS(I).RATTR_VALS.LAST
           loop
             PKG_XFAST.ATTR(SNAME => RTASKS(I).RATTR_VALS(J).SNAME, SVALUE => RTASKS(I).RATTR_VALS(J).SVALUE);
+          end loop;
+        end if;
+        /* Зависимости */
+        if ((RTASKS(I).RDEPENDENCIES is not null) and (RTASKS(I).RDEPENDENCIES.COUNT > 0)) then
+          for J in RTASKS(I).RDEPENDENCIES.FIRST .. RTASKS(I).RDEPENDENCIES.LAST
+          loop
+            PKG_XFAST.DOWN_NODE(SNAME => SRESP_ATTR_TASK_DEPS);
+            PKG_XFAST.VALUE(SVALUE => 'taskId' || TO_CHAR(RTASKS(I).RDEPENDENCIES(J)));
+            PKG_XFAST.UP();
           end loop;
         end if;
         /* Закрываем задачу */
