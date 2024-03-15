@@ -16,7 +16,7 @@ create or replace package PKG_P8PANELS_PROJECTS as
   );
   
   /* Типы данных - коллекция статей этапа проекта */
-  type TSTAGE_ARTS is table of TSTAGE_ART; 
+  type TSTAGE_ARTS is table of TSTAGE_ART;
 
   /* Отбор проектов */
   procedure COND;
@@ -579,61 +579,70 @@ text="Проверить, что для расчётных полей дата-�
                                        SJOINS          => 'EXT_CUST <- RN;AGNLIST');
     /* Контроль финансирования */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_FIN') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_CTRL_FIN(RN) = :EDCTRL_FIN');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_FIN') ||
+                                            '(RN) = :EDCTRL_FIN');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_FIN',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_FIN'));
-    end if;  
+    end if;
     /* Контроль контрактации */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_CONTR') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_CTRL_CONTR(RN) = :EDCTRL_CONTR');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_CONTR') ||
+                                            '(RN) = :EDCTRL_CONTR');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_CONTR',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_CONTR'));
     end if;
     /* Контроль соисполнения */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_COEXEC') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_CTRL_COEXEC(RN) = :EDCTRL_COEXEC');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_COEXEC') ||
+                                            '(RN) = :EDCTRL_COEXEC');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_COEXEC',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_COEXEC'));
     end if;
     /* Контроль сроков */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_PERIOD') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_CTRL_PERIOD(RN) = :EDCTRL_PERIOD');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_PERIOD') ||
+                                            '(RN) = :EDCTRL_PERIOD');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_PERIOD',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_PERIOD'));
     end if;
     /* Контроль затрат */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_COST') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_CTRL_COST(RN) = :EDCTRL_COST');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_COST') ||
+                                            '(RN) = :EDCTRL_COST');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_COST',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_COST'));
     end if;
     /* Контроль актирования */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_ACT') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_CTRL_ACT(RN) = :EDCTRL_ACT');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_ACT') ||
+                                            '(RN) = :EDCTRL_ACT');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_ACT',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_ACT'));
     end if;
     /* Готовность (%, по затратам) */
     if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 1) and
        (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 0)) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_COST_READY(RN) >= :EDCOST_READYFrom');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_COST_READY') ||
+                                            '(RN) >= :EDCOST_READYFrom');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYFrom',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYFrom'));
     end if;
     if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 1) and
        (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 0)) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_COST_READY(RN) <= :EDCOST_READYTo');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_COST_READY') ||
+                                            '(RN) <= :EDCOST_READYTo');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYTo',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYTo'));
     end if;
     if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 1) and
        (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 1)) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.GET_COST_READY(RN) between :EDCOST_READYFrom and :EDCOST_READYTo');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_COST_READY') ||
+                                            '(RN) between :EDCOST_READYFrom and :EDCOST_READYTo');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYFrom',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYFrom'));
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYTo',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYTo'));
-    end if;    
+    end if;
   end COND;
   
   /* Получение рег. номера документа основания (договора) проекта */
@@ -698,9 +707,9 @@ text="Проверить, что для расчётных полей дата-�
   /* Подбор платежей финансирования проекта */
   procedure SELECT_FIN
   (
-    NRN                     in number, -- Рег. номер проекта
-    NDIRECTION              in number, -- Направление (0 - приход, 1 - расход)
-    NIDENT                  out number -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
+    NRN                     in number,  -- Рег. номер проекта
+    NDIRECTION              in number,  -- Направление (0 - приход, 1 - расход)
+    NIDENT                  out number  -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
   )
   is
   begin
@@ -745,12 +754,12 @@ text="Проверить, что для расчётных полей дата-�
   /* Получение состояния финансирования проекта */
   function GET_CTRL_FIN
   (
-    NRN                     in number            -- Рег. номер проекта
-  ) return                  number               -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+    NRN                     in number             -- Рег. номер проекта
+  ) return                  number                -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   is
-    NSTAGE_CTRL             PKG_STD.TNUMBER;     -- Состояние этапа
-    NCNT_STAGES             PKG_STD.TNUMBER :=0; -- Количество этапов
-    NCNT_NULL               PKG_STD.TNUMBER :=0; -- Количество "безконтрольных" этапов
+    NSTAGE_CTRL             PKG_STD.TNUMBER;      -- Состояние этапа
+    NCNT_STAGES             PKG_STD.TNUMBER := 0; -- Количество этапов
+    NCNT_NULL               PKG_STD.TNUMBER := 0; -- Количество "безконтрольных" этапов
   begin
     /* Обходим этапы */
     for C in (select PS.RN from PROJECTSTAGE PS where PS.PRN = NRN)
@@ -784,12 +793,12 @@ text="Проверить, что для расчётных полей дата-�
   /* Получение состояния контрактации проекта */
   function GET_CTRL_CONTR
   (
-    NRN                     in number            -- Рег. номер проекта
-  ) return                  number               -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+    NRN                     in number             -- Рег. номер проекта
+  ) return                  number                -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   is
-    NSTAGE_CTRL             PKG_STD.TNUMBER;     -- Состояние этапа
-    NCNT_STAGES             PKG_STD.TNUMBER :=0; -- Количество этапов
-    NCNT_NULL               PKG_STD.TNUMBER :=0; -- Количество "безконтрольных" этапов
+    NSTAGE_CTRL             PKG_STD.TNUMBER;      -- Состояние этапа
+    NCNT_STAGES             PKG_STD.TNUMBER := 0; -- Количество этапов
+    NCNT_NULL               PKG_STD.TNUMBER := 0; -- Количество "безконтрольных" этапов
   begin
     /* Обходим этапы */
     for C in (select PS.RN from PROJECTSTAGE PS where PS.PRN = NRN)
@@ -823,12 +832,12 @@ text="Проверить, что для расчётных полей дата-�
   /* Получение состояния соисполнения проекта */
   function GET_CTRL_COEXEC
   (
-    NRN                     in number            -- Рег. номер проекта
-  ) return                  number               -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+    NRN                     in number             -- Рег. номер проекта
+  ) return                  number                -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   is
-    NSTAGE_CTRL             PKG_STD.TNUMBER;     -- Состояние этапа
-    NCNT_STAGES             PKG_STD.TNUMBER :=0; -- Количество этапов
-    NCNT_NULL               PKG_STD.TNUMBER :=0; -- Количество "безконтрольных" этапов
+    NSTAGE_CTRL             PKG_STD.TNUMBER;      -- Состояние этапа
+    NCNT_STAGES             PKG_STD.TNUMBER := 0; -- Количество этапов
+    NCNT_NULL               PKG_STD.TNUMBER := 0; -- Количество "безконтрольных" этапов
   begin
     /* Обходим этапы */
     for C in (select PS.RN from PROJECTSTAGE PS where PS.PRN = NRN)
@@ -862,12 +871,12 @@ text="Проверить, что для расчётных полей дата-�
   /* Получение состояния сроков проекта */
   function GET_CTRL_PERIOD
   (
-    NRN                     in number            -- Рег. номер проекта
-  ) return                  number               -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+    NRN                     in number             -- Рег. номер проекта
+  ) return                  number                -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   is
-    NSTAGE_CTRL             PKG_STD.TNUMBER;     -- Состояние этапа
-    NCNT_STAGES             PKG_STD.TNUMBER :=0; -- Количество этапов
-    NCNT_NULL               PKG_STD.TNUMBER :=0; -- Количество "безконтрольных" этапов
+    NSTAGE_CTRL             PKG_STD.TNUMBER;      -- Состояние этапа
+    NCNT_STAGES             PKG_STD.TNUMBER := 0; -- Количество этапов
+    NCNT_NULL               PKG_STD.TNUMBER := 0; -- Количество "безконтрольных" этапов
   begin
     /* Обходим этапы */
     for C in (select PS.RN from PROJECTSTAGE PS where PS.PRN = NRN)
@@ -901,12 +910,12 @@ text="Проверить, что для расчётных полей дата-�
   /* Получение состояния затрат проекта */
   function GET_CTRL_COST
   (
-    NRN                     in number            -- Рег. номер проекта
-  ) return                  number               -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+    NRN                     in number             -- Рег. номер проекта
+  ) return                  number                -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   is
-    NSTAGE_CTRL             PKG_STD.TNUMBER;     -- Состояние этапа
-    NCNT_STAGES             PKG_STD.TNUMBER :=0; -- Количество этапов
-    NCNT_NULL               PKG_STD.TNUMBER :=0; -- Количество "безконтрольных" этапов
+    NSTAGE_CTRL             PKG_STD.TNUMBER;      -- Состояние этапа
+    NCNT_STAGES             PKG_STD.TNUMBER := 0; -- Количество этапов
+    NCNT_NULL               PKG_STD.TNUMBER := 0; -- Количество "безконтрольных" этапов
   begin
     /* Обходим этапы */
     for C in (select PS.RN from PROJECTSTAGE PS where PS.PRN = NRN)
@@ -940,12 +949,12 @@ text="Проверить, что для расчётных полей дата-�
   /* Получение состояния актирования проекта */
   function GET_CTRL_ACT
   (
-    NRN                     in number            -- Рег. номер проекта
-  ) return                  number               -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+    NRN                     in number             -- Рег. номер проекта
+  ) return                  number                -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   is
-    NSTAGE_CTRL             PKG_STD.TNUMBER;     -- Состояние этапа
-    NCNT_STAGES             PKG_STD.TNUMBER :=0; -- Количество этапов
-    NCNT_NULL               PKG_STD.TNUMBER :=0; -- Количество "безконтрольных" этапов
+    NSTAGE_CTRL             PKG_STD.TNUMBER;      -- Состояние этапа
+    NCNT_STAGES             PKG_STD.TNUMBER := 0; -- Количество этапов
+    NCNT_NULL               PKG_STD.TNUMBER := 0; -- Количество "безконтрольных" этапов
   begin
     /* Обходим этапы */
     for C in (select PS.RN from PROJECTSTAGE PS where PS.PRN = NRN)
@@ -1239,7 +1248,8 @@ text="Проверить, что для расчётных полей дата-�
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS,
                                                SHINT      => '<b>Соисполнение</b> - контроль исполнения обязательств по договорам, заключеным с соисполнителями в рамках проекта.<br>' ||
-                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, до окончания которых осталось менее ' || TO_CHAR(NDAYS_LEFT_LIMIT) ||
+                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, до окончания которых осталось менее ' ||
+                                                             TO_CHAR(NDAYS_LEFT_LIMIT) ||
                                                              ' дней, при этом зафиксирован положительный остаток к поставке/актированию по договорам соисполнителей данного этапа.<br>' ||
                                                              '<b style="color:green">В норме</b> - нет этапов с отклонениями, описанными выше.<br>' ||
                                                              '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапов задана привязка к договорам с соисполнителями и плановые сроки окончания.');
@@ -1252,7 +1262,8 @@ text="Проверить, что для расчётных полей дата-�
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS,
                                                SHINT      => '<b>Сроки</b> - контроль сроков исполнения работ по проекту.<br>' ||
-                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, до окончания которых осталось менее ' || TO_CHAR(NDAYS_LEFT_LIMIT) || ' дней.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - в проекте есть этапы, до окончания которых осталось менее ' ||
+                                                             TO_CHAR(NDAYS_LEFT_LIMIT) || ' дней.<br>' ||
                                                              '<b style="color:green">В норме</b> - нет этапов с отклонениями, описанными выше.<br>' ||
                                                              '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапов заданы плановые сроки окончания.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
@@ -1284,73 +1295,71 @@ text="Проверить, что для расчётных полей дата-�
                                                SCAPTION   => 'Готов (%, затраты)',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCOST_READYFrom',
-                                               SCOND_TO   => 'EDCOST_READYTo',                                               
+                                               SCOND_TO   => 'EDCOST_READYTo',
                                                BORDER     => true,
-                                               BFILTER    => true);                                               
+                                               BFILTER    => true);
     /* Определим дополнительные свойства - ответственный экономист */
     FIND_DOCS_PROPS_CODE(NFLAG_SMART => 1, NCOMPANY => NCOMPANY, SCODE => SDP_SECON_RESP, NRN => NECON_RESP_DP);
     /* Обходим данные */
     begin
-      /* Собираем запрос */
-      CSQL := 'select *
-            from (select D.*,
-                         ROWNUM NROW
-                    from (select P.RN NRN,
-                                 P.CODE SCODE,
-                                 P.NAME SNAME,
-                                 P.NAME_USL SNAME_USL,
-                                 P.EXPECTED_RES SEXPECTED_RES,
-                                 PT.CODE SPRJTYPE,
-                                 EC.AGNABBR SEXT_CUST,
-                                 GC.CODE SGOVCNTRID,
-                                 P.DOC_OSN SDOC_OSN,
-                                 ''Contracts'' SLNK_UNIT_SDOC_OSN,
-                                 PKG_P8PANELS_PROJECTS.GET_DOC_OSN_LNK_DOCUMENT(P.RN) NLNK_DOCUMENT_SDOC_OSN,
-                                 SR.CODE SSUBDIV_RESP,
-                                 R.AGNABBR SRESPONSIBLE,
-                                 F_DOCS_PROPS_GET_STR_VALUE(:NECON_RESP_DP, ''Projects'', P.RN) SECON_RESP,
-                                 P.STATE NSTATE,
-                                 P.BEGPLAN DBEGPLAN,
-                                 P.ENDPLAN DENDPLAN,
-                                 P.COST_SUM_BASECURR NCOST_SUM,
-                                 CN.INTCODE SCURNAMES,
-                                 PKG_P8PANELS_PROJECTS.GET_FIN_IN(P.RN) NFIN_IN,
-                                 ''Paynotes'' SLNK_UNIT_NFIN_IN,
-                                 0 NLNK_DOCUMENT_NFIN_IN,                                 
-                                 PKG_P8PANELS_PROJECTS.GET_FIN_OUT(P.RN) NFIN_OUT,
-                                 ''Paynotes'' SLNK_UNIT_NFIN_OUT,
-                                 1 NLNK_DOCUMENT_NFIN_OUT,                                 
-                                 PKG_P8PANELS_PROJECTS.GET_CTRL_FIN(P.RN) NCTRL_FIN,
-                                 PKG_P8PANELS_PROJECTS.GET_CTRL_CONTR(P.RN) NCTRL_CONTR,
-                                 PKG_P8PANELS_PROJECTS.GET_CTRL_COEXEC(P.RN) NCTRL_COEXEC,
-                                 PKG_P8PANELS_PROJECTS.GET_CTRL_PERIOD(P.RN) NCTRL_PERIOD,
-                                 PKG_P8PANELS_PROJECTS.GET_CTRL_COST(P.RN) NCTRL_COST,
-                                 PKG_P8PANELS_PROJECTS.GET_CTRL_ACT(P.RN) NCTRL_ACT,
-                                 PKG_P8PANELS_PROJECTS.GET_COST_READY(P.RN) NCOST_READY
-                            from PROJECT        P,
-                                 PRJTYPE        PT,
-                                 AGNLIST        EC,
-                                 GOVCNTRID      GC,
-                                 INS_DEPARTMENT SR,
-                                 AGNLIST        R,
-                                 CURNAMES       CN
-                           where P.PRJTYPE = PT.RN
-                             and P.EXT_CUST = EC.RN(+)
-                             and P.GOVCNTRID = GC.RN(+)
-                             and P.SUBDIV_RESP = SR.RN(+)
-                             and P.RESPONSIBLE = R.RN(+)
-                             and P.CURNAMES = CN.RN
-                             and exists (select null from V_USERPRIV UP where UP.CATALOG = P.CRN)
-                             and exists (select null from V_USERPRIV UP where UP.JUR_PERS = P.JUR_PERS and UP.UNITCODE = ''Projects'')
-                             and P.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
-           where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Добавляем подсказку совместимости */
+      CSQL := PKG_SQL_BUILD.COMPATIBLE(SSQL => CSQL);
+      /* Формируем запрос */
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => 'select *');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '          from (select P.RN NRN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.CODE SCODE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P."NAME" SNAME,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.NAME_USL SNAME_USL,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.EXPECTED_RES SEXPECTED_RES,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PT.CODE SPRJTYPE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       EC.AGNABBR SEXT_CUST,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       GC.CODE SGOVCNTRID,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.DOC_OSN SDOC_OSN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Contracts') || ' SLNK_UNIT_SDOC_OSN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_DOC_OSN_LNK_DOCUMENT') || '(P.RN) NLNK_DOCUMENT_SDOC_OSN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       SR.CODE SSUBDIV_RESP,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       R.AGNABBR SRESPONSIBLE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       F_DOCS_PROPS_GET_STR_VALUE(:NECON_RESP_DP, ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Projects') || ', P.RN) SECON_RESP,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P."STATE" NSTATE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.BEGPLAN DBEGPLAN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.ENDPLAN DENDPLAN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.COST_SUM_BASECURR NCOST_SUM,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CN.INTCODE SCURNAMES,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_FIN_IN') || '(P.RN) NFIN_IN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Paynotes') || ' SLNK_UNIT_NFIN_IN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_NUM(NVALUE => 0) || ' NLNK_DOCUMENT_NFIN_IN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_FIN_OUT') || '(P.RN) NFIN_OUT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Paynotes') || ' SLNK_UNIT_NFIN_OUT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_NUM(NVALUE => 1) || ' NLNK_DOCUMENT_NFIN_OUT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_FIN') || '(P.RN) NCTRL_FIN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_CONTR') || '(P.RN) NCTRL_CONTR,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_COEXEC') || '(P.RN) NCTRL_COEXEC,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_PERIOD') || '(P.RN) NCTRL_PERIOD,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_COST') || '(P.RN) NCTRL_COST,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_CTRL_ACT') || '(P.RN) NCTRL_ACT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.GET_COST_READY') || '(P.RN) NCOST_READY');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from PROJECT P');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       left outer join AGNLIST EC on P.EXT_CUST = EC.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       left outer join GOVCNTRID GC on P.GOVCNTRID = GC.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       left outer join INS_DEPARTMENT SR on P.SUBDIV_RESP = SR.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       left outer join AGNLIST R on P.RESPONSIBLE = R.RN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PRJTYPE PT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CURNAMES CN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                 where P.PRJTYPE = PT.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and P.CURNAMES = CN.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select null from V_USERPRIV UP where UP."CATALOG" = P.CRN)');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select null from V_USERPRIV UP where UP.JUR_PERS = P.JUR_PERS and UP.UNITCODE = ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Projects') || ')');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                    and P.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '     where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
       /* Учтём фильтры */
       PKG_P8PANELS_VISUAL.TFILTERS_SET_QUERY(NIDENT     => NIDENT,
                                              NCOMPANY   => NCOMPANY,
                                              SUNIT      => 'Projects',
-                                             SPROCEDURE => 'PKG_P8PANELS_PROJECTS.COND',
+                                             SPROCEDURE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.COND'),
                                              RDATA_GRID => RDG,
                                              RFILTERS   => RF);
       /* Разбираем его */
@@ -1394,6 +1403,7 @@ text="Проверить, что для расчётных полей дата-�
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 30);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 31);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 32);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 33);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
@@ -1402,7 +1412,11 @@ text="Проверить, что для расчётных полей дата-�
       while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
       loop
         /* Добавляем колонки с данными */
-        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW => RDG_ROW, SNAME => 'NRN', ICURSOR => ICURSOR, NPOSITION => 1, BCLEAR => true);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NRN',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 1,
+                                              BCLEAR    => true);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SCODE', ICURSOR => ICURSOR, NPOSITION => 2);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SNAME', ICURSOR => ICURSOR, NPOSITION => 3);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
@@ -1459,7 +1473,7 @@ text="Проверить, что для расчётных полей дата-�
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
                                               SNAME     => 'SCURNAMES',
                                               ICURSOR   => ICURSOR,
-                                              NPOSITION => 19);      
+                                              NPOSITION => 19);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW => RDG_ROW, SNAME => 'NFIN_IN', ICURSOR => ICURSOR, NPOSITION => 20);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
                                               SNAME     => 'SLNK_UNIT_NFIN_IN',
@@ -1468,7 +1482,7 @@ text="Проверить, что для расчётных полей дата-�
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
                                               SNAME     => 'NLNK_DOCUMENT_NFIN_IN',
                                               ICURSOR   => ICURSOR,
-                                              NPOSITION => 22);      
+                                              NPOSITION => 22);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
                                               SNAME     => 'NFIN_OUT',
                                               ICURSOR   => ICURSOR,
@@ -1876,8 +1890,8 @@ text="Проверить, что для расчётных полей дата-�
                                                          SNAME      => 'SUNITCODE',
                                                          SVALUE     => 'CostNotes',
                                                          BCLEAR     => true);
-      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS, SNAME => 'NYEAR', SVALUE => NYEAR);
-      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS, SNAME => 'NMONTH', SVALUE => I);
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS, SNAME => 'NYEAR', SVALUE => TO_CHAR(NYEAR));
+      PKG_P8PANELS_VISUAL.TCHART_DATASET_ITM_ATTR_VL_ADD(RATTR_VALS => RATTR_VALS, SNAME => 'NMONTH', SVALUE => TO_CHAR(I));
       PKG_P8PANELS_VISUAL.TCHART_DATASET_ADD_ITEM(RDATASET => RCH_DS, NVALUE => NSUM, RATTR_VALS => RATTR_VALS);
     end loop;
     /* Добавим набор данных в график */
@@ -1972,56 +1986,56 @@ text="Проверить, что для расчётных полей дата-�
     PKG_COND_BROKER.ADD_CONDITION_ENUM(SCOLUMN_NAME => 'STATE', SCONDITION_NAME => 'CGSTATE');
     /* Контроль финансирования */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_FIN') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_FIN(RN) = :EDCTRL_FIN');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_FIN') || '(RN) = :EDCTRL_FIN');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_FIN',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_FIN'));
     end if;
     /* Контроль контрактации */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_CONTR') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_CONTR(RN) = :EDCTRL_CONTR');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_CONTR') || '(RN) = :EDCTRL_CONTR');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_CONTR',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_CONTR'));
     end if;
     /* Контроль соисполнения */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_COEXEC') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_COEXEC(RN) = :EDCTRL_COEXEC');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_COEXEC') || '(RN) = :EDCTRL_COEXEC');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_COEXEC',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_COEXEC'));
     end if;
     /* Контроль сроков */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_PERIOD') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_PERIOD(RN) = :EDCTRL_PERIOD');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_PERIOD') || '(RN) = :EDCTRL_PERIOD');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_PERIOD',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_PERIOD'));
     end if;
     /* Контроль затрат */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_COST') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_COST(RN) = :EDCTRL_COST');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_COST') || '(RN) = :EDCTRL_COST');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_COST',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_COST'));
     end if;
     /* Контроль актирования */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_ACT') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_ACT(RN) = :EDCTRL_ACT');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_ACT') || '(RN) = :EDCTRL_ACT');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_ACT',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_ACT'));
     end if;
     /* Готовность (%, по затратам) */
     if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 1) and
        (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 0)) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY(RN) >= :EDCOST_READYFrom');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY') || '(RN) >= :EDCOST_READYFrom');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYFrom',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYFrom'));
     end if;
     if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 1) and
        (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 0)) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY(RN) <= :EDCOST_READYTo');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY') || '(RN) <= :EDCOST_READYTo');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYTo',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYTo'));
     end if;
     if ((PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYFrom') = 1) and
        (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCOST_READYTo') = 1)) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY(RN) between :EDCOST_READYFrom and :EDCOST_READYTo');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY') || '(RN) between :EDCOST_READYFrom and :EDCOST_READYTo');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYFrom',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCOST_READYFrom'));
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCOST_READYTo',
@@ -2164,12 +2178,12 @@ text="Проверить, что для расчётных полей дата-�
   /* Получение состояния финансирования этапа проекта */
   function STAGES_GET_CTRL_FIN
   (
-    NRN                     in number            -- Рег. номер этапа проекта
-  ) return                  number               -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+    NRN                     in number             -- Рег. номер этапа проекта
+  ) return                  number                -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   is
-    NCONTR_CTRL             PKG_STD.TNUMBER;     -- Состояние соисполнителя этапа
-    NCNT_CONTR              PKG_STD.TNUMBER :=0; -- Количество соисполнителей этапа
-    NCNT_NULL               PKG_STD.TNUMBER :=0; -- Количество "безконтрольных" соисполнителей этапа
+    NCONTR_CTRL             PKG_STD.TNUMBER;      -- Состояние соисполнителя этапа
+    NCNT_CONTR              PKG_STD.TNUMBER := 0; -- Количество соисполнителей этапа
+    NCNT_NULL               PKG_STD.TNUMBER := 0; -- Количество "безконтрольных" соисполнителей этапа
   begin
     /* Обходим соисполнителей этапа */
     for C in (select PSPF.RN from PROJECTSTAGEPF PSPF where PSPF.PRN = NRN)
@@ -2239,12 +2253,12 @@ text="Проверить, что для расчётных полей дата-�
   /* Получение состояния соисполнения этапа проекта */
   function STAGES_GET_CTRL_COEXEC
   (
-    NRN                     in number            -- Рег. номер этапа проекта
-  ) return                  number               -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
+    NRN                     in number             -- Рег. номер этапа проекта
+  ) return                  number                -- Состояние (null - не определено, 0 - без отклонений, 1 - есть отклонения)
   is
-    NCONTR_CTRL             PKG_STD.TNUMBER;     -- Состояние соисполнителя этапа
-    NCNT_CONTR              PKG_STD.TNUMBER :=0; -- Количество соисполнителей этапа
-    NCNT_NULL               PKG_STD.TNUMBER :=0; -- Количество "безконтрольных" соисполнителей этапа
+    NCONTR_CTRL             PKG_STD.TNUMBER;      -- Состояние соисполнителя этапа
+    NCNT_CONTR              PKG_STD.TNUMBER := 0; -- Количество соисполнителей этапа
+    NCNT_NULL               PKG_STD.TNUMBER := 0; -- Количество "безконтрольных" соисполнителей этапа
   begin
     /* Обходим соисполнителей этапа */
     for C in (select PSPF.RN from PROJECTSTAGEPF PSPF where PSPF.PRN = NRN)
@@ -2555,7 +2569,7 @@ text="Проверить, что для расчётных полей дата-�
     NSUMM_INCOME            PKG_STD.TNUMBER;                       -- Сумма прибыли по этапу проекта
     NINCOME_PRC             PKG_STD.TNUMBER;                       -- Процент прибыли по этапу проекта
   begin
-    /* Определим рег. номер статьи калькуляции для учёта реализации */    
+    /* Определим рег. номер статьи калькуляции для учёта реализации */
     FIND_FPDARTCL_CODE(NFLAG_SMART => 1, NCOMPANY => NCOMPANY, SCODE => SFPDARTCL_REALIZ, NRN => NFPDARTCL_REALIZ);
     /* Читаем фильтры */
     RF := PKG_P8PANELS_VISUAL.TFILTERS_FROM_XML(CFILTERS => CFILTERS);
@@ -2703,7 +2717,8 @@ text="Проверить, что для расчётных полей дата-�
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS,
                                                SHINT      => '<b>Соисполнение</b> - контроль исполнения обязательств по договорам, заключеным с соисполнителями в рамках этапа.<br>' ||
-                                                             '<b style="color:red">Требует внимания</b> - до окончания этапа осталось менее ' || TO_CHAR(NDAYS_LEFT_LIMIT) ||
+                                                             '<b style="color:red">Требует внимания</b> - до окончания этапа осталось менее ' ||
+                                                             TO_CHAR(NDAYS_LEFT_LIMIT) ||
                                                              ' дней, при этом зафиксирован положительный остаток к поставке/актированию по привязанным к нему договорам соисполнителей.<br>' ||
                                                              '<b style="color:green">В норме</b> - нет описанных выше отклонений.<br>' ||
                                                              '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапа задана привязка к договорам с соисполнителями и плановый срок окончания.');
@@ -2721,7 +2736,8 @@ text="Проверить, что для расчётных полей дата-�
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS,
                                                SHINT      => '<b>Сроки</b> - контроль сроков исполнения работ по этапу.<br>' ||
-                                                             '<b style="color:red">Требует внимания</b> - до окончания этапа осталось менее ' || TO_CHAR(NDAYS_LEFT_LIMIT) || ' дней.<br>' ||
+                                                             '<b style="color:red">Требует внимания</b> - до окончания этапа осталось менее ' ||
+                                                             TO_CHAR(NDAYS_LEFT_LIMIT) || ' дней.<br>' ||
                                                              '<b style="color:green">В норме</b> - нет описанных выше отклонений.<br>' ||
                                                              '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для этапа задан плановый срок окончания.');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
@@ -2743,7 +2759,7 @@ text="Проверить, что для расчётных полей дата-�
                                                SNAME      => 'NSUMM_REALIZ',
                                                SCAPTION   => 'Сумма реализации',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
-                                               BVISIBLE   => false);                                              
+                                               BVISIBLE   => false);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'SLNK_UNIT_NSUMM_REALIZ',
                                                SCAPTION   => 'Сумма реализации (код раздела ссылки)',
@@ -2793,56 +2809,57 @@ text="Проверить, что для расчётных полей дата-�
                                                SCAPTION   => 'Готов (%, затраты)',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                SCOND_FROM => 'EDCOST_READYFrom',
-                                               SCOND_TO   => 'EDCOST_READYTo',                                               
+                                               SCOND_TO   => 'EDCOST_READYTo',
                                                BORDER     => true,
                                                BFILTER    => true);
     /* Обходим данные */
     begin
-      /* Собираем запрос */
-      CSQL := 'select *
-            from (select D.*,
-                         ROWNUM NROW
-                    from (select PS.RN NRN,
-                                 PS.NUMB SNUMB,
-                                 PS.NAME SNAME,                                 
-                                 PS.EXPECTED_RES SEXPECTED_RES,
-                                 FAC.NUMB SFACEACC,
-                                 PS.STATE NSTATE,
-                                 PS.BEGPLAN DBEGPLAN,
-                                 PS.ENDPLAN DENDPLAN,
-                                 PS.COST_SUM_BASECURR NCOST_SUM,
-                                 CN.INTCODE SCURNAMES,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_FIN_IN(PS.RN) NFIN_IN,
-                                 ''Paynotes'' SLNK_UNIT_NFIN_IN,
-                                 0 NLNK_DOCUMENT_NFIN_IN,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_FIN_OUT(PS.RN) NFIN_OUT,
-                                 ''Paynotes'' SLNK_UNIT_NFIN_OUT,
-                                 1 NLNK_DOCUMENT_NFIN_OUT,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_FIN(PS.RN) NCTRL_FIN,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_CONTR(PS.RN) NCTRL_CONTR,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_COEXEC(PS.RN) NCTRL_COEXEC,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_DAYS_LEFT(PS.RN) NDAYS_LEFT,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_PERIOD(PS.RN) NCTRL_PERIOD,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_COST_FACT(PS.RN) NCOST_FACT,
-                                 ''CostNotes'' SLNK_UNIT_NCOST_FACT,
-                                 1 NLNK_DOCUMENT_NCOST_FACT,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_SUMM_REALIZ(PS.RN, :NFPDARTCL_REALIZ) NSUMM_REALIZ,
-                                 ''GoodsTransInvoicesToConsumers'' SLNK_UNIT_NSUMM_REALIZ,
-                                 1 NLNK_DOCUMENT_NSUMM_REALIZ,                                 
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_COST(PS.RN) NCTRL_COST,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_ACT(PS.RN) NCTRL_ACT,
-                                 PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY(PS.RN) NCOST_READY
-                            from PROJECTSTAGE   PS,
-                                 PROJECT        P,
-                                 FACEACC        FAC,
-                                 CURNAMES       CN
-                           where PS.PRN = P.RN
-                             and PS.FACEACC = FAC.RN(+)
-                             and P.CURNAMES = CN.RN
-                             and exists (select null from V_USERPRIV UP where UP.CATALOG = PS.CRN)
-                             and exists (select null from V_USERPRIV UP where UP.JUR_PERS = PS.JUR_PERS and UP.UNITCODE = ''Projects'')                             
-                             and PS.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
-           where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Добавляем подсказку совместимости */
+      CSQL := PKG_SQL_BUILD.COMPATIBLE(SSQL => CSQL);
+      /* Формируем запрос */
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => 'select *');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '          from (select PS.RN NRN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PS.NUMB SNUMB,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PS."NAME" SNAME,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PS.EXPECTED_RES SEXPECTED_RES,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       FAC.NUMB SFACEACC,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PS."STATE" NSTATE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PS.BEGPLAN DBEGPLAN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PS.ENDPLAN DENDPLAN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PS.COST_SUM_BASECURR NCOST_SUM,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CN.INTCODE SCURNAMES,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_FIN_IN') || '(PS.RN) NFIN_IN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Paynotes') || ' SLNK_UNIT_NFIN_IN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_NUM(NVALUE => 0) || ' NLNK_DOCUMENT_NFIN_IN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_FIN_OUT') || '(PS.RN) NFIN_OUT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Paynotes') || ' SLNK_UNIT_NFIN_OUT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_NUM(NVALUE => 1) || ' NLNK_DOCUMENT_NFIN_OUT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_FIN') || '(PS.RN) NCTRL_FIN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_CONTR') || '(PS.RN) NCTRL_CONTR,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_COEXEC') || '(PS.RN) NCTRL_COEXEC,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_DAYS_LEFT') || '(PS.RN) NDAYS_LEFT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_PERIOD') || '(PS.RN) NCTRL_PERIOD,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_FACT') || '(PS.RN) NCOST_FACT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_STR(SVALUE => 'CostNotes') || ' SLNK_UNIT_NCOST_FACT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_NUM(NVALUE => 1) || ' NLNK_DOCUMENT_NCOST_FACT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_SUMM_REALIZ') || '(PS.RN, :NFPDARTCL_REALIZ) NSUMM_REALIZ,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_STR(SVALUE => 'GoodsTransInvoicesToConsumers') || ' SLNK_UNIT_NSUMM_REALIZ,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_NUM(NVALUE => 1) || ' NLNK_DOCUMENT_NSUMM_REALIZ,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_COST') || '(PS.RN) NCTRL_COST,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_CTRL_ACT') || '(PS.RN) NCTRL_ACT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_GET_COST_READY') || '(PS.RN) NCOST_READY');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from PROJECTSTAGE PS');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       left outer join FACEACC FAC on PS.FACEACC = FAC.RN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PROJECT P,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CURNAMES CN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                 where PS.PRN = P.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and P.CURNAMES = CN.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select null from V_USERPRIV UP where UP."CATALOG" = PS.CRN)');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select null from V_USERPRIV UP where UP.JUR_PERS = PS.JUR_PERS and UP.UNITCODE = ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Projects') || ')');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and PS.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
       /* Учтём фильтры */
@@ -2850,7 +2867,7 @@ text="Проверить, что для расчётных полей дата-�
                                              NCOMPANY   => NCOMPANY,
                                              NPARENT    => NPRN,
                                              SUNIT      => 'ProjectsStages',
-                                             SPROCEDURE => 'PKG_P8PANELS_PROJECTS.STAGES_COND',
+                                             SPROCEDURE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGES_COND'),
                                              RDATA_GRID => RDG,
                                              RFILTERS   => RF);
       /* Разбираем его */
@@ -2892,6 +2909,7 @@ text="Проверить, что для расчётных полей дата-�
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 28);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 29);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 30);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 31);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
@@ -3476,13 +3494,13 @@ text="Проверить, что для расчётных полей дата-�
                                                 SJOINS               => 'PRN <- RN;CONTRACTS');
     /* Контроль финансирования */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_FIN') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGE_CONTRACTS_GET_CTRL_FIN(RN) = :EDCTRL_FIN');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGE_CONTRACTS_GET_CTRL_FIN') || '(RN) = :EDCTRL_FIN');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_FIN',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_FIN'));
     end if;
     /* Контроль соисполнения */
     if (PKG_COND_BROKER.CONDITION_EXISTS(SCONDITION_NAME => 'EDCTRL_COEXEC') = 1) then
-      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => 'PKG_P8PANELS_PROJECTS.STAGE_CONTRACTS_GET_CTRL_COEXE(RN) = :EDCTRL_COEXEC');
+      PKG_COND_BROKER.ADD_CLAUSE(SCLAUSE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGE_CONTRACTS_GET_CTRL_COEXE') || '(RN) = :EDCTRL_COEXEC');
       PKG_COND_BROKER.BIND_VARIABLE(SVARIABLE_NAME => 'EDCTRL_COEXEC',
                                     NVALUE         => PKG_COND_BROKER.GET_CONDITION_NUM(SCONDITION_NAME => 'EDCTRL_COEXEC'));
     end if;
@@ -4010,12 +4028,12 @@ text="Проверить, что для расчётных полей дата-�
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                BVISIBLE   => false);
     PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 0, BCLEAR => true);
-    PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 1);                                               
+    PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RCOL_VALS, NVALUE => 1);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NCTRL_FIN',
                                                SCAPTION   => 'Фин-е (исх.)',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
-                                               SCOND_FROM => 'EDCTRL_FIN',                                               
+                                               SCOND_FROM => 'EDCTRL_FIN',
                                                BORDER     => false,
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS,
@@ -4047,56 +4065,57 @@ text="Проверить, что для расчётных полей дата-�
                                                BFILTER    => true,
                                                RCOL_VALS  => RCOL_VALS,
                                                SHINT      => '<b>Соисполнение</b> - контроль исполнения обязательств по договору с соисполнителем.<br>' ||
-                                                             '<b style="color:red">Требует внимания</b> - до окончания этапа проекта, в рамках которого действует соисполнение, осталось менее ' || TO_CHAR(NDAYS_LEFT_LIMIT) ||
+                                                             '<b style="color:red">Требует внимания</b> - до окончания этапа проекта, в рамках которого действует соисполнение, осталось менее ' ||
+                                                             TO_CHAR(NDAYS_LEFT_LIMIT) ||
                                                              ' дней, при этом зафиксирован положительный остаток к поставке/актированию по договору.<br>' ||
                                                              '<b style="color:green">В норме</b> - нет описанных выше отклонений.<br>' ||
                                                              '<b style="color:gray">Пусто</b> - в Системе не хватает данных для рассчёта. Убедитесь, что для связанного этапа проекта задана плановая дата окончания, ' ||
                                                              'а по договору с соисполнителем аккуратно ведётся учёт первичных документов оперативного учёта (приходных накладных).');
     /* Обходим данные */
     begin
-      /* Собираем запрос */
-      CSQL := 'select *
-            from (select D.*,
-                         ROWNUM NROW
-                    from (select PSPF.RN NRN,
-                                 trim(CN.DOC_PREF) SDOC_PREF,
-                                 ''Contracts'' SLNK_UNIT_SDOC_PREF,
-                                 CN.RN NLNK_DOCUMENT_SDOC_PREF,
-                                 trim(CN.DOC_NUMB) SDOC_NUMB,
-                                 ''Contracts'' SLNK_UNIT_SDOC_NUMB,
-                                 CN.RN NLNK_DOCUMENT_SDOC_NUMB,
-                                 CN.DOC_DATE DDOC_DATE,
-                                 CN.EXT_NUMBER SEXT_NUMBER,
-                                 AG.AGNNAME SAGENT,
-                                 AG.AGNIDNUMB SAGENT_INN,
-                                 AG.REASON_CODE SAGENT_KPP,
-                                 GC.CODE SGOVCNTRID,
-                                 trim(ST.NUMB) SCSTAGE,
-                                 ST.DESCRIPTION SCSTAGE_DESCRIPTION,
-                                 ST.BEGIN_DATE DCSTAGE_BEGIN_DATE,
-                                 ST.END_DATE DCSTAGE_END_DATE,
-                                 PSPF.COST_PLAN NSUMM,
-                                 CUR.INTCODE SCURR,
-                                 ART.CODE SCOST_ART
-                            from PROJECTSTAGEPF PSPF,
-                                 STAGES         ST,
-                                 CONTRACTS      CN,
-                                 AGNLIST        AG,
-                                 CURNAMES       CUR,
-                                 FPDARTCL       ART,
-                                 GOVCNTRID      GC
-                           where PSPF.FACEACC = ST.FACEACC
-                             and ST.PRN = CN.RN
-                             and PSPF.PERFORMER = AG.RN
-                             and CN.CURRENCY = CUR.RN
-                             and PSPF.COST_ARTICLE = ART.RN(+)
-                             and CN.GOVCNTRID = GC.RN(+)
-                             and exists (select null from V_USERPRIV UP where UP.CATALOG = PSPF.CRN)
-                             and exists (select null from V_USERPRIV UP where UP.JUR_PERS = PSPF.JUR_PERS and UP.UNITCODE = ''Projects'')
-                             and exists (select null from V_USERPRIV UP where UP.CATALOG = ST.CRN)
-                             and exists (select null from V_USERPRIV UP where UP.JUR_PERS = ST.JUR_PERS and UP.UNITCODE = ''Contracts'')
-                             and PSPF.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
-           where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Добавляем подсказку совместимости */
+      CSQL := PKG_SQL_BUILD.COMPATIBLE(SSQL => CSQL);
+      /* Формируем запрос */
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => 'select *');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '          from (select PSPF.RN NRN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       trim(CN.DOC_PREF) SDOC_PREF,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Contracts') || ' SLNK_UNIT_SDOC_PREF,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CN.RN NLNK_DOCUMENT_SDOC_PREF,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       trim(CN.DOC_NUMB) SDOC_NUMB,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Contracts') || ' SLNK_UNIT_SDOC_NUMB,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CN.RN NLNK_DOCUMENT_SDOC_NUMB,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CN.DOC_DATE DDOC_DATE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CN.EXT_NUMBER SEXT_NUMBER,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       AG.AGNNAME SAGENT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       AG.AGNIDNUMB SAGENT_INN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       AG.REASON_CODE SAGENT_KPP,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       GC.CODE SGOVCNTRID,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       trim(ST.NUMB) SCSTAGE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       ST.DESCRIPTION SCSTAGE_DESCRIPTION,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       ST.BEGIN_DATE DCSTAGE_BEGIN_DATE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       ST.END_DATE DCSTAGE_END_DATE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PSPF.COST_PLAN NSUMM,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CUR.INTCODE SCURR,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       ART.CODE SCOST_ART');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from PROJECTSTAGEPF PSPF');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       left outer join FPDARTCL ART on PSPF.COST_ARTICLE = ART.RN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       STAGES ST,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CONTRACTS CN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       left outer join GOVCNTRID GC on CN.GOVCNTRID = GC.RN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       AGNLIST AG,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CURNAMES CUR');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                 where PSPF.FACEACC = ST.FACEACC');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and ST.PRN = CN.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and PSPF.PERFORMER = AG.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and CN.CURRENCY = CUR.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select null from V_USERPRIV UP where UP."CATALOG" = PSPF.CRN)');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select null from V_USERPRIV UP where UP.JUR_PERS = PSPF.JUR_PERS and UP.UNITCODE = ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Projects') || ')');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select null from V_USERPRIV UP where UP."CATALOG" = ST.CRN)');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select null from V_USERPRIV UP where UP.JUR_PERS = ST.JUR_PERS and UP.UNITCODE = ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Contracts') || ')');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and PSPF.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
       /* Учтём фильтры */
@@ -4104,7 +4123,7 @@ text="Проверить, что для расчётных полей дата-�
                                              NCOMPANY   => NCOMPANY,
                                              NPARENT    => NSTAGE,
                                              SUNIT      => 'ProjectsStagesPerformers',
-                                             SPROCEDURE => 'PKG_P8PANELS_PROJECTS.STAGE_CONTRACTS_COND',
+                                             SPROCEDURE => PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_PROJECTS.STAGE_CONTRACTS_COND'),
                                              RDATA_GRID => RDG,
                                              RFILTERS   => RF);
       /* Разбираем его */
@@ -4135,6 +4154,7 @@ text="Проверить, что для расчётных полей дата-�
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 18);
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 19);
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 20);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 21);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
@@ -4959,32 +4979,34 @@ text="Проверить, что для расчётных полей дата-�
                                                BFILTER    => false);
     /* Обходим данные */
     begin
-      /* Собираем запрос */
-      CSQL := 'select *
-                 from (select D.*,
-                              ROWNUM NROW
-                         from (select FM.RN NRN,
-                                      PERS.CODE SPERSON,
-                                      SH.AVG_HOURS NLAB_PLAN_FOT
-                                 from CLNPSPFM   FM,
-                                      CLNPERSONS PERS,
-                                      CLNPSDEP   PSD,
-                                      PRPROF     PROF,
-                                      CLNPSPFMHS FMH,
-                                      SLSCHEDULE SH
-                                where FM.COMPANY = :NCOMPANY
-                                  and FM.PERSRN = PERS.RN
-                                  and FM.DEPTRN = :NINS_DEPARTMENT
-                                  and FM.PSDEPRN = PSD.RN
-                                  and PSD.PRPROF = PROF.RN
-                                  and PROF.RN in (select MP.PRPROF from FCMANPOWER MP where MP.RN = :NFCMANPOWER)
-                                  and ((FM.BEGENG between :DDATE_FROM and :DDATE_TO) or (FM.ENDENG between :DDATE_FROM and :DDATE_TO) or
-                                      ((FM.BEGENG < :DDATE_FROM) and (COALESCE(FM.ENDENG, :DDATE_TO + 1) > :DDATE_TO)))
-                                  and FM.RN = FMH.PRN
-                                  and ((FMH.DO_ACT_FROM between :DDATE_FROM and :DDATE_TO) or (FMH.DO_ACT_TO between :DDATE_FROM and :DDATE_TO) or
-                                      ((FMH.DO_ACT_FROM < :DDATE_FROM) and (COALESCE(FMH.DO_ACT_TO, :DDATE_TO + 1) > :DDATE_TO)))
-                                  and FMH.SCHEDULE = SH.RN %ORDER_BY%) D) F
-                where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Добавляем подсказку совместимости */
+      CSQL := PKG_SQL_BUILD.COMPATIBLE(SSQL => CSQL);
+      /* Формируем запрос */
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => 'select *');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '          from (select FM.RN NRN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PERS.CODE SPERSON,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       SH.AVG_HOURS NLAB_PLAN_FOT');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from CLNPSPFM   FM,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CLNPERSONS PERS,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CLNPSDEP   PSD,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       PRPROF     PROF,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       CLNPSPFMHS FMH,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       SLSCHEDULE SH');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                 where FM.COMPANY = :NCOMPANY');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and FM.PERSRN = PERS.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and FM.DEPTRN = :NINS_DEPARTMENT');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and FM.PSDEPRN = PSD.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and PSD.PRPROF = PROF.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and PROF.RN in (select MP.PRPROF from FCMANPOWER MP where MP.RN = :NFCMANPOWER)');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and ((FM.BEGENG between :DDATE_FROM and :DDATE_TO) or (FM.ENDENG between :DDATE_FROM and :DDATE_TO) or');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       ((FM.BEGENG < :DDATE_FROM) and (COALESCE(FM.ENDENG, :DDATE_TO + 1) > :DDATE_TO)))');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and FM.RN = FMH.PRN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and ((FMH.DO_ACT_FROM between :DDATE_FROM and :DDATE_TO) or (FMH.DO_ACT_TO between :DDATE_FROM and :DDATE_TO) or');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       ((FMH.DO_ACT_FROM < :DDATE_FROM) and (COALESCE(FMH.DO_ACT_TO, :DDATE_TO + 1) > :DDATE_TO)))');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and FMH.SCHEDULE = SH.RN %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
       /* Разбираем его */
@@ -4993,15 +5015,16 @@ text="Проверить, что для расчётных полей дата-�
       /* Делаем подстановку параметров */
       PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NCOMPANY', NVALUE => NCOMPANY);
       PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NINS_DEPARTMENT', NVALUE => RPRD.INS_DEPARTMENT);
-      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NFCMANPOWER', NVALUE => RPRD.FCMANPOWER);      
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NFCMANPOWER', NVALUE => RPRD.FCMANPOWER);
       PKG_SQL_DML.BIND_VARIABLE_DATE(ICURSOR => ICURSOR, SNAME => 'DDATE_FROM', DVALUE => RPRD.DATE_FROM);
-      PKG_SQL_DML.BIND_VARIABLE_DATE(ICURSOR => ICURSOR, SNAME => 'DDATE_TO', DVALUE => RPRD.DATE_TO);      
+      PKG_SQL_DML.BIND_VARIABLE_DATE(ICURSOR => ICURSOR, SNAME => 'DDATE_TO', DVALUE => RPRD.DATE_TO);
       PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_FROM', NVALUE => NROW_FROM);
-      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_TO', NVALUE => NROW_TO);      
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_TO', NVALUE => NROW_TO);
       /* Описываем структуру записи курсора */
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 1);
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 2);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 3);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 4);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
@@ -5187,39 +5210,40 @@ text="Проверить, что для расчётных полей дата-�
                                                BFILTER    => false);
     /* Обходим данные */
     begin
-      /* Собираем запрос */
-      CSQL := 'select *
-                 from (select D.*,
-                              ROWNUM NROW
-                         from (select JB.RN NRN,                                      
-                                      P.RN NPROJECT,
-                                      JBP.RN NJB_PRJCTS,
-                                      P.CODE || ''-'' || P.NAME_USL SPRJ,
-                                      trim(PS.NUMB) || ''-'' || trim(PJ.NUMB) SSTG_JOB,
-                                      PJ.NAME SJOB_NAME,
-                                      PJ.STATE NJOB_STATE,
-                                      JB.DATE_FROM DJOB_BEG,
-                                      JB.DATE_TO DJOB_END,
-                                      PJMP.LABOUR_P NLABOUR_P                                      
-                                 from P8PNL_JB_JOBS    JB,
-                                      P8PNL_JB_PRJCTS  JBP,
-                                      PROJECTJOB       PJ,
-                                      PROJECTJOBMANPOW PJMP,
-                                      PROJECT          P,
-                                      PROJECTSTAGE     PS
-                                where JB.IDENT = :NIDENT
-                                  and JB.STAGE = 0
-                                  and JB.PRN = JBP.RN
-                                  and JB.SOURCE = PJ.RN                                  
-                                  and PJ.COMPANY = :NCOMPANY
-                                  and PJ.PRN = P.RN
-                                  and PJ.PROJECTSTAGE = PS.RN(+)
-                                  and PJ.RN = PJMP.PRN
-                                  and PJMP.FCMANPOWER = :NFCMANPOWER
-                                  and PJMP.SUBDIV = :NINS_DEPARTMENT
-                                  and ((JB.DATE_FROM between :DDATE_FROM and :DDATE_TO) or (JB.DATE_TO between :DDATE_FROM and :DDATE_TO) or
-                                      ((JB.DATE_FROM < :DDATE_FROM) and (JB.DATE_TO > :DDATE_TO))) %ORDER_BY%) D) F
-                where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Добавляем подсказку совместимости */
+      CSQL := PKG_SQL_BUILD.COMPATIBLE(SSQL => CSQL);
+      /* Формируем запрос */
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => 'select *');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '         from (select JB.RN NRN,');                                     
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      P.RN NPROJECT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      JBP.RN NJB_PRJCTS,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      P.CODE || ''-'' || P.NAME_USL SPRJ,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      trim(PS.NUMB) || ''-'' || trim(PJ.NUMB) SSTG_JOB,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      PJ.NAME SJOB_NAME,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      PJ.STATE NJOB_STATE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      JB.DATE_FROM DJOB_BEG,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      JB.DATE_TO DJOB_END,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      PJMP.LABOUR_P NLABOUR_P');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                 from P8PNL_JB_JOBS JB,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      P8PNL_JB_PRJCTS JBP,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      PROJECTJOB PJ');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      left outer join PROJECTSTAGE PS on PJ.PROJECTSTAGE = PS.RN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      PROJECTJOBMANPOW PJMP,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      PROJECT P');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                where JB.IDENT = :NIDENT');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and JB.STAGE = ' || PKG_SQL_BUILD.WRAP_NUM(NVALUE => 0));
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and JB.PRN = JBP.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and JB.SOURCE = PJ.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJ.COMPANY = :NCOMPANY');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJ.PRN = P.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJ.RN = PJMP.PRN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJMP.FCMANPOWER = :NFCMANPOWER');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJMP.SUBDIV = :NINS_DEPARTMENT');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and ((JB.DATE_FROM between :DDATE_FROM and :DDATE_TO) or (JB.DATE_TO between :DDATE_FROM and :DDATE_TO) or');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      ((JB.DATE_FROM < :DDATE_FROM) and (JB.DATE_TO > :DDATE_TO))) %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
       /* Разбираем его */
@@ -5245,6 +5269,7 @@ text="Проверить, что для расчётных полей дата-�
       PKG_SQL_DML.DEFINE_COLUMN_DATE(ICURSOR => ICURSOR, IPOSITION => 8);
       PKG_SQL_DML.DEFINE_COLUMN_DATE(ICURSOR => ICURSOR, IPOSITION => 9);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 10);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 11);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
@@ -5382,7 +5407,7 @@ text="Проверить, что для расчётных полей дата-�
     NFCMANPOWER             in number,      -- Рег. номер трудового ресурса
     NLAB_PLAN_FOT           in number := 0, -- Трудоёмкость (план, по ФОТ)
     NLAB_FACT_RPT           in number := 0, -- Трудоёмкость (факт, по отчёту)
-    NLAB_PLAN_JOBS          in number :=0,  -- Трудоёмкость (план, по графику)
+    NLAB_PLAN_JOBS          in number := 0, -- Трудоёмкость (план, по графику)
     NJB_PERIODS             out number      -- Рег. номер записи периода балансировки
   )
   is
@@ -5587,26 +5612,28 @@ text="Проверить, что для расчётных полей дата-�
                                                BFILTER    => false);
     /* Обходим данные */
     begin
-      /* Собираем запрос */
-      CSQL := 'select *
-                 from (select D.*,
-                              ROWNUM NROW
-                         from (select P.RN NRN,
-                                      TO_CHAR(P.DATE_FROM, ''YYYY.MM'') SPERIOD,
-                                      INSD.CODE SINS_DEPARTMENT,
-                                      MP.CODE SFCMANPOWER,
-                                      P.LAB_PLAN_FOT NLAB_PLAN_FOT,
-                                      P.LAB_FACT_RPT NLAB_FACT_RPT,
-                                      P.LAB_FACT_RPT - P.LAB_PLAN_FOT NLAB_DIFF_RPT_FOT,
-                                      P.LAB_PLAN_JOBS NLAB_PLAN_JOBS,
-                                      P.LAB_PLAN_JOBS - P.LAB_PLAN_FOT NLAB_DIFF_JOBS_FOT
-                                 from P8PNL_JB_PERIODS P,
-                                      INS_DEPARTMENT   INSD,
-                                      FCMANPOWER       MP
-                                where P.IDENT = :NIDENT
-                                  and P.INS_DEPARTMENT = INSD.RN
-                                  and P.FCMANPOWER = MP.RN %ORDER_BY%) D) F
-                where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Добавляем подсказку совместимости */
+      CSQL := PKG_SQL_BUILD.COMPATIBLE(SSQL => CSQL);
+      /* Формируем запрос */
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => 'select *');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '          from (select P.RN NRN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       TO_CHAR(P.DATE_FROM, ''YYYY.MM'') SPERIOD,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       INSD.CODE SINS_DEPARTMENT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       MP.CODE SFCMANPOWER,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.LAB_PLAN_FOT NLAB_PLAN_FOT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.LAB_FACT_RPT NLAB_FACT_RPT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.LAB_FACT_RPT - P.LAB_PLAN_FOT NLAB_DIFF_RPT_FOT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.LAB_PLAN_JOBS NLAB_PLAN_JOBS,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.LAB_PLAN_JOBS - P.LAB_PLAN_FOT NLAB_DIFF_JOBS_FOT');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from P8PNL_JB_PERIODS P,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       INS_DEPARTMENT   INSD,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       FCMANPOWER       MP');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                 where P.IDENT = :NIDENT');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and P.INS_DEPARTMENT = INSD.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and P.FCMANPOWER = MP.RN %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
       /* Разбираем его */
@@ -5626,6 +5653,7 @@ text="Проверить, что для расчётных полей дата-�
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 7);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 8);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 9);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 10);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
