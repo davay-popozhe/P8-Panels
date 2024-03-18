@@ -24,7 +24,11 @@ import {
     InputLabel,
     FormGroup,
     FormControlLabel,
-    Checkbox
+    Checkbox,
+    Button,
+    Dialog,
+    DialogContent,
+    DialogActions
 } from "@mui/material"; //Интерфейсные элементы
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
@@ -32,6 +36,8 @@ import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключ�
 import { P8PGantt } from "../../components/p8p_gantt"; //Диаграмма Ганта
 import { xml2JSON, formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
 import { useFilteredPlanCtlgs } from "./hooks"; //Вспомогательные хуки
+import { CostRouteListsDataGrid } from "./datagrids/fcroutlst";
+import { IncomFromDepsDataGrid } from "./datagrids/incomefromdeps";
 
 //---------
 //Константы
@@ -65,7 +71,8 @@ const STYLES = {
         [`& .MuiDrawer-paper`]: { width: "350px", display: "inline-block", boxSizing: "border-box" }
     },
     GANTT_CONTAINER: { height: GANTT_HEIGHT, width: GANTT_WIDTH },
-    GANTT_TITLE: { paddingLeft: "100px", paddingRight: "120px" }
+    GANTT_TITLE: { paddingLeft: "100px", paddingRight: "120px" },
+    SECOND_TABLE: { paddingTop: "30px" }
 };
 
 //------------------------------------
@@ -186,7 +193,9 @@ const MechRecCostProdPlans = () => {
         selectedPlanCtlgSort: null,
         selectedPlanCtlgMenuItems: null,
         selectedPlanCtlgGanttDef: {},
-        selectedPlanCtlgSpecs: []
+        selectedPlanCtlgSpecs: [],
+        selectedTaskDetail: null,
+        selectedTaskDetailType: null
     });
     //Состояние для фильтра каталогов
     const [filter, setFilter] = useState({ ctlgName: "", haveDocs: false });
@@ -226,7 +235,9 @@ const MechRecCostProdPlans = () => {
             selectedPlanCtlgMenuItems: null,
             selectedPlanCtlgSpecs: [],
             selectedPlanCtlgGanttDef: {},
-            showPlanList: false
+            showPlanList: false,
+            selectedTaskDetail: null,
+            selectedTaskDetailType: null
         }));
     };
 
@@ -242,7 +253,9 @@ const MechRecCostProdPlans = () => {
             selectedPlanCtlgMenuItems: null,
             selectedPlanCtlgSpecs: [],
             selectedPlanCtlgGanttDef: {},
-            showPlanList: false
+            showPlanList: false,
+            selectedTaskDetail: null,
+            selectedTaskDetailType: null
         }));
 
     //Загрузка списка спецификаций каталога планов
@@ -297,6 +310,34 @@ const MechRecCostProdPlans = () => {
     const handleChangeSelectSort = selectedSort => {
         loadPlanCtglSpecs(state.selectedPlanCtlgLevel, selectedSort);
         setState(pv => ({ ...pv, selectedPlanCtlgSort: selectedSort }));
+    };
+
+    //При закрытии окна детализации
+    const handleTaskDetailClose = () => {
+        setState(pv => ({ ...pv, selectedTaskDetail: null, selectedTaskDetailType: null }));
+    };
+
+    //При открытии окна детализации
+    const handleTaskDetailOpen = (taskRn, taskType) => {
+        setState(pv => ({ ...pv, selectedTaskDetail: taskRn, selectedTaskDetailType: taskType }));
+    };
+
+    //Генерация ссылки на документы анализа отклонений
+    const taskAttributeRenderer = ({ task, attribute }) => {
+        // Если есть информация о детализации и указан тип - делаем кнопку открытия документов
+        if (attribute.name === "detail_list" && task.type !== null && task.type !== "") {
+            return (
+                <Button
+                    onClick={() => {
+                        handleTaskDetailOpen(task.rn, task.type);
+                    }}
+                >
+                    {task[attribute.name]}
+                </Button>
+            );
+        } else {
+            return null;
+        }
     };
 
     //Генерация содержимого
@@ -369,14 +410,14 @@ const MechRecCostProdPlans = () => {
                                                 </Select>
                                             </Box>
                                         </Box>
-                                    ) : // </Grid>
-                                    null}
+                                    ) : null}
                                     <P8PGantt
                                         {...P8P_GANTT_CONFIG_PROPS}
                                         {...state.selectedPlanCtlgGanttDef}
                                         height={GANTT_HEIGHT}
                                         titleStyle={STYLES.GANTT_TITLE}
                                         tasks={state.selectedPlanCtlgSpecs}
+                                        taskAttributeRenderer={taskAttributeRenderer}
                                     />
                                 </Box>
                             )
@@ -385,6 +426,30 @@ const MechRecCostProdPlans = () => {
                         ) : null}
                     </Grid>
                 </Grid>
+            ) : null}
+            {state.selectedTaskDetail ? (
+                <Dialog open onClose={handleTaskDetailClose} fullWidth maxWidth="xl">
+                    <DialogContent>
+                        {/* Если тип таска 0, 1 или 4 - основная таблица "Маршрутные листы" */}
+                        {[0, 1, 4].includes(state.selectedTaskDetailType) ? (
+                            <CostRouteListsDataGrid task={state.selectedTaskDetail} taskType={state.selectedTaskDetailType} />
+                        ) : (
+                            <Box>
+                                {/* Если тип таска 2 или 3 - основная таблица "Приходы из подразделений" */}
+                                <IncomFromDepsDataGrid task={state.selectedTaskDetail} taskType={state.selectedTaskDetailType} />
+                                {/* Если тип 3 - необходимо добавить отдельную таблицу "Маршрутные листы" */}
+                                {state.selectedTaskDetailType === 3 ? (
+                                    <Box sx={STYLES.SECOND_TABLE}>
+                                        <CostRouteListsDataGrid task={state.selectedTaskDetail} taskType={state.selectedTaskDetailType} />
+                                    </Box>
+                                ) : null}
+                            </Box>
+                        )}
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={handleTaskDetailClose}>Закрыть</Button>
+                    </DialogActions>
+                </Dialog>
             ) : null}
         </Box>
     );
