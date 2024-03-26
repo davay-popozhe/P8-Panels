@@ -32,7 +32,7 @@ create or replace package PKG_P8PANELS_VISUAL as
   type TCOL_VAL is record
   (
     SVALUE                  PKG_STD.TLSTRING, -- Значение (строка)
-    NVALUE                  PKG_STD.TNUMBER,  -- Значение (число)
+    NVALUE                  PKG_STD.TLNUMBER, -- Значение (число)
     DVALUE                  PKG_STD.TLDATE    -- Значение (дата)
   );
   
@@ -153,7 +153,7 @@ create or replace package PKG_P8PANELS_VISUAL as
     SNAME                   PKG_STD.TSTRING,                 -- Наименование
     DSTART                  PKG_STD.TLDATE,                  -- Дата начала
     DEND                    PKG_STD.TLDATE,                  -- Дата окончания
-    NPROGRESS               PKG_STD.TNUMBER := null,         -- Прогресс (% готовности) задачи (null - не определен)
+    NPROGRESS               PKG_STD.TLNUMBER := null,        -- Прогресс (% готовности) задачи (null - не определен)
     SBG_COLOR               PKG_STD.TSTRING := null,         -- Цвет заливки задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     STEXT_COLOR             PKG_STD.TSTRING := null,         -- Цвет текста заголовка задачи (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
     SBG_PROGRESS_COLOR      PKG_STD.TSTRING := null,         -- Цвет заливки прогресса (null - использовать цвет по умолчанию из стилей, формат - HTML-цвет, #RRGGBBAA)
@@ -206,7 +206,7 @@ create or replace package PKG_P8PANELS_VISUAL as
   /* Тип данных - элемент данных графика */
   type TCHART_DATASET_ITEM is record
   (
-    NVALUE                  PKG_STD.TNUMBER,                      -- Значение элемента данных, отображаемое на графике
+    NVALUE                  PKG_STD.TLNUMBER,                     -- Значение элемента данных, отображаемое на графике
     RATTR_VALS              TCHART_DATASET_ITEM_ATTR_VALS := null -- Значения дополнительных атрбутов (null - дополнительные атрибуты не определены)
   );
   
@@ -1066,7 +1066,7 @@ text="Формат data_grid и gant как в chart"
     BCLEAR                  in boolean := false -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
-    NVALUE                  PKG_STD.TNUMBER;    -- Буфер для значения курсора
+    NVALUE                  PKG_STD.TLNUMBER;   -- Буфер для значения курсора
   begin
     /* Читаем данные из курсора */
     PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => NPOSITION, NVALUE => NVALUE);
