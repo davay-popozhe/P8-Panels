@@ -185,6 +185,7 @@ create or replace package body PKG_P8PANELS_SAMPLES as
                      DPFR_FILL_DATE    => null,
                      DPFR_REG_DATE     => null,
                      SPFR_REG_NUMB     => null,
+                     SSFR_REG_NUMB     => null,
                      SFULLNAME         => null,
                      SOKFS             => null,
                      SOKOPF            => null,
@@ -300,25 +301,26 @@ create or replace package body PKG_P8PANELS_SAMPLES as
                                                              '<b style="color:green">Физическое лицо</b> - субъект правовых отношений, представляющий собой одного человека.');
     /* Обходим данные */
     begin
-      /* Собираем запрос */
-      CSQL := 'select *
-            from (select D.*,
-                         %ROWNUM% NROW
-                    from (select AG.AGNABBR SAGNABBR,
-                                 AG.AGNNAME SAGNNAME,
-                                 AG.AGNTYPE NAGNTYPE
-                            from AGNLIST AG
-                           where exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */ null from USERPRIV UP where UP."CATALOG" = AG.CRN and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */ UR.ROLEID from USERROLES UR where UR.AUTHID = UTILIZER())
-                                         union all
-                                         select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */ null from USERPRIV UP where UP."CATALOG" = AG.CRN and UP.AUTHID = UTILIZER())
-                             and AG.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
-           where F.NROW between :NROW_FROM and :NROW_TO';
-      /* Корректировка запроса под СУБД */
-      if (PKG_COMPATIBLE.DATABASE_() = 0) then
-        CSQL := replace(csql, '%ROWNUM%', 'ROWNUM');
-      else
-        CSQL := replace(csql, '%ROWNUM%', '(row_number() over())::numeric');
-      end if;
+      /* Добавляем подсказку совместимости */
+      CSQL := PKG_SQL_BUILD.COMPATIBLE(SSQL => CSQL);
+      /* Формируем запрос */
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => 'select *');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '          from (select AG.AGNABBR SAGNABBR,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       AG.AGNNAME SAGNNAME,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       AG.AGNTYPE NAGNTYPE');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from AGNLIST AG');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                where exists (select ' || PKG_SQL_BUILD.SET_HINT(SHINT => 'INDEX(UP I_USERPRIV_CATALOG_ROLEID)') || ' null');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                from USERPRIV UP');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                               where UP."CATALOG" = AG.CRN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                 and UP.ROLEID in (select ' || PKG_SQL_BUILD.SET_HINT(SHINT => 'INDEX(UR I_USERROLES_AUTHID_FK)') || ' UR.ROLEID');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                     from USERROLES UR where UR.AUTHID = UTILIZER())');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                    union all');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                   select ' || PKG_SQL_BUILD.SET_HINT(SHINT => 'INDEX(UP I_USERPRIV_CATALOG_AUTHID)') || ' null');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                     from USERPRIV UP where UP."CATALOG" = AG.CRN and UP.AUTHID = UTILIZER())');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and AG.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
       /* Учтём фильтры */
