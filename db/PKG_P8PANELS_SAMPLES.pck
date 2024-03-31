@@ -456,15 +456,16 @@ create or replace package body PKG_P8PANELS_SAMPLES as
     SNUMB                   in varchar2, -- Номер задачи
     SNAME                   in varchar2, -- Наименование задачи
     DDATE_FROM              in date,     -- Дата начала задачи
-    DDATE_TO                in date      -- Дата окончания задачи
+    DDATE_TO                in date,     -- Дата окончания задачи
+    NSTATE                  in number    -- Состояние (0 - не выполняется, 1 - выполняется)
   )
   is
   begin
     /* Добавим запись */
     insert into P8PNL_SMPL_GANTT
-      (RN, IDENT, type, NUMB, name, DATE_FROM, DATE_TO)
+      (RN, IDENT, type, NUMB, name, DATE_FROM, DATE_TO, STATE)
     values
-      (GEN_ID(), NIDENT, NTYPE, SNUMB, SNAME, DDATE_FROM, DDATE_TO);
+      (GEN_ID(), NIDENT, NTYPE, SNUMB, SNAME, DDATE_FROM, DDATE_TO, NSTATE);
   end GANTT_BASE_INSERT;
   
   /* Исправление данных в буфере диаграммы Ганта */
@@ -503,6 +504,10 @@ create or replace package body PKG_P8PANELS_SAMPLES as
     NYEAR                   PKG_STD.TNUMBER;               -- Текущий год
     NMONTH                  PKG_STD.TNUMBER;               -- Месяц начала этапа
     DDATE_FROM              PKG_STD.TLDATE;                -- Дата начала этапа
+    DDATE_TO                PKG_STD.TLDATE;                -- Дата окончания этапа
+    DDATE_FROM_J            PKG_STD.TLDATE;                -- Дата начала работы
+    DDATE_TO_J              PKG_STD.TLDATE;                -- Дата окончания работы
+    NSTATE                  PKG_STD.TNUMBER;               -- Состояние задачи
   begin
     /* Удаляем старые данные из буфера */
     if (NIDENT is not null) then
@@ -519,23 +524,41 @@ create or replace package body PKG_P8PANELS_SAMPLES as
       /* Сформируем период этапа */
       NMONTH     := ST * NSTAGE_LEN - NSTAGE_LEN + 1;
       DDATE_FROM := TO_DATE('01.' || NMONTH || '.' || TO_CHAR(NYEAR), 'dd.mm.yyyy');
+      DDATE_TO   := LAST_DAY(ADD_MONTHS(DDATE_FROM, NSTAGE_LEN) - 1);
+      /* Сформируем значение для атриуба "состояние" этапа */
+      if (TRUNC(sysdate) between TRUNC(DDATE_FROM) and TRUNC(DDATE_TO)) then
+        NSTATE := 1;
+      else
+        NSTATE := 0;
+      end if;
       /* Добавим его в буфер */
       GANTT_BASE_INSERT(NIDENT     => NIDENT,
                         NTYPE      => 0,
                         SNUMB      => TO_CHAR(ST),
                         SNAME      => 'Этап ' || TO_CHAR(ST),
                         DDATE_FROM => DDATE_FROM,
-                        DDATE_TO   => LAST_DAY(ADD_MONTHS(DDATE_FROM, NSTAGE_LEN) - 1));
+                        DDATE_TO   => DDATE_TO,
+                        NSTATE     => NSTATE);
       /* Работы */
       for J in 0 .. NSTAGE_LEN - 1
       loop
+        /* Сформируем период работы */
+        DDATE_FROM_J := ADD_MONTHS(DDATE_FROM, J);
+        DDATE_TO_J   := LAST_DAY(ADD_MONTHS(DDATE_FROM, J + 1) - 1);
+        /* Сформируем значение для атриуба "состояние" работы */
+        if (TRUNC(sysdate) between TRUNC(DDATE_FROM_J) and TRUNC(DDATE_TO_J)) then
+          NSTATE := 1;
+        else
+          NSTATE := 0;
+        end if;
         /* Добавим в буфер */
         GANTT_BASE_INSERT(NIDENT     => NIDENT,
                           NTYPE      => 1,
                           SNUMB      => TO_CHAR(ST) || '.' || TO_CHAR(J + 1),
                           SNAME      => 'Работа ' || TO_CHAR(J + 1) || ' этапа ' || TO_CHAR(ST),
-                          DDATE_FROM => ADD_MONTHS(DDATE_FROM, J),
-                          DDATE_TO   => LAST_DAY(ADD_MONTHS(DDATE_FROM, J + 1) - 1));
+                          DDATE_FROM => DDATE_FROM_J,
+                          DDATE_TO   => DDATE_TO_J,
+                          NSTATE     => NSTATE);
       end loop;
     end loop;
   end GANTT_INIT;
@@ -559,7 +582,11 @@ create or replace package body PKG_P8PANELS_SAMPLES as
     RG := PKG_P8PANELS_VISUAL.TGANTT_MAKE(STITLE => 'Задачи на ' || TO_CHAR(EXTRACT(year from sysdate)) || ' год',
                                           NZOOM  => PKG_P8PANELS_VISUAL.NGANTT_ZOOM_MONTH);
     /* Добавим динамические атрибуты к задачам */
-    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'type', SCAPTION => 'Тип');
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'type', SCAPTION => 'Тип', BVISIBLE => true);
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT   => RG,
+                                             SNAME    => 'state',
+                                             SCAPTION => 'Состояние',
+                                             BVISIBLE => false);
     /* Добавим описание цветов задач */
     PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
                                               SBG_COLOR => SBG_COLOR_JOB,
@@ -589,6 +616,7 @@ create or replace package body PKG_P8PANELS_SAMPLES as
                                                    SNAME  => 'type',
                                                    SVALUE => C.TYPE,
                                                    BCLEAR => true);
+      PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_ATTR_VAL(RGANTT => RG, RTASK => RGT, SNAME => 'state', SVALUE => C.STATE);
       /* Добавляем задачу в диаграмму */
       PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK(RGANTT => RG, RTASK => RGT);
     end loop;

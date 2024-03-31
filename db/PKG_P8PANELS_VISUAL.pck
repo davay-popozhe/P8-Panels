@@ -125,7 +125,8 @@ create or replace package PKG_P8PANELS_VISUAL as
   type TGANTT_TASK_ATTR is record
   (
     SNAME                   PKG_STD.TSTRING, -- Наименование
-    SCAPTION                PKG_STD.TSTRING  -- Заголовок
+    SCAPTION                PKG_STD.TSTRING, -- Заголовок
+    BVISIBLE                boolean          -- Разрешить отображение
   );
   
   /* Типы данных - коллекция описаний атрибутов задачи для диаграммы Ганта */
@@ -483,6 +484,7 @@ create or replace package PKG_P8PANELS_VISUAL as
     RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
     SNAME                   in varchar2,          -- Наименование
     SCAPTION                in varchar2,          -- Заголовок
+    BVISIBLE                boolean := true,      -- Разрешить отображение
     BCLEAR                  in boolean := false   -- Флаг очистки коллекции атрибутов (false - не очищать, true - очистить коллекцию перед добавлением)
   );
 
@@ -1897,6 +1899,7 @@ text="Формат data_grid и gant как в chart"
     RGANTT                  in out nocopy TGANTT, -- Описание диаграммы Ганта
     SNAME                   in varchar2,          -- Наименование
     SCAPTION                in varchar2,          -- Заголовок
+    BVISIBLE                boolean := true,      -- Разрешить отображение
     BCLEAR                  in boolean := false   -- Флаг очистки коллекции атрибутов (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
@@ -1917,6 +1920,7 @@ text="Формат data_grid и gant как в chart"
     RGANTT.RTASK_ATTRS.EXTEND();
     RGANTT.RTASK_ATTRS(RGANTT.RTASK_ATTRS.LAST).SNAME := SNAME;
     RGANTT.RTASK_ATTRS(RGANTT.RTASK_ATTRS.LAST).SCAPTION := SCAPTION;
+    RGANTT.RTASK_ATTRS(RGANTT.RTASK_ATTRS.LAST).BVISIBLE := BVISIBLE;
   end TGANTT_ADD_TASK_ATTR;
 
   /* Добавление описания цвета задачи диаграммы Ганта */
@@ -2001,6 +2005,7 @@ text="Формат data_grid и gant как в chart"
         /* Наполняем его атрибутами */
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_NAME, SVALUE => RGANTT.RTASK_ATTRS(I).SNAME);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_CAPTION, SVALUE => RGANTT.RTASK_ATTRS(I).SCAPTION);
+        PKG_XFAST.ATTR(SNAME => SRESP_ATTR_VISIBLE, BVALUE => RGANTT.RTASK_ATTRS(I).BVISIBLE);
         /* Закрываем динамический атрибут задачи */
         PKG_XFAST.UP();
       end loop;
