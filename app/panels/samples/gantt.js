@@ -9,8 +9,22 @@
 
 import React, { useState, useContext, useCallback, useEffect } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Typography, Grid, Stack, Icon, Box } from "@mui/material"; //Интерфейсные элементы
-import { formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
+import {
+    Typography,
+    Grid,
+    Stack,
+    Icon,
+    Box,
+    FormControlLabel,
+    Checkbox,
+    Card,
+    CardHeader,
+    CardActions,
+    Avatar,
+    CardContent,
+    Button
+} from "@mui/material"; //Интерфейсные элементы
+import { formatDateJSONDateOnly, formatDateRF } from "../../core/utils"; //Вспомогательные функции
 import { P8PGantt } from "../../components/p8p_gantt"; //Диаграмма Ганта
 import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
@@ -57,6 +71,30 @@ const taskAttributeRenderer = ({ task, attribute }) => {
     }
 };
 
+//Генерация кастомного диалога задачи
+const taskDialogRenderer = ({ task, close }) => {
+    return (
+        <Card>
+            <CardHeader
+                avatar={<Avatar sx={{ bgcolor: task.bgColor }}>{task.type == 0 ? "Эт" : "Ра"}</Avatar>}
+                title={task.name}
+                subheader={`с ${formatDateRF(task.start)} по ${formatDateRF(task.end)}`}
+            />
+            <CardContent>
+                <Typography variant="body2" color="text.secondary">
+                    Это пользовательский диалог с данными о задаче. Вы можете формировать такие указав свой функциональный компонент в качестве
+                    свойства &quot;taskDialogRenderer&quot; компонента &quot;P8PGantt&quot;.
+                </Typography>
+            </CardContent>
+            <CardActions disableSpacing>
+                <Button size="small" onClick={close}>
+                    Закрыть
+                </Button>
+            </CardActions>
+        </Card>
+    );
+};
+
 //-----------
 //Тело модуля
 //-----------
@@ -69,7 +107,8 @@ const Gantt = ({ title }) => {
         dataLoaded: false,
         ident: null,
         ganttDef: {},
-        ganttTasks: []
+        ganttTasks: [],
+        useCustomTaskDialog: false
     });
 
     //Подключение к контексту взаимодействия с сервером
@@ -132,6 +171,10 @@ const Gantt = ({ title }) => {
             <Typography sx={STYLES.TITLE} variant={"h6"}>
                 {title}
             </Typography>
+            <FormControlLabel
+                control={<Checkbox onChange={() => setState(pv => ({ ...pv, useCustomTaskDialog: !pv.useCustomTaskDialog }))} />}
+                label="Отображать пользовательский диалог задачи"
+            />
             <Grid container spacing={0} direction="column" alignItems="center">
                 <Grid item xs={12}>
                     {state.dataLoaded ? (
@@ -143,6 +186,7 @@ const Gantt = ({ title }) => {
                                 tasks={state.ganttTasks}
                                 onTaskDatesChange={handleTaskDatesChange}
                                 taskAttributeRenderer={taskAttributeRenderer}
+                                taskDialogRenderer={state.useCustomTaskDialog ? taskDialogRenderer : null}
                             />
                         </Box>
                     ) : null}

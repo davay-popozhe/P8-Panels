@@ -79,6 +79,7 @@ const P8P_GANTT_TASK_COLOR_SHAPE = PropTypes.shape({
 
 //Стили
 const STYLES = {
+    TASK_EDITOR_CONTENT: { minWidth: 400, overflowX: "auto" },
     TASK_EDITOR_LIST: { width: "100%", minWidth: 300, maxWidth: 700, bgcolor: "background.paper" }
 };
 
@@ -97,6 +98,7 @@ const P8PGanttTaskEditor = ({
     onOk,
     onCancel,
     taskAttributeRenderer,
+    taskDialogRenderer,
     numbCaption,
     nameCaption,
     startCaption,
@@ -112,6 +114,10 @@ const P8PGanttTaskEditor = ({
         end: task.end,
         progress: task.progress
     });
+
+    //Отображаемые атрибуты
+    const dispTaskAttributes =
+        Array.isArray(taskAttributes) && taskAttributes.length > 0 ? taskAttributes.filter(attr => attr.visible && hasValue(task[attr.name])) : [];
 
     //При сохранении
     const handleOk = () => (onOk && state.start && state.end ? onOk({ task, start: state.start, end: state.end, progress: state.progress }) : null);
@@ -158,117 +164,121 @@ const P8PGanttTaskEditor = ({
     //Генерация содержимого
     return (
         <Dialog open onClose={handleCancel}>
-            <DialogContent>
-                <List sx={STYLES.TASK_EDITOR_LIST}>
-                    <ListItem alignItems="flex-start">
-                        <ListItemText primary={numbCaption} secondary={task.numb} />
-                    </ListItem>
-                    <Divider component="li" />
-                    <ListItem alignItems="flex-start">
-                        <ListItemText primary={nameCaption} secondary={task.fullName} />
-                    </ListItem>
-                    <Divider component="li" />
-                    <ListItem alignItems="flex-start">
-                        <ListItemText
-                            secondaryTypographyProps={{ component: "span" }}
-                            primary={startCaption}
-                            secondary={
-                                <TextField
-                                    error={!state.start}
-                                    disabled={task.readOnly === true || task.readOnlyDates === true}
-                                    name="start"
-                                    fullWidth
-                                    required
-                                    InputLabelProps={{ shrink: true }}
-                                    type={"date"}
-                                    value={state.start}
-                                    onChange={handlePeriodChanged}
-                                    variant="standard"
-                                    size="small"
-                                    margin="normal"
-                                />
-                            }
-                        />
-                    </ListItem>
-                    <Divider component="li" />
-                    <ListItem alignItems="flex-start">
-                        <ListItemText
-                            secondaryTypographyProps={{ component: "span" }}
-                            primary={endCaption}
-                            secondary={
-                                <TextField
-                                    error={!state.end}
-                                    disabled={task.readOnly === true || task.readOnlyDates === true}
-                                    name="end"
-                                    fullWidth
-                                    required
-                                    InputLabelProps={{ shrink: true }}
-                                    type={"date"}
-                                    value={state.end}
-                                    onChange={handlePeriodChanged}
-                                    variant="standard"
-                                    size="small"
-                                    margin="normal"
-                                />
-                            }
-                        />
-                    </ListItem>
-                    <Divider component="li" />
-                    {hasValue(task.progress) ? (
-                        <>
+            {taskDialogRenderer ? (
+                taskDialogRenderer({ task, taskAttributes, taskColors, close: handleCancel })
+            ) : (
+                <>
+                    <DialogContent sx={STYLES.TASK_EDITOR_CONTENT}>
+                        <List sx={STYLES.TASK_EDITOR_LIST}>
+                            <ListItem alignItems="flex-start">
+                                <ListItemText primary={numbCaption} secondary={task.numb} />
+                            </ListItem>
+                            <Divider component="li" />
+                            <ListItem alignItems="flex-start">
+                                <ListItemText primary={nameCaption} secondary={task.fullName} />
+                            </ListItem>
+                            <Divider component="li" />
                             <ListItem alignItems="flex-start">
                                 <ListItemText
                                     secondaryTypographyProps={{ component: "span" }}
-                                    primary={`${progressCaption}${
-                                        task.readOnly === true || task.readOnlyProgress === true ? ` (${task.progress}%)` : ""
-                                    }`}
+                                    primary={startCaption}
                                     secondary={
-                                        <Slider
-                                            disabled={task.readOnly === true || task.readOnlyProgress === true}
-                                            defaultValue={task.progress}
-                                            valueLabelDisplay="auto"
-                                            onChange={handleProgressChanged}
+                                        <TextField
+                                            error={!state.start}
+                                            disabled={task.readOnly === true || task.readOnlyDates === true}
+                                            name="start"
+                                            fullWidth
+                                            required
+                                            InputLabelProps={{ shrink: true }}
+                                            type={"date"}
+                                            value={state.start}
+                                            onChange={handlePeriodChanged}
+                                            variant="standard"
+                                            size="small"
+                                            margin="normal"
                                         />
                                     }
                                 />
                             </ListItem>
                             <Divider component="li" />
-                        </>
-                    ) : null}
-                    {legend ? (
-                        <>
-                            <ListItem alignItems="flex-start">{legend}</ListItem>
-                            <Divider component="li" />
-                        </>
-                    ) : null}
-                    {Array.isArray(taskAttributes) && taskAttributes.length > 0
-                        ? taskAttributes
-                              .filter(attr => hasValue(task[attr.name]))
-                              .map((attr, i) => {
-                                  const defaultView = task[attr.name];
-                                  const customView = taskAttributeRenderer ? taskAttributeRenderer({ task, attribute: attr }) : null;
-                                  return (
-                                      <React.Fragment key={i}>
-                                          <ListItem alignItems="flex-start">
-                                              <ListItemText
-                                                  primary={attr.caption}
-                                                  secondaryTypographyProps={{ component: "span" }}
-                                                  secondary={customView ? customView : defaultView}
-                                              />
-                                          </ListItem>
-                                          {i < taskAttributes.length - 1 ? <Divider component="li" /> : null}
-                                      </React.Fragment>
-                                  );
-                              })
-                        : null}
-                </List>
-            </DialogContent>
-            <DialogActions>
-                <Button disabled={!state.start || !state.end || task.readOnly} onClick={handleOk}>
-                    {okBtnCaption}
-                </Button>
-                <Button onClick={handleCancel}>{cancelBtnCaption}</Button>
-            </DialogActions>
+                            <ListItem alignItems="flex-start">
+                                <ListItemText
+                                    secondaryTypographyProps={{ component: "span" }}
+                                    primary={endCaption}
+                                    secondary={
+                                        <TextField
+                                            error={!state.end}
+                                            disabled={task.readOnly === true || task.readOnlyDates === true}
+                                            name="end"
+                                            fullWidth
+                                            required
+                                            InputLabelProps={{ shrink: true }}
+                                            type={"date"}
+                                            value={state.end}
+                                            onChange={handlePeriodChanged}
+                                            variant="standard"
+                                            size="small"
+                                            margin="normal"
+                                        />
+                                    }
+                                />
+                            </ListItem>
+                            {hasValue(task.progress) || legend || dispTaskAttributes.length > 0 ? <Divider component="li" /> : null}
+                            {hasValue(task.progress) ? (
+                                <>
+                                    <ListItem alignItems="flex-start">
+                                        <ListItemText
+                                            secondaryTypographyProps={{ component: "span" }}
+                                            primary={`${progressCaption}${
+                                                task.readOnly === true || task.readOnlyProgress === true ? ` (${task.progress}%)` : ""
+                                            }`}
+                                            secondary={
+                                                <Slider
+                                                    disabled={task.readOnly === true || task.readOnlyProgress === true}
+                                                    defaultValue={task.progress}
+                                                    valueLabelDisplay="auto"
+                                                    onChange={handleProgressChanged}
+                                                />
+                                            }
+                                        />
+                                    </ListItem>
+                                    {legend || dispTaskAttributes.length > 0 ? <Divider component="li" /> : null}
+                                </>
+                            ) : null}
+                            {legend ? (
+                                <>
+                                    <ListItem alignItems="flex-start">{legend}</ListItem>
+                                    {dispTaskAttributes.length > 0 ? <Divider component="li" /> : null}
+                                </>
+                            ) : null}
+                            {dispTaskAttributes.length > 0
+                                ? dispTaskAttributes.map((attr, i) => {
+                                      const defaultView = task[attr.name];
+                                      const customView = taskAttributeRenderer ? taskAttributeRenderer({ task, attribute: attr }) : null;
+                                      return (
+                                          <React.Fragment key={i}>
+                                              <ListItem alignItems="flex-start">
+                                                  <ListItemText
+                                                      primary={attr.caption}
+                                                      secondaryTypographyProps={{ component: "span" }}
+                                                      secondary={customView ? customView : defaultView}
+                                                  />
+                                              </ListItem>
+                                              {i < dispTaskAttributes.length - 1 ? <Divider component="li" /> : null}
+                                          </React.Fragment>
+                                      );
+                                  })
+                                : null}
+                        </List>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button disabled={!state.start || !state.end || task.readOnly} onClick={handleOk}>
+                            {okBtnCaption}
+                        </Button>
+                        <Button onClick={handleCancel}>{cancelBtnCaption}</Button>
+                    </DialogActions>
+                </>
+            )}
         </Dialog>
     );
 };
@@ -281,6 +291,7 @@ P8PGanttTaskEditor.propTypes = {
     onOk: PropTypes.func,
     onCancel: PropTypes.func,
     taskAttributeRenderer: PropTypes.func,
+    taskDialogRenderer: PropTypes.func,
     numbCaption: PropTypes.string.isRequired,
     nameCaption: PropTypes.string.isRequired,
     startCaption: PropTypes.string.isRequired,
@@ -312,6 +323,7 @@ const P8PGantt = ({
     onTaskDatesChange,
     onTaskProgressChange,
     taskAttributeRenderer,
+    taskDialogRenderer,
     noDataFoundText,
     numbTaskEditorCaption,
     nameTaskEditorCaption,
@@ -417,6 +429,7 @@ const P8PGantt = ({
                     onOk={handleTaskEditorSave}
                     onCancel={handleTaskEditorCancel}
                     taskAttributeRenderer={taskAttributeRenderer}
+                    taskDialogRenderer={taskDialogRenderer}
                     numbCaption={numbTaskEditorCaption}
                     nameCaption={nameTaskEditorCaption}
                     startCaption={startTaskEditorCaption}
@@ -451,6 +464,7 @@ P8PGantt.propTypes = {
     onTaskDatesChange: PropTypes.func,
     onTaskProgressChange: PropTypes.func,
     taskAttributeRenderer: PropTypes.func,
+    taskDialogRenderer: PropTypes.func,
     noDataFoundText: PropTypes.string.isRequired,
     numbTaskEditorCaption: PropTypes.string.isRequired,
     nameTaskEditorCaption: PropTypes.string.isRequired,
