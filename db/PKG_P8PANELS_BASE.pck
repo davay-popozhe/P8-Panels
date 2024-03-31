@@ -21,6 +21,18 @@ create or replace package PKG_P8PANELS_BASE as
     CIN                     in clob,    -- Входные параметры
     COUT                    out clob    -- Результат
   );
+  
+  /* Базовая инициализация буфера отмеченных записей для панели */
+  procedure SELECTLIST_INIT
+  (
+    NIDENT                  in number   -- Идентификатор буфера отмеченных записей  
+  );
+  
+  /* Базовая очистка буфера отмеченных записей для панели */
+  procedure SELECTLIST_CLEAR
+  (
+    NIDENT                  in number   -- Идентификатор буфера отмеченных записей
+  );
 
 end PKG_P8PANELS_BASE;
 /
@@ -812,6 +824,112 @@ create or replace package body PKG_P8PANELS_BASE as
         P_EXCEPTION(0, 'Действие "%s" не поддерживается.', SRQ_ACTION);
     end case;
   end PROCESS;
+  
+  /* Базовое добавление в буфер отмеченных записей для панели */
+  procedure SELECTLIST_INSERT
+  (
+    NIDENT                  in number,           -- Идентификатор процесса
+    SAUTHID                 in varchar2,         -- Пользователь
+    SSESSION_ID             in varchar2,         -- Идентификатор сеанса
+    SCONNECT_EXT            in varchar2,         -- Внешний идентификатор сеанса
+    NCOMPANY                in number := null,   -- Организация
+    NDOCUMENT               in number,           -- Документ
+    SUNITCODE               in varchar2 := null, -- Код раздела документа
+    SACTIONCODE             in varchar2 := null, -- Код действия документа
+    NCRN                    in number := null,   -- Каталог документа
+    NDOCUMENT1              in number := null,   -- Документ 1
+    SUNITCODE1              in varchar2 := null, -- Код раздела документа 1
+    SACTIONCODE1            in varchar2 := null, -- Код действия документа 1  
+    NRN                     out number           -- Рег. номер добавленной записи
+  )
+  is    
+  begin
+    /* Формируем рег. номер */
+    NRN := GEN_ID();
+    /* Добвляем запись */
+    insert into P8PNL_SELECTLIST
+      (RN,
+       IDENT,
+       authid,
+       SESSION_ID,
+       CONNECT_EXT,
+       COMPANY,
+       DOCUMENT,
+       UNITCODE,
+       ACTIONCODE,
+       CRN,
+       DOCUMENT1,
+       UNITCODE1,
+       ACTIONCODE1)
+    values
+      (NRN,
+       NIDENT,
+       SAUTHID,
+       SSESSION_ID,
+       SCONNECT_EXT,
+       NCOMPANY,
+       NDOCUMENT,
+       SUNITCODE,
+       SACTIONCODE,
+       NCRN,
+       NDOCUMENT1,
+       SUNITCODE1,
+       SACTIONCODE1);
+  end SELECTLIST_INSERT;
+  
+  /* Удаление записи буфера отмеченных записей для панели */
+  procedure SELECTLIST_DELETE
+  (
+    NRN                     in number   -- Рег. номер удаляемой записи
+  )
+  is
+  begin
+    delete from P8PNL_SELECTLIST T where T.RN = NRN;
+  end SELECTLIST_DELETE;
+  
+  /* Базовая инициализация буфера отмеченных записей для панели */
+  procedure SELECTLIST_INIT
+  (
+    NIDENT                  in number     -- Идентификатор буфера отмеченных записей  
+  )
+  is
+    NRN                     PKG_STD.TREF; -- Рег. номер добавленной записи буфера панелей
+  begin
+    /* Очищаем буфер панелей */
+    SELECTLIST_CLEAR(NIDENT => NIDENT);
+    /* Обходим системный буфер отмеченных записей */
+    for C in (select T.* from SELECTLIST T where T.IDENT = NIDENT)
+    loop
+      /* Копируем запись */
+      SELECTLIST_INSERT(NIDENT       => C.IDENT,
+                        SAUTHID      => C.AUTHID,
+                        SSESSION_ID  => C.SESSION_ID,
+                        SCONNECT_EXT => C.CONNECT_EXT,
+                        NCOMPANY     => C.COMPANY,
+                        NDOCUMENT    => C.DOCUMENT,
+                        SUNITCODE    => C.UNITCODE,
+                        SACTIONCODE  => C.ACTIONCODE,
+                        NCRN         => C.CRN,
+                        NDOCUMENT1   => C.DOCUMENT1,
+                        SUNITCODE1   => C.UNITCODE1,
+                        SACTIONCODE1 => C.ACTIONCODE1,
+                        NRN          => NRN);
+    end loop;
+  end SELECTLIST_INIT;
+  
+  /* Базовая очистка буфера отмеченных записей для панели */
+  procedure SELECTLIST_CLEAR
+  (
+    NIDENT                  in number   -- Идентификатор буфера отмеченных записей
+  )
+  is
+  begin
+    /* Обходим буфер панелей */
+    for C in (select T.RN from P8PNL_SELECTLIST T where T.IDENT = NIDENT)
+    loop
+      SELECTLIST_DELETE(NRN => C.RN);
+    end loop;
+  end SELECTLIST_CLEAR;
 
 end PKG_P8PANELS_BASE;
 /
