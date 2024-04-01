@@ -479,23 +479,10 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                BVISIBLE   => false);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
-                                               SNAME      => 'DRES_DATE_TO',
-                                               SCAPTION   => 'Зарезервировано',
-                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_DATE,
-                                               BVISIBLE   => true,
-                                               BORDER     => true);
-    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
-                                               SNAME      => 'SMATRESPL_NOMEN',
-                                               SCAPTION   => 'Номенклатура',
-                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
-                                               BVISIBLE   => true,
-                                               BORDER     => true);
-    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'SMATRESPL_CODE',
                                                SCAPTION   => 'Обозначение',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
-                                               BVISIBLE   => true,
-                                               BORDER     => true);
+                                               BVISIBLE   => true);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'SMATRESPL_NAME',
                                                SCAPTION   => 'Наименование',
@@ -506,26 +493,33 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                SNAME      => 'NPROD_QUANT',
                                                SCAPTION   => 'Применяемость',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
-                                               BVISIBLE   => true,
-                                               BORDER     => true);
+                                               BVISIBLE   => true);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NQUANT_PLAN',
                                                SCAPTION   => 'Количество план',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
-                                               BVISIBLE   => true,
-                                               BORDER     => true);
+                                               BVISIBLE   => true);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NREST',
                                                SCAPTION   => 'Остаток',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
-                                               BVISIBLE   => true,
-                                               BORDER     => true);
+                                               BVISIBLE   => true);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NQUANT_FACT',
                                                SCAPTION   => 'Скомплектовано',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                BVISIBLE   => true,
                                                BORDER     => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'DRES_DATE_TO',
+                                               SCAPTION   => 'Зарезервировано',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_DATE,
+                                               BVISIBLE   => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SMATRESPL_NOMEN',
+                                               SCAPTION   => 'Номенклатура',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE   => true);
     /* Обходим данные */
     begin
       /* Добавляем подсказку совместимости */
@@ -911,6 +905,12 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                BVISIBLE   => true,
                                                BORDER     => true);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NQUANT',
+                                               SCAPTION   => 'Количество запуска',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => true,
+                                               BORDER     => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NQUANT_PLAN',
                                                SCAPTION   => 'Выдать по норме',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
@@ -930,6 +930,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.EXEC_DATE DEXEC_DATE,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       (select NM2.NOMEN_CODE from DICNOMNS NM2 where F3.NOMENCLATURE = NM2.RN) SMATRES_PLAN_NOMEN,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       F3."NAME" SMATRES_PLAN_NAME,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.QUANT NQUANT,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.QUANT_PLAN NQUANT_PLAN');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from FCROUTLST T');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       left outer join FCMATRESOURCE F3 on T.MATRES_PLAN = F3.RN,');
@@ -985,6 +986,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 6);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 7);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 8);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 9);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
@@ -1016,9 +1018,13 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                               ICURSOR   => ICURSOR,
                                               NPOSITION => 6);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
-                                              SNAME     => 'NQUANT_PLAN',
+                                              SNAME     => 'NQUANT',
                                               ICURSOR   => ICURSOR,
                                               NPOSITION => 7);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NQUANT_PLAN',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 8);
         /* Добавляем строку в таблицу */
         PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
       end loop;
