@@ -14,8 +14,12 @@ import {
     Fab,
     Box,
     List,
+    ListItem,
     ListItemButton,
     ListItemText,
+    ListItemIcon,
+    Icon,
+    IconButton,
     Typography,
     Grid,
     TextField,
@@ -28,13 +32,17 @@ import {
     Button,
     Dialog,
     DialogContent,
-    DialogActions
+    DialogActions,
+    Card,
+    CardHeader,
+    CardContent,
+    CardActions
 } from "@mui/material"; //Интерфейсные элементы
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
-import { P8PGantt } from "../../components/p8p_gantt"; //Диаграмма Ганта
-import { xml2JSON, formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
+import { P8PGantt, taskLegendDesc } from "../../components/p8p_gantt"; //Диаграмма Ганта
+import { xml2JSON, formatDateJSONDateOnly, formatDateRF } from "../../core/utils"; //Вспомогательные функции
 import { useFilteredPlanCtlgs } from "./hooks"; //Вспомогательные хуки
 import { CostRouteListsDataGrid } from "./datagrids/fcroutlst";
 import { IncomFromDepsDataGrid } from "./datagrids/incomefromdeps";
@@ -72,7 +80,11 @@ const STYLES = {
     },
     GANTT_CONTAINER: { height: GANTT_HEIGHT, width: GANTT_WIDTH },
     GANTT_TITLE: { paddingLeft: "100px", paddingRight: "120px" },
-    SECOND_TABLE: { paddingTop: "30px" }
+    SECOND_TABLE: { paddingTop: "30px" },
+    TASK_DIALOG_CARD_CONTAINER: { padding: "0px" },
+    TASK_DIALOG_LIST_ITEM_ICON: { justifyContent: "center" },
+    TASK_DIALOG_ICON: { fontSize: "2rem" },
+    TASK_DIALOG_ACTION_CONTAINER: { border: 1, borderColor: "text.primary", borderRadius: "5px", width: "100%" }
 };
 
 //------------------------------------
@@ -83,7 +95,8 @@ const STYLES = {
 const parseProdPlanSpXML = async xmlDoc => {
     const data = await xml2JSON({
         xmlDoc,
-        attributeValueProcessor: (name, val) => (name == "numb" ? undefined : ["start", "end"].includes(name) ? formatDateJSONDateOnly(val) : val)
+        attributeValueProcessor: (name, val) =>
+            ["numb", "title"].includes(name) ? undefined : ["start", "end"].includes(name) ? formatDateJSONDateOnly(val) : val
     });
     return data.XDATA;
 };
@@ -93,17 +106,11 @@ const formatCountDocs = nCountDocs => {
     //Получаем последнюю цифру в значении
     let num = (nCountDocs % 100) % 10;
     //Документов
-    if (nCountDocs > 10 && nCountDocs < 20) {
-        return `${nCountDocs} ${DECLINATIONS[2]}`;
-    }
+    if (nCountDocs > 10 && nCountDocs < 20) return `${nCountDocs} ${DECLINATIONS[2]}`;
     //Документа
-    if (num > 1 && num < 5) {
-        return `${nCountDocs} ${DECLINATIONS[1]}`;
-    }
+    if (num > 1 && num < 5) return `${nCountDocs} ${DECLINATIONS[1]}`;
     //Документ
-    if (num == 1) {
-        return `${nCountDocs} ${DECLINATIONS[0]}`;
-    }
+    if (num == 1) return `${nCountDocs} ${DECLINATIONS[0]}`;
     //Документов
     return `${nCountDocs} ${DECLINATIONS[2]}`;
 };
@@ -126,14 +133,7 @@ const PlanCtlgsList = ({ planCtlgs = [], selectedPlanCtlg, filter, setFilter, on
             ></TextField>
             <FormGroup sx={STYLES.PLANS_CHECKBOX_HAVEDOCS}>
                 <FormControlLabel
-                    control={
-                        <Checkbox
-                            checked={filter.haveDocs}
-                            onChange={event => {
-                                setFilter(pv => ({ ...pv, haveDocs: event.target.checked }));
-                            }}
-                        />
-                    }
+                    control={<Checkbox checked={filter.haveDocs} onChange={event => setFilter(pv => ({ ...pv, haveDocs: event.target.checked }))} />}
                     label="Только с планами"
                     labelPlacement="end"
                 />
@@ -148,15 +148,7 @@ const PlanCtlgsList = ({ planCtlgs = [], selectedPlanCtlg, filter, setFilter, on
                     >
                         <ListItemText
                             primary={<Typography sx={STYLES.PLANS_LIST_ITEM_PRIMARY}>{p.SNAME}</Typography>}
-                            secondary={
-                                <Typography
-                                    sx={{
-                                        ...STYLES.PLANS_LIST_ITEM_SECONDARY
-                                    }}
-                                >
-                                    {formatCountDocs(p.NCOUNT_DOCS)}
-                                </Typography>
-                            }
+                            secondary={<Typography sx={{ ...STYLES.PLANS_LIST_ITEM_SECONDARY }}>{formatCountDocs(p.NCOUNT_DOCS)}</Typography>}
                         />
                     </ListItemButton>
                 ))}
@@ -172,6 +164,58 @@ PlanCtlgsList.propTypes = {
     onClick: PropTypes.func,
     filter: PropTypes.object,
     setFilter: PropTypes.func
+};
+
+//Генерация диалога задачи
+const taskDialogRenderer = ({ task, taskColors, close, handleTaskDetailOpen }) => {
+    //Стиль и описание для легенды
+    const legendDesc = taskLegendDesc({ task, taskColors });
+    //Элемент карточки задачи
+    const cardItem = ({ listItemsStyle = {}, icon, primaryText = null, secondaryText = null }) => (
+        <ListItem disablePadding sx={listItemsStyle}>
+            <ListItemButton>
+                <ListItemIcon sx={STYLES.TASK_DIALOG_LIST_ITEM_ICON}>
+                    <Icon sx={STYLES.TASK_DIALOG_ICON}>{icon}</Icon>
+                </ListItemIcon>
+                <ListItemText primary={primaryText} secondary={secondaryText} />
+            </ListItemButton>
+        </ListItem>
+    );
+    //Собираем содержимое диалога
+    return (
+        <Card>
+            <CardHeader
+                title={task.name}
+                titleTypographyProps={{ variant: "h6" }}
+                subheader={`${formatDateRF(task.start)} - ${formatDateRF(task.end)}`}
+                action={
+                    <IconButton aria-label="Закрыть" onClick={close}>
+                        <Icon>close</Icon>
+                    </IconButton>
+                }
+            />
+            <CardContent sx={STYLES.TASK_DIALOG_CARD_CONTAINER}>
+                <List>
+                    {cardItem({ icon: "fast_forward", primaryText: `${task.start_fact} ${task.meas}`, secondaryText: "Запущено" })}
+                    {cardItem({ icon: "assessment", primaryText: `${task.main_quant} ${task.meas}`, secondaryText: "Количество план" })}
+                    {cardItem({ icon: "verified", primaryText: `${task.rel_fact} ${task.meas}`, secondaryText: "Количество сдано" })}
+                    {cardItem({ icon: "date_range", primaryText: task.rep_date_to, secondaryText: "Дата выпуска план" })}
+                    {legendDesc ? cardItem({ listItemsStyle: legendDesc.style, icon: "palette", secondaryText: legendDesc.text }) : null}
+                </List>
+            </CardContent>
+            <CardActions disableSpacing>
+                <Box p={2} display="flex" justifyContent="center" sx={STYLES.TASK_DIALOG_ACTION_CONTAINER}>
+                    {task.type ? (
+                        <Button size="large" variant="contained" color="primary" onClick={() => handleTaskDetailOpen(task.rn, task.type)}>
+                            {task["detail_list"]}
+                        </Button>
+                    ) : (
+                        <Typography color="textSecondary">{`Анализ отклонений недоступен: ${task["detail_list"]}`}</Typography>
+                    )}
+                </Box>
+            </CardActions>
+        </Card>
+    );
 };
 
 //-----------
@@ -322,24 +366,6 @@ const MechRecCostProdPlans = () => {
         setState(pv => ({ ...pv, selectedTaskDetail: taskRn, selectedTaskDetailType: taskType }));
     };
 
-    //Генерация ссылки на документы анализа отклонений
-    const taskAttributeRenderer = ({ task, attribute }) => {
-        // Если есть информация о детализации и указан тип - делаем кнопку открытия документов
-        if (attribute.name === "detail_list" && task.type !== null && task.type !== "") {
-            return (
-                <Button
-                    onClick={() => {
-                        handleTaskDetailOpen(task.rn, task.type);
-                    }}
-                >
-                    {task[attribute.name]}
-                </Button>
-            );
-        } else {
-            return null;
-        }
-    };
-
     //Генерация содержимого
     return (
         <Box p={2}>
@@ -417,7 +443,7 @@ const MechRecCostProdPlans = () => {
                                         height={GANTT_HEIGHT}
                                         titleStyle={STYLES.GANTT_TITLE}
                                         tasks={state.selectedPlanCtlgSpecs}
-                                        taskAttributeRenderer={taskAttributeRenderer}
+                                        taskDialogRenderer={prms => taskDialogRenderer({ ...prms, handleTaskDetailOpen })}
                                     />
                                 </Box>
                             )

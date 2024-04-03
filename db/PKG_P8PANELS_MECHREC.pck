@@ -52,7 +52,7 @@ create or replace package PKG_P8PANELS_MECHREC as
     NCRN                    in number,                     -- Рег. номер каталога
     NLEVEL                  in number := null,             -- Уровень отбора
     SSORT_FIELD             in varchar2 := 'DREP_DATE_TO', -- Поле сортировки
-    COUT                    out clob,                      -- Список проектов
+    COUT                    out clob,                      -- Список задач
     NMAX_LEVEL              out number                     -- Максимальный уровень иерархии
   );
 
@@ -67,12 +67,13 @@ end PKG_P8PANELS_MECHREC;
 create or replace package body PKG_P8PANELS_MECHREC as
 
   /* Константы - цвета отображения */
-  SBG_COLOR_RED             constant PKG_STD.TSTRING := 'red';        -- Цвет заливки красный (Дефицит запуска != 0 или нет связей и дата запуска меньше текущей)
-  SBG_COLOR_YELLOW          constant PKG_STD.TSTRING := '#e0db44';    -- Цвет заливки желтый (Дефицит» запуска = 0 и Выпуск факт = 0)
-  SBG_COLOR_GREEN           constant PKG_STD.TSTRING := 'lightgreen'; -- Цвет заливки зеленый (Дефицит выпуска = 0)
-  SBG_COLOR_GREY            constant PKG_STD.TSTRING := 'lightgrey';  -- Цвет заливки серый (Дата запуска больше текущей)
-  SBG_COLOR_BLACK           constant PKG_STD.TSTRING := 'black';      -- Цвет заливки черный (Нет дат и связей)
-  STEXT_COLOR_ORANGE        constant PKG_STD.TSTRING := '#FF8C00';    -- Цвет текста для черной заливки (оранжевый)
+  SBG_COLOR_RED             constant PKG_STD.TSTRING := '#ff000080'; -- Цвет заливки красный
+  SBG_COLOR_YELLOW          constant PKG_STD.TSTRING := '#e0db4480'; -- Цвет заливки желтый
+  SBG_COLOR_GREEN           constant PKG_STD.TSTRING := '#90ee9080'; -- Цвет заливки зеленый
+  SBG_COLOR_GREY            constant PKG_STD.TSTRING := '#d3d3d380'; -- Цвет заливки серый
+  SBG_COLOR_BLACK           constant PKG_STD.TSTRING := '#00000080'; -- Цвет заливки черный
+  STEXT_COLOR_ORANGE        constant PKG_STD.TSTRING := '#FF8C00';   -- Цвет текста оранжевый
+  STEXT_COLOR_GREY          constant PKG_STD.TSTRING := '#555';      -- Цвет текста серый
 
   /* Константы - параметры отборов планов */
   NFCPRODPLAN_CATEGORY      constant PKG_STD.TNUMBER := 1;      -- Категория планов "Производственная программа"
@@ -86,6 +87,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
   STASK_ATTR_REP_DATE_TO    constant PKG_STD.TSTRING := 'rep_date_to'; -- Дата выпуска план
   STASK_ATTR_DL             constant PKG_STD.TSTRING := 'detail_list'; -- Связанные документы
   STASK_ATTR_TYPE           constant PKG_STD.TSTRING := 'type';        -- Тип (0 - Деталь, 1 - Изделие/сборочная единица)
+  STASK_ATTR_MEAS           constant PKG_STD.TSTRING := 'meas';        -- Единица измнения
     
   /* Инциализация списка маршрутных листов (с иерархией) */
   procedure UTL_FCROUTLST_IDENT_INIT
@@ -1499,13 +1501,14 @@ create or replace package body PKG_P8PANELS_MECHREC as
   /* Формирование характеристик спецификации в Ганте */
   procedure MAKE_GANT_ITEM
   (
-    NDEFRESLIZ              in number,    -- Дефицит запуска
-    NREL_FACT               in number,    -- Выпуск факт
-    NDEFSTART               in number,    -- Дефицит выпуска
-    NMAIN_QUANT             in number,    -- Выпуск
-    STASK_BG_COLOR          out varchar2, -- Цвет заливки спецификации
-    STASK_BG_PROGRESS_COLOR out varchar2, -- Цвет заливки прогресса спецификации
-    NTASK_PROGRESS          out number    -- Прогресс спецификации
+    NDEFRESLIZ              in number,       -- Дефицит запуска
+    NREL_FACT               in number,       -- Выпуск факт
+    NDEFSTART               in number,       -- Дефицит выпуска
+    NMAIN_QUANT             in number,       -- Выпуск
+    STASK_BG_COLOR          out varchar2,    -- Цвет заливки спецификации
+    STASK_BG_PROGRESS_COLOR out varchar2,    -- Цвет заливки прогресса спецификации
+    STASK_TEXT_COLOR        in out varchar2, -- Цвет текста
+    NTASK_PROGRESS          out number       -- Прогресс спецификации
   )
   is
   begin
@@ -1515,6 +1518,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       if (NDEFSTART = 0) then
         /* Полностью зеленый */
         STASK_BG_COLOR          := SBG_COLOR_GREEN;
+        STASK_TEXT_COLOR        := STEXT_COLOR_GREY;
         STASK_BG_PROGRESS_COLOR := null;
         NTASK_PROGRESS          := null;
       else
@@ -1528,6 +1532,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       if (NDEFSTART = 0) then
         /* Полностью зеленый */
         STASK_BG_COLOR          := SBG_COLOR_GREEN;
+        STASK_TEXT_COLOR        := STEXT_COLOR_GREY;
         STASK_BG_PROGRESS_COLOR := null;
         NTASK_PROGRESS          := null;
       else
@@ -1543,6 +1548,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
           /* Частично зелёный, прогресс жёлтый */
           STASK_BG_COLOR          := SBG_COLOR_GREEN;
           STASK_BG_PROGRESS_COLOR := SBG_COLOR_YELLOW;
+          STASK_TEXT_COLOR        := STEXT_COLOR_GREY;
           NTASK_PROGRESS          := ROUND(NREL_FACT / NMAIN_QUANT * 100);
         end if;
       end if;
@@ -1608,16 +1614,18 @@ create or replace package body PKG_P8PANELS_MECHREC as
     NHAVE_LINK              in number := 0, -- Наличие связей с "Маршрутный лист" или "Приход из подразделения"
     DDATE_FROM              out date,       -- Итоговая дата запуска спецификации
     DDATE_TO                out date,       -- Итоговая дата выпуска спецификации
-    STASK_BG_COLOR          out varchar2,   -- Цвет элемента (черный, если даты не заданы и нет связи, иначе null)
-    STASK_TEXT_COLOR        out varchar2,   -- Цвет текста элемента (хаки, если даты не заданы и нет связи, иначе null)
-    NTASK_PROGRESS          out number      -- Прогресс элемента (проинициализирует null, если даты не заданы и нет связи)
+    STASK_BG_COLOR          out varchar2,   -- Цвет элемента
+    STASK_BG_PROGRESS_COLOR out varchar2,   -- Цвет прогресса элемента
+    STASK_TEXT_COLOR        out varchar2,   -- Цвет текста элемента
+    NTASK_PROGRESS          out number      -- Прогресс элемента
   )
   is
   begin
     /* Проициниализируем цвет и прогресс */
-    STASK_BG_COLOR   := null;
-    STASK_TEXT_COLOR := null;
-    NTASK_PROGRESS   := null;
+    STASK_BG_COLOR          := null;
+    STASK_TEXT_COLOR        := null;
+    STASK_BG_PROGRESS_COLOR := null;
+    NTASK_PROGRESS          := null;
     /* Если даты запуска и выпуска пусты */
     if ((DREP_DATE is null) and (DREP_DATE_TO is null)) then
       /* Указываем дату включения в план */
@@ -1663,7 +1671,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     NCRN                    in number,                             -- Рег. номер каталога
     NLEVEL                  in number := null,                     -- Уровень отбора
     SSORT_FIELD             in varchar2 := 'DREP_DATE_TO',         -- Поле сортировки
-    COUT                    out clob,                              -- Список проектов
+    COUT                    out clob,                              -- Список задач
     NMAX_LEVEL              out number                             -- Максимальный уровень иерархии
   )
   is
@@ -1680,6 +1688,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     STASK_CAPTION           PKG_STD.TSTRING;                       -- Описание задачи в Ганте
     NTYPE                   PKG_STD.TNUMBER;                       -- Тип задачи (0/1 - для "Дата выпуска", 2/3/4 - для "Дата выпуска")
     SDETAIL_LIST            PKG_STD.TSTRING;                       -- Ссылки на детализацию
+    SPLAN_TITLE             PKG_STD.TSTRING;                       -- Заголовок плана
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
 
     /* Объединение значений в строковое представление */
@@ -1725,6 +1734,9 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                SNAME    => STASK_ATTR_DL,
                                                SCAPTION => 'Анализ отклонений');
       PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => STASK_ATTR_TYPE, SCAPTION => 'Тип');
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT   => RG,
+                                               SNAME    => STASK_ATTR_MEAS,
+                                               SCAPTION => 'Единица измерения');
     end TASK_ATTRS_INIT;
 
     /* Инициализация цветов */
@@ -1742,12 +1754,14 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
                                                 SBG_COLOR => SBG_COLOR_YELLOW,
                                                 SDESC     => 'Для спецификаций планов и отчетов производства изделий с «Дефицит запуска» = 0 и «Выпуск факт» = 0.');
-      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
-                                                SBG_COLOR => SBG_COLOR_GREEN,
-                                                SDESC     => 'Для спецификаций планов и отчетов производства изделий с «Дефицит выпуска» = 0.');
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT      => RG,
+                                                SBG_COLOR   => SBG_COLOR_GREEN,
+                                                STEXT_COLOR => STEXT_COLOR_GREY,
+                                                SDESC       => 'Для спецификаций планов и отчетов производства изделий с «Дефицит выпуска» = 0.');
       PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT             => RG,
                                                 SBG_COLOR          => SBG_COLOR_GREEN,
                                                 SBG_PROGRESS_COLOR => SBG_COLOR_YELLOW,
+                                                STEXT_COLOR        => STEXT_COLOR_GREY,
                                                 SDESC              => 'Для спецификаций планов и отчетов производства изделий с «Дефицит запуска» = 0 и «Выпуск факт» != 0. ');
       PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT      => RG,
                                                 SBG_COLOR   => SBG_COLOR_BLACK,
@@ -1768,7 +1782,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
       NREL_FACT             in number,                                     -- Выпуск факт
       DREP_DATE_TO          in date,                                       -- Дата выпуска
       NTYPE                 in number,                                     -- Тип (0 - Деталь, 1 - Изделие/сборочная единица)
-      SDETAIL_LIST          in varchar2                                    -- Ссылки на детализацию
+      SDETAIL_LIST          in varchar2,                                   -- Ссылки на детализацию
+      SMEAS                 in varchar2                                    -- Единица измерения
     )
     is
     begin
@@ -1798,6 +1813,10 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                    RTASK  => RGT,
                                                    SNAME  => STASK_ATTR_DL,
                                                    SVALUE => SDETAIL_LIST);
+      PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_ATTR_VAL(RGANTT => RG,
+                                                   RTASK  => RGT,
+                                                   SNAME  => STASK_ATTR_MEAS,
+                                                   SVALUE => SMEAS);
     end FILL_TASK_ATTRS;
     
     /* Получение типа задачи */
@@ -1814,13 +1833,14 @@ create or replace package body PKG_P8PANELS_MECHREC as
     )
     is
     begin
-      /* Описание типов:
+      /* 
+        Описание типов:
          0 - Маршрутные листы с развертыванием товарных запасов 
          1 - Маршрутные листы с развертыванием комплектаций
          2 - Приход из подразделений
          3 - Приход из подразделений и маршрутные листы
          4 - Маршрутные листы
-         null - Нет детализации
+         null - Нет детализации 
       */
       /* Исходим сортировка по "Дата запуска" */
       if (SSORT_FIELD = 'DREP_DATE') then
@@ -1904,8 +1924,15 @@ create or replace package body PKG_P8PANELS_MECHREC as
       end if;
     end GET_TASK_TYPE;
   begin
+    /* Определяем заголовок плана */
+    FIND_ACATALOG_RN(NFLAG_SMART => 0,
+                     NCOMPANY    => NCOMPANY,
+                     NVERSION    => null,
+                     SUNITCODE   => 'CostProductPlans',
+                     NRN         => NCRN,
+                     SNAME       => SPLAN_TITLE);
     /* Инициализируем диаграмму Ганта */
-    RG := PKG_P8PANELS_VISUAL.TGANTT_MAKE(STITLE              => 'Производственная программа',
+    RG := PKG_P8PANELS_VISUAL.TGANTT_MAKE(STITLE              => SPLAN_TITLE,
                                           NZOOM               => PKG_P8PANELS_VISUAL.NGANTT_ZOOM_DAY,
                                           BREAD_ONLY_DATES    => BREAD_ONLY_DATES,
                                           BREAD_ONLY_PROGRESS => true);
@@ -1947,12 +1974,14 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                 T.REP_DATE_TO
                                else
                                 T.REP_DATE
-                             end DORDER_DATE
+                             end DORDER_DATE,
+                             DM.MEAS_MNEMO SMEAS
                         from FCPRODPLAN    P,
                              FINSTATE      FS,
                              FCPRODPLANSP  T,
                              FCMATRESOURCE FM,
-                             DICNOMNS      D
+                             DICNOMNS      D,
+                             DICMUNTS      DM
                        where P.CRN = NCRN
                          and P.CATEGORY = NFCPRODPLAN_CATEGORY
                          and P.STATUS = NFCPRODPLAN_STATUS
@@ -1979,7 +2008,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
                          and T.MAIN_QUANT > 0
                          and ((T.REP_DATE is not null) or (T.REP_DATE_TO is not null) or (T.INCL_DATE is not null))
                          and FM.RN = T.MATRES
-                         and D.RN = FM.NOMENCLATURE) TMP
+                         and D.RN = FM.NOMENCLATURE
+                         and D.UMEAS_MAIN = DM.RN) TMP
                where ((NLEVEL is null) or ((NLEVEL is not null) and (level <= NLEVEL)))
               connect by prior TMP.NRN = TMP.NUP_LEVEL
                start with TMP.NUP_LEVEL is null
@@ -1991,15 +2021,16 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                  SSUBDIV_DLVR => C.SSUBDIV_DLVR,
                                  NMAIN_QUANT  => C.NMAIN_QUANT);
       /* Инициализируем даты и цвет (если необходимо) */
-      FCPRODPLANSP_DATES_GET(DREP_DATE        => C.DREP_DATE,
-                             DREP_DATE_TO     => C.DREP_DATE_TO,
-                             DINCL_DATE       => C.DINCL_DATE,
-                             NHAVE_LINK       => COALESCE(C.NHAVE_LINK, 0),
-                             DDATE_FROM       => DDATE_FROM,
-                             DDATE_TO         => DDATE_TO,
-                             STASK_BG_COLOR   => STASK_BG_COLOR,
-                             STASK_TEXT_COLOR => STASK_TEXT_COLOR,
-                             NTASK_PROGRESS   => NTASK_PROGRESS);
+      FCPRODPLANSP_DATES_GET(DREP_DATE               => C.DREP_DATE,
+                             DREP_DATE_TO            => C.DREP_DATE_TO,
+                             DINCL_DATE              => C.DINCL_DATE,
+                             NHAVE_LINK              => COALESCE(C.NHAVE_LINK, 0),
+                             DDATE_FROM              => DDATE_FROM,
+                             DDATE_TO                => DDATE_TO,
+                             STASK_BG_COLOR          => STASK_BG_COLOR,
+                             STASK_BG_PROGRESS_COLOR => STASK_BG_PROGRESS_COLOR,
+                             STASK_TEXT_COLOR        => STASK_TEXT_COLOR,
+                             NTASK_PROGRESS          => NTASK_PROGRESS);
       /* Если цвет изначально не указан и требуется анализирование */
       if (STASK_BG_COLOR is null) then
         /* Формирование характеристик элемента ганта */
@@ -2009,6 +2040,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                        NMAIN_QUANT             => C.NMAIN_QUANT,
                        STASK_BG_COLOR          => STASK_BG_COLOR,
                        STASK_BG_PROGRESS_COLOR => STASK_BG_PROGRESS_COLOR,
+                       STASK_TEXT_COLOR        => STASK_TEXT_COLOR,
                        NTASK_PROGRESS          => NTASK_PROGRESS);
       end if;
       /* Сформируем основную спецификацию */
@@ -2042,7 +2074,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
                       NREL_FACT    => C.NREL_FACT,
                       DREP_DATE_TO => C.DREP_DATE_TO,
                       NTYPE        => NTYPE,
-                      SDETAIL_LIST => SDETAIL_LIST);
+                      SDETAIL_LIST => SDETAIL_LIST,
+                      SMEAS        => C.SMEAS);
       /* Собираем зависимости */
       for LINK in (select T.RN
                      from FCPRODPLANSP T
