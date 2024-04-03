@@ -90,6 +90,32 @@ const STYLES = {
 //Проверка существования значения
 const hasValue = value => typeof value !== "undefined" && value !== null && value !== "";
 
+//Формирование описания для легенды
+const taskLegendDesc = ({ task, taskColors }) => {
+    if (Array.isArray(taskColors) && taskColors.length > 0) {
+        const colorDesc = taskColors.find(
+            color => task.bgColor === color.bgColor && task.textColor === color.textColor && task.bgProgressColor === color.bgProgressColor
+        );
+        if (colorDesc)
+            return {
+                text: colorDesc.desc,
+                style: {
+                    ...(colorDesc.bgProgressColor
+                        ? {
+                              background: `linear-gradient(to right, ${colorDesc.bgProgressColor} ,${
+                                  colorDesc.bgColor ? colorDesc.bgColor : "transparent"
+                              })`
+                          }
+                        : colorDesc.bgColor
+                        ? { backgroundColor: colorDesc.bgColor }
+                        : {}),
+                    ...(colorDesc.textColor ? { color: colorDesc.textColor } : {})
+                }
+            };
+        else return null;
+    } else return null;
+};
+
 //Редактор задачи
 const P8PGanttTaskEditor = ({
     task,
@@ -132,34 +158,17 @@ const P8PGanttTaskEditor = ({
     const handleProgressChanged = (e, newValue) => setState(prev => ({ ...prev, progress: newValue }));
 
     //Описание легенды для задачи
-    let legend = null;
-    if (Array.isArray(taskColors)) {
-        const colorDesc = taskColors.find(
-            color => task.bgColor === color.bgColor && task.textColor === color.textColor && task.bgProgressColor === color.bgProgressColor
-        );
-        if (colorDesc)
-            legend = (
-                <ListItemText
-                    secondaryTypographyProps={{
-                        p: 1,
-                        sx: {
-                            ...(colorDesc.bgProgressColor
-                                ? {
-                                      background: `linear-gradient(to right, ${colorDesc.bgProgressColor} ,${
-                                          colorDesc.bgColor ? colorDesc.bgColor : "transparent"
-                                      })}`
-                                  }
-                                : colorDesc.bgColor
-                                ? { backgroundColor: colorDesc.bgColor }
-                                : {}),
-                            ...(colorDesc.textColor ? { color: colorDesc.textColor } : {})
-                        }
-                    }}
-                    primary={legendCaption}
-                    secondary={colorDesc.desc}
-                />
-            );
-    }
+    const legendDesc = taskLegendDesc({ task, taskColors });
+    let legend = legendDesc ? (
+        <ListItemText
+            secondaryTypographyProps={{
+                p: 1,
+                sx: legendDesc.style
+            }}
+            primary={legendCaption}
+            secondary={legendDesc.text}
+        />
+    ) : null;
 
     //Генерация содержимого
     return (
@@ -480,4 +489,4 @@ P8PGantt.propTypes = {
 //Интерфейс модуля
 //----------------
 
-export { P8P_GANTT_TASK_SHAPE, P8P_GANTT_TASK_ATTRIBUTE_SHAPE, P8P_GANTT_TASK_COLOR_SHAPE, P8PGantt };
+export { P8P_GANTT_TASK_SHAPE, P8P_GANTT_TASK_ATTRIBUTE_SHAPE, P8P_GANTT_TASK_COLOR_SHAPE, taskLegendDesc, P8PGantt };
