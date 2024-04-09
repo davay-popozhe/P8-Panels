@@ -39,12 +39,7 @@ const PrjGraph = () => {
     //Загрузка данных таблицы с сервера
     const loadData = useCallback(async () => {
         if (dataGrid.reload) {
-            const data = await executeStored({
-                stored: "PKG_P8PANELS_PROJECTS.GRAPH",
-                args: {},
-                respArg: "COUT",
-                attributeValueProcessor: (name, val) => (["caption", "name", "parent"].includes(name) ? undefined : val)
-            });
+            const data = await executeStored({ stored: "PKG_P8PANELS_PROJECTS.GRAPH", args: {}, respArg: "COUT" });
             setdataGrid(pv => ({
                 ...pv,
                 columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
