@@ -28,8 +28,8 @@ const P8P_CHART_DATASET_SHAPE = PropTypes.shape({
     label: PropTypes.string.isRequired,
     borderColor: PropTypes.oneOfType([PropTypes.string, PropTypes.arrayOf(PropTypes.string)]),
     backgroundColor: PropTypes.oneOfType([PropTypes.string, PropTypes.arrayOf(PropTypes.string)]),
-    data: PropTypes.arrayOf(PropTypes.number).isRequired,
-    items: PropTypes.arrayOf(PropTypes.object).isRequired
+    data: PropTypes.arrayOf(PropTypes.number),
+    items: PropTypes.arrayOf(PropTypes.object)
 });
 
 //-----------
