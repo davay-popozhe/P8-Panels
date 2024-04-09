@@ -66,6 +66,15 @@ const XML_ALWAYS_ARRAY_PATH_PATTERNS = [
 //Типовой постфикс тега для массива (при переводе XML -> JSON)
 const XML_ALWAYS_ARRAY_POSTFIX = "__SYSTEM__ARRAY__";
 
+//Типовые шаблоны конвертации значения атрибута в строку (при переводе XML -> JSON)
+const XML_ATTR_ALWAYS_STR_PATH_PATTERNS = [
+    /(.*)XCOLUMNS_DEF.name$/,
+    /(.*)XCOLUMNS_DEF.caption$/,
+    /(.*)XCOLUMNS_DEF.parent$/,
+    /(.*)XGROUPS.name$/,
+    /(.*)XGROUPS.caption$/
+];
+
 //-----------
 //Тело модуля
 //-----------
@@ -102,16 +111,24 @@ const xml2JSON = ({ xmlDoc, isArray, transformTagName, tagValueProcessor, attrib
                 parseAttributeValue: true,
                 attributeNamePrefix: ""
             };
-            if (useDefaultPatterns)
+            if (useDefaultPatterns) {
                 opts.isArray = (name, jPath, isLeafNode, isAttribute) =>
                     XML_ALWAYS_ARRAY_PATHS.indexOf(jPath) !== -1 ||
                     XML_ALWAYS_ARRAY_PATH_PATTERNS.some(pattern => pattern.test(jPath)) ||
                     jPath.endsWith(XML_ALWAYS_ARRAY_POSTFIX) ||
                     (isArray ? isArray(name, jPath, isLeafNode, isAttribute) : undefined);
-            else if (isArray) opts.isArray = isArray;
+                opts.attributeValueProcessor = (name, val, jPath) =>
+                    XML_ATTR_ALWAYS_STR_PATH_PATTERNS.some(pattern => pattern.test(`${jPath}.${name}`))
+                        ? undefined
+                        : attributeValueProcessor
+                        ? attributeValueProcessor(name, val, jPath)
+                        : val;
+            } else {
+                if (isArray) opts.isArray = isArray;
+                if (attributeValueProcessor) opts.attributeValueProcessor = attributeValueProcessor;
+            }
             if (transformTagName) opts.transformTagName = transformTagName;
             if (tagValueProcessor) opts.tagValueProcessor = tagValueProcessor;
-            if (attributeValueProcessor) opts.attributeValueProcessor = attributeValueProcessor;
             const parser = new XMLParser(opts);
             resolve(parser.parse(xmlDoc));
         } catch (e) {
