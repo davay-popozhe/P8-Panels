@@ -482,7 +482,9 @@ const P8PTable = ({
     onOrderChanged,
     onFilterChanged,
     onPagesCountChanged,
-    objectsCopier
+    objectsCopier,
+    containerComponent,
+    containerComponentProps
 }) => {
     //Собственное состояние - описание заголовка
     const [header, dispatchHeaderAction] = useReducer(p8pTableReducer, HEADER_INITIAL_STATE());
@@ -682,7 +684,8 @@ const P8PTable = ({
                     valueFormatter={valueFormatter}
                 />
             ) : null}
-            <TableContainer component={Paper}>
+
+            <TableContainer component={containerComponent ? containerComponent : Paper} {...(containerComponentProps ? containerComponentProps : {})}>
                 <Table sx={STYLES.TABLE} size={size || P8P_TABLE_SIZE.MEDIUM}>
                     <TableHead>
                         {header.displayLevels.map(level => (
@@ -868,7 +871,9 @@ P8PTable.propTypes = {
     onOrderChanged: PropTypes.func,
     onFilterChanged: PropTypes.func,
     onPagesCountChanged: PropTypes.func,
-    objectsCopier: PropTypes.func.isRequired
+    objectsCopier: PropTypes.func.isRequired,
+    containerComponent: PropTypes.oneOfType([PropTypes.elementType, PropTypes.string]),
+    containerComponentProps: PropTypes.object
 };
 
 //----------------

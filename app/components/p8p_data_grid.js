@@ -54,6 +54,8 @@ const P8PDataGrid = ({
     groupCellRender,
     rowExpandRender,
     valueFormatter,
+    containerComponent,
+    containerComponentProps,
     onOrderChanged,
     onFilterChanged,
     onPagesCountChanged,
@@ -129,6 +131,8 @@ const P8PDataGrid = ({
             rowExpandRender={rowExpandRender}
             valueFormatter={valueFormatter}
             objectsCopier={objectsCopier}
+            containerComponent={containerComponent}
+            containerComponentProps={containerComponentProps}
             onOrderChanged={handleOrderChanged}
             onFilterChanged={handleFilterChanged}
             onPagesCountChanged={handlePagesCountChanged}
@@ -162,6 +166,8 @@ P8PDataGrid.propTypes = {
     groupCellRender: PropTypes.func,
     rowExpandRender: PropTypes.func,
     valueFormatter: PropTypes.func,
+    containerComponent: PropTypes.oneOfType([PropTypes.elementType, PropTypes.string]),
+    containerComponentProps: PropTypes.object,
     onOrderChanged: PropTypes.func,
     onFilterChanged: PropTypes.func,
     onPagesCountChanged: PropTypes.func,
