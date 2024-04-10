@@ -85,6 +85,7 @@ export const dataCellRender = ({ row, columnDef, pOnlineShowDocument }) => {
                 cellProps: { title: row[columnDef.name] },
                 cellStyle: {
                     padding: "2px",
+                    paddingLeft: "10px",
                     maxWidth: "300px",
                     textOverflow: "ellipsis",
                     overflow: "hidden",

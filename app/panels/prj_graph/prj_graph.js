@@ -72,6 +72,7 @@ const PrjGraph = () => {
                                 reloading={dataGrid.reload}
                                 dataCellRender={prms => dataCellRender({ ...prms, pOnlineShowDocument })}
                                 groupCellRender={prms => groupCellRender({ ...prms, pOnlineShowDocument })}
+                                containerComponentProps={{ elevation: 6, sx: { overflowX: "visible" } }}
                             />
                         ) : null}
                     </Box>
