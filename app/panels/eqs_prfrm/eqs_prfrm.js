@@ -49,33 +49,62 @@ const EqsPrfrm = () => {
         reload: false
     });
 
+    // const [filter, setFilter] = useState({
+    //     belong: "Демопример",
+    //     prodObj: "К2",
+    //     techServ: "",
+    //     respDep: "",
+    //     fromMonth: 1,
+    //     fromYear: 2024,
+    //     toMonth: 12,
+    //     toYear: 2024
+    // });
+
     const [filter, setFilter] = useState({
-        belong: "Демопример",
-        prodObj: "К2",
+        belong: "",
+        prodObj: "",
         techServ: "",
         respDep: "",
         fromMonth: 1,
-        fromYear: 2024,
-        toMonth: 12,
-        toYear: 2024
+        fromYear: 1990,
+        toMonth: 1,
+        toYear: 1990
     });
 
-    // const [filter, setFilter] = useState({
-    //     belong: "",
-    //     prodObj: "",
-    //     techServ: "",
-    //     respDep: "",
-    //     fromMonth: "",
-    //     fromYear: "",
-    //     toMonth: "",
-    //     toYear: ""});
+    const [activeRef, setActiveRef] = useState();
+    const [refIsDeprecated, setRidFlag] = useState(true);
+
+    useEffect(() => {
+        if (!refIsDeprecated) {
+            if (activeRef) {
+                var cellRect = activeRef.getBoundingClientRect();
+                //console.log(window.scrollX + cellRect.left + activeRef.clientWidth / 2 - window.innerWidth / 2);
+                window.scrollTo(window.scrollX + cellRect.left + activeRef.clientWidth / 2 - window.innerWidth / 2, 0);
+                setRidFlag(true);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refIsDeprecated]);
+
+    const handleClick = (e, ref) => {
+        const curCell = ref.current;
+
+        //console.log(curCell.children);
+
+        if (e.target.type == "button" || e.target.offsetParent.type == "button") {
+            setActiveRef(curCell);
+            setRidFlag(false);
+        }
+    };
 
     const [info, setInfo] = useState({ cntP: 0, sumP: 0, cntF: 0, sumF: 0 });
 
     //Подключение к контексту приложения
     const { pOnlineShowDictionary } = useContext(ApplicationСtx);
 
-    const [filterOpen, setFilterOpen] = useState(false);
+    const [filterOpen, setFilterOpen] = useState(true);
+
+    const [defaultLoaded, setDefaultLoaded] = useState(false);
 
     const [filterCopy, setFilterCopy] = useState({ ...filter });
 
@@ -117,6 +146,17 @@ const EqsPrfrm = () => {
     //Подключение к контексту взаимодействия с сервером
     const { executeStored } = useContext(BackEndСtx);
 
+    //Загрузка значений фильра по умолчанию
+    const loadDefaultFilter = useCallback(async () => {
+        const data = await executeStored({
+            stored: "PKG_P8PANELS_EQUIPSRV.GET_DEAFULT_FP",
+            respArg: "COUT"
+        });
+
+        setFilter(pv => ({ ...pv, belong: data.JURPERS, fromMonth: data.MONTH, fromYear: data.YEAR, toMonth: data.MONTH, toYear: data.YEAR }));
+        setDefaultLoaded(true);
+    }, [executeStored]);
+
     //Загрузка данных таблицы с сервера
     const loadData = useCallback(async () => {
         if (dataGrid.reload) {
@@ -144,12 +184,15 @@ const EqsPrfrm = () => {
                 data.XROWS.map(row => {
                     properties = [];
                     Object.entries(row).forEach(([key, value]) => properties.push({ name: key, data: value }));
-                    if (properties[1].data == "Факт" || properties[2].data == "План") {
-                        if (properties[2].data == "План") {
+                    let info2 = properties.find(element => {
+                        return element.name === "SINFO2";
+                    });
+                    if (info2 != undefined) {
+                        if (info2.data == "План") {
                             properties.map(p => {
                                 if (DAY_NAME_REG_EXP.test(p.name)) cP = cP + 1;
                             });
-                        } else if (properties[1].data == "Факт") {
+                        } else if (info2.data == "Факт") {
                             properties.map(p => {
                                 if (DAY_NAME_REG_EXP.test(p.name)) cF = cF + 1;
                             });
@@ -185,17 +228,20 @@ const EqsPrfrm = () => {
     }, [dataGrid.reload, filter, executeStored]);
 
     //пользовательский параметр JuridicalPerson системы
-    const getJurPers = useCallback(async () => {
-        const data = await executeStored({
-            stored: "PKG_P8PANELS_EQUIPSRV.GET_JUR_PERS_PRM",
-            respArg: "CRES"
-        });
-        setFilter(pv => ({ ...pv, belong: data }));
-    }, [executeStored]);
+    // const getJurPers = useCallback(async () => {
+    //     const data = await executeStored({
+    //         stored: "PKG_P8PANELS_EQUIPSRV.GET_JUR_PERS_PRM",
+    //         respArg: "CRES"
+    //     });
+    //     setFilter(pv => ({ ...pv, belong: data }));
+    // }, [executeStored]);
 
     useEffect(() => {
         if (filterOpen) {
-            setFilterCopy({ ...filter });
+            {
+                setFilterCopy({ ...filter });
+                if (!defaultLoaded) loadDefaultFilter();
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filterOpen]);
@@ -254,26 +300,11 @@ const EqsPrfrm = () => {
                                     aria-describedby="belong-outlined-helper-text"
                                     label="Принадлежность"
                                 />
-                                <Grid container>
-                                    <Grid item xs={6}>
-                                        {filter.belong ? null : (
-                                            <FormHelperText id="belong-outlined-helper-text" sx={{ color: "red" }}>
-                                                *Обязательное поле
-                                            </FormHelperText>
-                                        )}
-                                    </Grid>
-                                    <Grid item xs={6} sx={{ textAlign: "end" }}>
-                                        <Link
-                                            component="button"
-                                            variant="body2"
-                                            id="belong-outlined-link-btn"
-                                            sx={{ fontSize: "0.75rem", marginRight: "35px" }}
-                                            onClick={getJurPers}
-                                        >
-                                            Значение по умолчанию
-                                        </Link>
-                                    </Grid>
-                                </Grid>
+                                {filter.belong ? null : (
+                                    <FormHelperText id="belong-outlined-helper-text" sx={{ color: "red" }}>
+                                        *Обязательное поле
+                                    </FormHelperText>
+                                )}
                             </FormControl>
                         </Box>
                         <Box component="section" sx={{ p: 1 }}>
@@ -498,10 +529,10 @@ const EqsPrfrm = () => {
                             closeFilter();
                         }}
                     >
-                        Сформировать отчёт
+                        Сформировать
                     </Button>
                     <Button variant="contained" onClick={clearFilter}>
-                        Очистить фильтр
+                        Очистить
                     </Button>
                     <Button
                         variant="contained"
@@ -509,7 +540,7 @@ const EqsPrfrm = () => {
                             setFilter(filterCopy);
                         }}
                     >
-                        Отменить изменения
+                        Отмена
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -536,7 +567,9 @@ const EqsPrfrm = () => {
                                     rows={dataGrid.rows}
                                     size={P8P_DATA_GRID_SIZE.LARGE}
                                     reloading={dataGrid.reload}
-                                    headCellRender={prms => headCellRender({ ...prms }, filter.techServ, info.cntP, info.sumP, info.cntF, info.sumF)}
+                                    headCellRender={prms =>
+                                        headCellRender({ ...prms }, handleClick, filter.techServ, info.cntP, info.sumP, info.cntF, info.sumF)
+                                    }
                                     dataCellRender={prms => dataCellRender({ ...prms })}
                                     groupCellRender={prms => groupCellRender({ ...prms })}
                                     showCellRightBorder={true}

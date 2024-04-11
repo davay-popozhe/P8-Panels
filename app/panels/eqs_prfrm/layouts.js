@@ -7,8 +7,8 @@
 //Подключение библиотек
 //---------------------
 
+import React, { createRef } from "react"; //Классы React
 import { Grid, Stack } from "@mui/material";
-import React from "react"; //Классы React
 
 //---------
 //Константы
@@ -25,6 +25,7 @@ let x = 0;
 //-----------
 //Тело модуля
 //-----------
+
 const formatDate = date => {
     const [year, month, day] = date.substring(1).split("_");
     let nd;
@@ -33,76 +34,96 @@ const formatDate = date => {
     return nd;
 };
 
-export const headCellRender = ({ columnDef }, podr, cntP, sumP, cntF, sumF) => {
+// eslint-disable-next-line no-unused-vars
+export const headCellRender = ({ columnDef }, hClick, podr, cntP, sumP, cntF, sumF) => {
     let cellStyle = { border: "1px solid rgba(0, 0, 0)", textAlign: "center" };
     let cellProps = {};
+    let stackStyle = {};
     let data = columnDef.caption;
 
     if (columnDef.expandable) {
-        // поменять расположение + для развёртывания
+        const ref = createRef();
+        cellStyle = { ...cellStyle, padding: "5px" };
+        cellProps = {
+            ...cellProps,
+            ref: ref,
+            onClick: e => {
+                hClick(e, ref);
+            }
+        };
+
+        stackStyle = { flexDirection: "column" };
     }
     if (columnDef.name == "STEST") cellStyle = { display: "none" };
     if (columnDef.name == "SINFO" || columnDef.name == "SINFO2") {
         cellProps = { colSpan: 2 };
-        if (columnDef.name == "SINFO") {
-            cellStyle = { ...cellStyle, padding: "unset" };
-            data = (
-                <Stack sx={{ justifyContent: "center" }} direction="row" width={300}>
-                    <Grid container>
-                        <Grid item xs={4}>
-                            Подразделение:
-                        </Grid>
-                        <Grid item xs={8}>
-                            {podr}
-                        </Grid>
-                        <Grid item xs={4}>
-                            Кол-во ремонтов, план:
-                        </Grid>
-                        <Grid item xs={2}>
-                            {cntP}
-                        </Grid>
-                        <Grid item xs={4}>
-                            Трудоемкость, час. план:
-                        </Grid>
-                        <Grid item xs={2}>
-                            {sumP}
-                        </Grid>
-                        <Grid item xs={4}>
-                            Кол-во ремонтов, факт:
-                        </Grid>
-                        <Grid item xs={2}>
-                            {cntF}
-                        </Grid>
-                        <Grid item xs={4}>
-                            Трудоемкость, час. факт:
-                        </Grid>
-                        <Grid item xs={2}>
-                            {sumF}
-                        </Grid>
-                    </Grid>
-                </Stack>
-            );
-        }
+        if (columnDef.name == "SINFO") cellProps = { ...cellProps, rowSpan: 2 };
+        //if (columnDef.name == "SINFO") {
+        //cellStyle = { display: "none" };
+        //         cellStyle = { ...cellStyle, padding: "unset" };
+        //         data = (
+        //             <Stack sx={{ justifyContent: "center" }} direction="row" width={300}>
+        //                 <Grid container>
+        //                     <Grid item xs={4}>
+        //                         Подразделение:
+        //                     </Grid>
+        //                     <Grid item xs={8}>
+        //                         {podr}
+        //                     </Grid>
+        //                     <Grid item xs={4}>
+        //                         Кол-во ремонтов, план:
+        //                     </Grid>
+        //                     <Grid item xs={2}>
+        //                         {cntP}
+        //                     </Grid>
+        //                     <Grid item xs={4}>
+        //                         Трудоемкость, час. план:
+        //                     </Grid>
+        //                     <Grid item xs={2}>
+        //                         {sumP}
+        //                     </Grid>
+        //                     <Grid item xs={4}>
+        //                         Кол-во ремонтов, факт:
+        //                     </Grid>
+        //                     <Grid item xs={2}>
+        //                         {cntF}
+        //                     </Grid>
+        //                     <Grid item xs={4}>
+        //                         Трудоемкость, час. факт:
+        //                     </Grid>
+        //                     <Grid item xs={2}>
+        //                         {sumF}
+        //                     </Grid>
+        //                 </Grid>
+        //             </Stack>
+        //         );
+        //}
     }
+
+    if (columnDef.name == "SINFO2") cellStyle = { display: "none" };
 
     if (columnDef.visible && DAY_NAME_REG_EXP.test(columnDef.name)) {
-        cellStyle = { ...cellStyle, paddingLeft: "5px", paddingRight: "5px", minWidth: "25px", maxWidth: "25px" };
+        cellStyle = { ...cellStyle, padding: "5px", minWidth: "25px", maxWidth: "25px" };
+        stackStyle = { justifyContent: "center" };
     }
 
-    return { cellStyle, cellProps, data };
+    return { cellStyle, cellProps, stackStyle, data };
 };
 
 export const dataCellRender = ({ row, columnDef }) => {
     let cellStyle = {
         padding: "2px",
-        border: "1px solid rgba(0, 0, 0)",
+        border: "1px solid rgba(0, 0, 0) !important",
         textAlign: "center"
     };
     let cellProps = {};
     let data = " ";
 
     if (row["SINFO2"] == undefined) {
-        if (columnDef.name == "STEST") cellProps = { colSpan: 2 };
+        if (columnDef.name == "STEST") {
+            cellProps = { colSpan: 2 };
+            cellStyle = { ...cellStyle, textAlign: "right", fontWeight: "bold" };
+        }
         if (columnDef.name == "SINFO2") cellStyle = { display: "none" };
         if (columnDef.parent == "" && columnDef.expandable == true && columnDef.expanded == false) {
             curParent = columnDef.name;
@@ -130,15 +151,15 @@ export const dataCellRender = ({ row, columnDef }) => {
 
     switch (row[columnDef.name]) {
         case "blue":
-            cellStyle = { ...cellStyle, backgroundColor: "royalblue", border: "1px solid rgba(0, 0, 0)" };
+            cellStyle = { ...cellStyle, backgroundColor: "royalblue", border: "1px solid rgba(0, 0, 0) !important" };
             cellProps = { title: formatDate(columnDef.name) };
             return { cellStyle, cellProps, data };
         case "green":
-            cellStyle = { ...cellStyle, backgroundColor: "lawngreen", border: "1px solid rgba(0, 0, 0)" };
+            cellStyle = { ...cellStyle, backgroundColor: "lawngreen", border: "1px solid rgba(0, 0, 0) !important" };
             cellProps = { title: formatDate(columnDef.name) };
             return { cellStyle, cellProps, data };
         case "red":
-            cellStyle = { ...cellStyle, backgroundColor: "crimson", border: "1px solid rgba(0, 0, 0)" };
+            cellStyle = { ...cellStyle, backgroundColor: "crimson", border: "1px solid rgba(0, 0, 0) !important" };
             cellProps = { title: formatDate(columnDef.name) };
             return { cellStyle, cellProps, data };
         case "green red":
