@@ -9,67 +9,15 @@
 
 import React, { useContext, useState, useCallback, useEffect } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Icon, Stack, Link } from "@mui/material"; //Интерфейсные элементы
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { object2Base64XML } from "../../core/utils"; //Вспомогательные функции
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { LabPlanFOTDtl } from "./lab_plan_fot_dtl"; //Детализация плановой трудоёмкости по ФОТ
+import { LabFactRptDtl } from "./lab_fact_rpt_dtl"; //Детализация фактической трудоёмкости по "Планам и отчетам подразделений"
 import { LabPlanJobsDtl } from "./lab_plan_jobs_dtl"; //Детализация плановой трудоёмкости по графику
-
-//------------------------------------
-//Вспомогательные функции и компоненты
-//------------------------------------
-
-//Генерация представления ячейки c данными в таблице периодов балансировки
-const periodsDataCellRender = ({ row, columnDef, onLabPlanFOTClick, onLabPlanJobsClick }) => {
-    switch (columnDef.name) {
-        case "NLAB_PLAN_FOT":
-            return {
-                data: row[columnDef.name] ? (
-                    <Link
-                        component="button"
-                        variant="body2"
-                        align="left"
-                        underline="hover"
-                        onClick={() => (onLabPlanFOTClick ? onLabPlanFOTClick({ sender: row }) : null)}
-                    >
-                        {row[columnDef.name]}
-                    </Link>
-                ) : (
-                    row[columnDef.name]
-                )
-            };
-        case "NLAB_DIFF_RPT_FOT":
-            return { data: <div style={{ color: row[columnDef.name] <= 0 ? "green" : "red" }}>{row[columnDef.name]}</div> };
-        case "NLAB_PLAN_JOBS":
-            return {
-                data: row[columnDef.name] ? (
-                    <Link
-                        component="button"
-                        variant="body2"
-                        align="left"
-                        underline="hover"
-                        onClick={() => (onLabPlanJobsClick ? onLabPlanJobsClick({ sender: row }) : null)}
-                    >
-                        {row[columnDef.name]}
-                    </Link>
-                ) : (
-                    row[columnDef.name]
-                )
-            };
-        case "NLAB_DIFF_JOBS_FOT":
-            return {
-                data: (
-                    <Stack direction="row" gap={0.5} alignItems="center" justifyContent="right">
-                        <div style={{ color: row[columnDef.name] <= 0 ? "green" : "red" }}>{row[columnDef.name]}</div>
-                        <Icon sx={{ color: row[columnDef.name] <= 0 ? "green" : "red" }}>{row[columnDef.name] <= 0 ? "done" : "error"}</Icon>
-                    </Stack>
-                )
-            };
-    }
-};
+import { periodsDataCellRender } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
 
 //-----------
 //Тело модуля
@@ -78,7 +26,14 @@ const periodsDataCellRender = ({ row, columnDef, onLabPlanFOTClick, onLabPlanJob
 //Монитор ресурсов
 const ResMon = ({ ident, onPlanJobsDtlProjectClick }) => {
     //Собственное состояние
-    const [state, setState] = useState({ displayPlanFOTDtl: null, titlePlanFOTDtl: null, displayPlanJobsDtl: null, titlePlanJobsDtl: null });
+    const [state, setState] = useState({
+        displayPlanFOTDtl: null,
+        titlePlanFOTDtl: null,
+        displayFactRptDtl: null,
+        titleFactRptDtl: null,
+        displayPlanJobsDtl: null,
+        titlePlanJobsDtl: null
+    });
 
     //Состояние таблицы периодов монитора ресурсов
     const [peridos, setPeriods] = useState({
@@ -125,7 +80,15 @@ const ResMon = ({ ident, onPlanJobsDtlProjectClick }) => {
 
     //При сокрытии детализации
     const handleHideDtl = () =>
-        setState(pv => ({ ...pv, displayPlanFOTDtl: null, titlePlanFOTDtl: null, displayPlanJobsDtl: null, titlePlanJobsDtl: null }));
+        setState(pv => ({
+            ...pv,
+            displayPlanFOTDtl: null,
+            titlePlanFOTDtl: null,
+            displayFactRptDtl: null,
+            titleFactRptDtl: null,
+            displayPlanJobsDtl: null,
+            titlePlanJobsDtl: null
+        }));
 
     //При нажатии на плановую трудоёмкость по ФОТ
     const handleLabPlanFOTClick = ({ sender }) =>
@@ -133,6 +96,14 @@ const ResMon = ({ ident, onPlanJobsDtlProjectClick }) => {
             ...pv,
             displayPlanFOTDtl: sender.NRN,
             titlePlanFOTDtl: `${sender.SPERIOD} - ${sender.SINS_DEPARTMENT} - ${sender.SFCMANPOWER} - ${sender.NLAB_PLAN_FOT}`
+        }));
+
+    //При нажатии на фактическую трудоёмкость по отчетам
+    const handleLabFactRptClick = ({ sender }) =>
+        setState(pv => ({
+            ...pv,
+            displayFactRptDtl: sender.NRN,
+            titleFactRptDtl: `${sender.SPERIOD} - ${sender.SINS_DEPARTMENT} - ${sender.SFCMANPOWER} - ${sender.NLAB_FACT_RPT}`
         }));
 
     //При нажатии на проект в списке детализации плановой трудоёмкости по графику
@@ -171,12 +142,20 @@ const ResMon = ({ ident, onPlanJobsDtlProjectClick }) => {
                     onOrderChanged={handlePeriodsOrderChanged}
                     onPagesCountChanged={handlePeriodsPagesCountChanged}
                     dataCellRender={prms =>
-                        periodsDataCellRender({ ...prms, onLabPlanFOTClick: handleLabPlanFOTClick, onLabPlanJobsClick: handleLabPlanJobsClick })
+                        periodsDataCellRender({
+                            ...prms,
+                            onLabPlanFOTClick: handleLabPlanFOTClick,
+                            onLabFactRptClick: handleLabFactRptClick,
+                            onLabPlanJobsClick: handleLabPlanJobsClick
+                        })
                     }
                 />
             ) : null}
             {state.displayPlanFOTDtl ? (
                 <LabPlanFOTDtl periodId={state.displayPlanFOTDtl} title={state.titlePlanFOTDtl} onHide={handleHideDtl} />
+            ) : null}
+            {state.displayFactRptDtl ? (
+                <LabFactRptDtl periodId={state.displayFactRptDtl} title={state.titleFactRptDtl} onHide={handleHideDtl} />
             ) : null}
             {state.displayPlanJobsDtl ? (
                 <LabPlanJobsDtl

@@ -9,7 +9,7 @@
 
 import React, { useContext, useState, useCallback, useEffect } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Drawer, Fab, Box, Grid, List, ListItemButton, ListItemText, ListItemIcon, Icon, Typography, Stack } from "@mui/material"; //Интерфейсные элементы
+import { Drawer, Fab, Box, Grid, List, ListItemButton, ListItemText, ListItemIcon, Icon, Typography } from "@mui/material"; //Интерфейсные элементы
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
@@ -17,6 +17,7 @@ import { formatDateJSONDateOnly } from "../../core/utils"; //Вспомогат�
 import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { P8PGantt } from "../../components/p8p_gantt"; //Диаграмма Ганта
 import { ResMon } from "./res_mon"; //Монитор ресурсов
+import { taskAttributeRenderer } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
 
 //---------
 //Константы
@@ -42,54 +43,12 @@ const STYLES = {
     GANTT_CONTAINER: { height: GANTT_HEIGHT, width: GANTT_WIDTH },
     GANTT_TITLE: { paddingLeft: "100px", paddingRight: "120px" },
     PERIODS_BUTTON: { position: "absolute", right: "20px" },
-    PERIODS_DRAWER: { width: "1000px", flexShrink: 0, [`& .MuiDrawer-paper`]: { width: "1000px", boxSizing: "border-box" } }
+    PERIODS_DRAWER: { width: "1200px", flexShrink: 0, [`& .MuiDrawer-paper`]: { width: "1200px", boxSizing: "border-box" } }
 };
 
 //------------------------------------
 //Вспомогательные функции и компоненты
 //------------------------------------
-
-//Формирование значения для колонки "Состояние" этапа
-const formatStageStatusValue = value => {
-    const [text, icon] =
-        value == 0
-            ? ["Зарегистрирован", "app_registration"]
-            : value == 1
-            ? ["Открыт", "lock_open"]
-            : value == 2
-            ? ["Закрыт", "lock_outline"]
-            : value == 3
-            ? ["Согласован", "thumb_up_alt"]
-            : value == 4
-            ? ["Исполнение прекращено", "block"]
-            : ["Остановлен", "do_not_disturb_on"];
-    return (
-        <Stack direction="row" gap={0.5} alignItems="center">
-            <Icon title={text}>{icon}</Icon>
-            {text}
-        </Stack>
-    );
-};
-
-//Формирование значения для колонки "Состояние" работы
-const formatJobStatusValue = value => {
-    const [text, icon] =
-        value == 0
-            ? ["Не начата", "not_started"]
-            : value == 1
-            ? ["Выполняется", "loop"]
-            : value == 2
-            ? ["Выполнена", "task_alt"]
-            : value == 3
-            ? ["Остановлена", "do_not_disturb_on"]
-            : ["Отменена", "cancel"];
-    return (
-        <Stack direction="row" gap={0.5} alignItems="center">
-            <Icon title={text}>{icon}</Icon>
-            {text}
-        </Stack>
-    );
-};
 
 //Список проектов
 const ProjectsList = ({ projects = [], selectedProject, onClick } = {}) => {
@@ -331,18 +290,6 @@ const PrjJobs = () => {
     //Обработка измненения сроков задачи в диаграмме Гантта
     const handleTaskDatesChange = ({ task, start, end, isMain }) => {
         if (isMain) modifyJob(task.rn, new Date(start), new Date(end), new Date(state.dateBegin), new Date(state.dateFact), state.durationMeas);
-    };
-
-    //Генерация кастомных представлений атрибутов задачи в редакторе
-    const taskAttributeRenderer = ({ task, attribute }) => {
-        switch (attribute.name) {
-            case "type":
-                return task.type === 1 ? "Этап проекта" : "Работа проекта";
-            case "state":
-                return task.type === 1 ? formatStageStatusValue(task[attribute.name]) : formatJobStatusValue(task[attribute.name]);
-            default:
-                return null;
-        }
     };
 
     //Обработка нажатия на сохранение данных в проект

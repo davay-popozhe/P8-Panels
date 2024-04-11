@@ -1,6 +1,6 @@
 /*
     Парус 8 - Панели мониторинга - ПУП - Работы проектов
-    Компонент панели: Детализация плановой трудоёмкости по графику
+    Компонент панели: Детализация фактической трудоёмкости по "Планам и отчетам подразделений"
 */
 
 //---------------------
@@ -16,20 +16,16 @@ import { object2Base64XML } from "../../core/utils"; //Вспомогатель�
 import { BUTTONS } from "../../../app.text"; //Текстовые ресурсы
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
-import { planJobsDtlValueFormatter, planJobsDtlHeadCellRender, planJobsDtlDataCellRender } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
-
-//------------------------------------
-//Вспомогательные функции и компоненты
-//------------------------------------
+import { factRptDtlValueFormatter, factRptDtlHeadCellRender } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
 
 //-----------
 //Тело модуля
 //-----------
 
-//Детализация плановой трудоёмкости по графику
-const LabPlanJobsDtl = ({ periodId, title, onHide, onProjectClick }) => {
+//Детализация фактической трудоёмкости по "Планам и отчетам подразделений"
+const LabFactRptDtl = ({ periodId, title, onHide }) => {
     //Состояние таблицы детализации плановой трудоёмкости по графику
-    const [planJobsDtl, setPlanJobsDtl] = useState({
+    const [factRptDtl, setFactRptDtl] = useState({
         dataLoaded: false,
         columnsDef: [],
         orders: [],
@@ -45,21 +41,21 @@ const LabPlanJobsDtl = ({ periodId, title, onHide, onProjectClick }) => {
     //Подключение к контексту взаимодействия с сервером
     const { executeStored, SERV_DATA_TYPE_CLOB } = useContext(BackEndСtx);
 
-    //Загрузка детализации плановой трудоёмкости по графику для ресурса
-    const loadPlanJobsDtl = useCallback(async () => {
-        if (planJobsDtl.reload) {
+    //Загрузка детализации фактической трудоёмкости по отчетам для ресурса
+    const loadFactRptDtl = useCallback(async () => {
+        if (factRptDtl.reload) {
             const data = await executeStored({
-                stored: "PKG_P8PANELS_PROJECTS.JB_PERIODS_LIST_PLAN_JOBS",
+                stored: "PKG_P8PANELS_PROJECTS.JB_PERIODS_LIST_FACT_RPT",
                 args: {
                     NJB_PERIODS: periodId,
-                    CORDERS: { VALUE: object2Base64XML(planJobsDtl.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
-                    NPAGE_NUMBER: planJobsDtl.pageNumber,
+                    CORDERS: { VALUE: object2Base64XML(factRptDtl.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
+                    NPAGE_NUMBER: factRptDtl.pageNumber,
                     NPAGE_SIZE: configSystemPageSize,
-                    NINCLUDE_DEF: planJobsDtl.dataLoaded ? 0 : 1
+                    NINCLUDE_DEF: factRptDtl.dataLoaded ? 0 : 1
                 },
                 respArg: "COUT"
             });
-            setPlanJobsDtl(pv => ({
+            setFactRptDtl(pv => ({
                 ...pv,
                 columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
                 rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
@@ -70,44 +66,40 @@ const LabPlanJobsDtl = ({ periodId, title, onHide, onProjectClick }) => {
         }
     }, [
         periodId,
-        planJobsDtl.reload,
-        planJobsDtl.orders,
-        planJobsDtl.dataLoaded,
-        planJobsDtl.pageNumber,
+        factRptDtl.reload,
+        factRptDtl.orders,
+        factRptDtl.dataLoaded,
+        factRptDtl.pageNumber,
         executeStored,
         configSystemPageSize,
         SERV_DATA_TYPE_CLOB
     ]);
 
-    //При изменении состояния сортировки в детализации плановой трудоёмкости по графику
-    const handlePlanJobsDtlDGOrderChanged = ({ orders }) => setPlanJobsDtl(pv => ({ ...pv, orders, pageNumber: 1, reload: true }));
+    //При изменении состояния сортировки в детализации факта по "Планам и отчетам в подразделении"
+    const handlePlanJobsDtlDGOrderChanged = ({ orders }) => setFactRptDtl(pv => ({ ...pv, orders, pageNumber: 1, reload: true }));
 
-    //При изменении количества отображаемых страниц в детализации плановой трудоёмкости по графику
-    const handlePlanJobsDtlDGPagesCountChanged = () => setPlanJobsDtl(pv => ({ ...pv, pageNumber: pv.pageNumber + 1, reload: true }));
-
-    //При нажатии на проект в таблице детализаци
-    const handleProjectClick = ({ sender }) => (onProjectClick ? onProjectClick({ sender }) : null);
+    //При изменении количества отображаемых страниц в факта по "Планам и отчетам в подразделении"
+    const handlePlanJobsDtlDGPagesCountChanged = () => setFactRptDtl(pv => ({ ...pv, pageNumber: pv.pageNumber + 1, reload: true }));
 
     //При необходимости обновить данные
     useEffect(() => {
-        loadPlanJobsDtl();
-    }, [planJobsDtl.reload, loadPlanJobsDtl]);
+        loadFactRptDtl();
+    }, [factRptDtl.reload, loadFactRptDtl]);
 
     //Генерация содержимого
-    return planJobsDtl.dataLoaded ? (
+    return factRptDtl.dataLoaded ? (
         <Dialog open onClose={onHide} fullWidth maxWidth="xl">
             <DialogTitle>{title}</DialogTitle>
             <DialogContent>
                 <P8PDataGrid
                     {...P8P_DATA_GRID_CONFIG_PROPS}
-                    columnsDef={planJobsDtl.columnsDef}
-                    rows={planJobsDtl.rows}
+                    columnsDef={factRptDtl.columnsDef}
+                    rows={factRptDtl.rows}
                     size={P8P_DATA_GRID_SIZE.SMALL}
-                    morePages={planJobsDtl.morePages}
-                    reloading={planJobsDtl.reload}
-                    valueFormatter={planJobsDtlValueFormatter}
-                    headCellRender={planJobsDtlHeadCellRender}
-                    dataCellRender={prms => planJobsDtlDataCellRender({ ...prms, onProjectClick: handleProjectClick })}
+                    morePages={factRptDtl.morePages}
+                    reloading={factRptDtl.reload}
+                    valueFormatter={factRptDtlValueFormatter}
+                    headCellRender={factRptDtlHeadCellRender}
                     onOrderChanged={handlePlanJobsDtlDGOrderChanged}
                     onPagesCountChanged={handlePlanJobsDtlDGPagesCountChanged}
                 />
@@ -119,16 +111,15 @@ const LabPlanJobsDtl = ({ periodId, title, onHide, onProjectClick }) => {
     ) : null;
 };
 
-//Контроль свойств - Детализация плановой трудоёмкости по графику
-LabPlanJobsDtl.propTypes = {
+//Контроль свойств - Детализация фактической трудоёмкости по "Планам и отчетам подразделений"
+LabFactRptDtl.propTypes = {
     periodId: PropTypes.number.isRequired,
     title: PropTypes.string.isRequired,
-    onHide: PropTypes.func.isRequired,
-    onProjectClick: PropTypes.func
+    onHide: PropTypes.func.isRequired
 };
 
 //----------------
 //Интерфейс модуля
 //----------------
 
-export { LabPlanJobsDtl };
+export { LabFactRptDtl };
