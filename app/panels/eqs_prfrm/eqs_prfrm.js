@@ -32,7 +32,9 @@ import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
+import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { headCellRender, dataCellRender, groupCellRender, DIGITS_REG_EXP, MONTH_NAME_REG_EXP, DAY_NAME_REG_EXP } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
+import { TEXTS } from "../../../app.text"; //Тектовые ресурсы и константы
 
 //-----------
 //Тело модуля
@@ -49,9 +51,13 @@ const EqsPrfrm = () => {
         reload: false
     });
 
+    // Состояние информации о трудоёмкости
+    const [info, setInfo] = useState({ cntP: 0, sumP: 0, cntF: 0, sumF: 0 });
+
+    // Состояние фильтра (для отладки)
     // const [filter, setFilter] = useState({
     //     belong: "Демопример",
-    //     prodObj: "К2",
+    //     prodObj: "Карьер",
     //     techServ: "",
     //     respDep: "",
     //     fromMonth: 1,
@@ -60,6 +66,7 @@ const EqsPrfrm = () => {
     //     toYear: 2024
     // });
 
+    // Состояние фильтра
     const [filter, setFilter] = useState({
         belong: "",
         prodObj: "",
@@ -70,92 +77,28 @@ const EqsPrfrm = () => {
         toMonth: 1,
         toYear: 1990
     });
-
-    const [activeRef, setActiveRef] = useState();
-    const [refIsDeprecated, setRidFlag] = useState(true);
-
-    useEffect(() => {
-        if (!refIsDeprecated) {
-            if (activeRef) {
-                var cellRect = activeRef.getBoundingClientRect();
-                //console.log(window.scrollX + cellRect.left + activeRef.clientWidth / 2 - window.innerWidth / 2);
-                window.scrollTo(window.scrollX + cellRect.left + activeRef.clientWidth / 2 - window.innerWidth / 2, 0);
-                setRidFlag(true);
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [refIsDeprecated]);
-
-    const handleClick = (e, ref) => {
-        const curCell = ref.current;
-
-        //console.log(curCell.children);
-
-        if (e.target.type == "button" || e.target.offsetParent.type == "button") {
-            setActiveRef(curCell);
-            setRidFlag(false);
-        }
-    };
-
-    const [info, setInfo] = useState({ cntP: 0, sumP: 0, cntF: 0, sumF: 0 });
-
-    //Подключение к контексту приложения
-    const { pOnlineShowDictionary } = useContext(ApplicationСtx);
-
+    // Состояние открытия фильтра
     const [filterOpen, setFilterOpen] = useState(true);
-
+    // Состояние данных по умолчанию для фильтра (true - для отладки)
     const [defaultLoaded, setDefaultLoaded] = useState(false);
-
+    // Состояние хранения копии фильтра
     const [filterCopy, setFilterCopy] = useState({ ...filter });
-
+    // Состояние ограничения редактирования фильтра
     const [filterLock, setFilterLock] = useState(false);
 
-    const openFilter = () => {
-        setFilterOpen(true);
-    };
+    // Состояние ячейки заголовка даты (по раскрытию/скрытию)
+    const [activeRef, setActiveRef] = useState();
+    // Состояние актуальности ссылки на ячейку
+    const [refIsDeprecated, setRidFlag] = useState(true);
 
-    const closeFilter = e => {
-        if (filterLock && e != undefined) setFilter(filterCopy);
-        setFilterOpen(false);
-    };
-
-    const clearFilter = () => {
-        setFilter({
-            belong: "",
-            prodObj: "",
-            techServ: "",
-            respDep: "",
-            fromMonth: "",
-            fromYear: "",
-            toMonth: "",
-            toYear: ""
-        });
-    };
-
-    let yearArray = [];
-    let today = new Date();
-
-    const getYearArray = () => {
-        for (let i = 1990; i <= today.getFullYear(); i++) {
-            yearArray.push(i);
-        }
-    };
-
-    const monthArray = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+    //Подключение к контексту приложения
+    const { pOnlineShowDictionary, pOnlineShowUnit } = useContext(ApplicationСtx);
 
     //Подключение к контексту взаимодействия с сервером
     const { executeStored } = useContext(BackEndСtx);
 
-    //Загрузка значений фильра по умолчанию
-    const loadDefaultFilter = useCallback(async () => {
-        const data = await executeStored({
-            stored: "PKG_P8PANELS_EQUIPSRV.GET_DEAFULT_FP",
-            respArg: "COUT"
-        });
-
-        setFilter(pv => ({ ...pv, belong: data.JURPERS, fromMonth: data.MONTH, fromYear: data.YEAR, toMonth: data.MONTH, toYear: data.YEAR }));
-        setDefaultLoaded(true);
-    }, [executeStored]);
+    //Подключение к контексту сообщений
+    const { showMsgErr } = useContext(MessagingСtx);
 
     //Загрузка данных таблицы с сервера
     const loadData = useCallback(async () => {
@@ -227,6 +170,17 @@ const EqsPrfrm = () => {
         }
     }, [dataGrid.reload, filter, executeStored]);
 
+    //Загрузка значений фильра по умолчанию
+    const loadDefaultFilter = useCallback(async () => {
+        const data = await executeStored({
+            stored: "PKG_P8PANELS_EQUIPSRV.GET_DEFAULT_FP",
+            respArg: "COUT"
+        });
+
+        setFilter(pv => ({ ...pv, belong: data.JURPERS, fromMonth: data.MONTH, fromYear: data.YEAR, toMonth: data.MONTH, toYear: data.YEAR }));
+        setDefaultLoaded(true);
+    }, [executeStored]);
+
     //пользовательский параметр JuridicalPerson системы
     // const getJurPers = useCallback(async () => {
     //     const data = await executeStored({
@@ -236,6 +190,80 @@ const EqsPrfrm = () => {
     //     setFilter(pv => ({ ...pv, belong: data }));
     // }, [executeStored]);
 
+    // Отбор документа (ТОиР или Ремонтных ведомостей) по ячейке даты
+    const showEquipSrv = async ({ date, workType, info }) => {
+        const [techName, servKind] = info.split("_");
+        let type;
+
+        if (workType == "План") type = 0;
+        else type = 1;
+
+        let [year, month, day] = date.substring(1).split("_");
+
+        //if (day == undefined) day = null;
+
+        const data = await executeStored({
+            stored: "PKG_P8PANELS_EQUIPSRV.SELECT_EQUIPSRV",
+            args: {
+                SBELONG: filter.belong,
+                SPRODOBJ: filter.prodObj,
+                STECHSERV: filter.techServ ? filter.techServ : null,
+                SRESPDEP: filter.respDep ? filter.respDep : null,
+                STECHNAME: techName,
+                SSRVKIND: servKind,
+                NYEAR: Number(year),
+                NMONTH: Number(month),
+                NDAY: day ? Number(day) : null,
+                NWORKTYPE: type
+            }
+        });
+        if (data.NIDENT) {
+            if (type == 0) pOnlineShowUnit({ unitCode: "EquipTechServices", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+            else pOnlineShowUnit({ unitCode: "EquipRepairSheets", inputParameters: [{ name: "in_Ident", value: data.NIDENT }] });
+        } else showMsgErr(TEXTS.NO_DATA_FOUND);
+    };
+
+    // Открыть фильтр
+    const openFilter = () => {
+        setFilterOpen(true);
+    };
+
+    // Закрыть фильтр
+    const closeFilter = e => {
+        if (filterLock && e != undefined) setFilter(filterCopy);
+        setFilterOpen(false);
+    };
+
+    // Очистить фильтр
+    const clearFilter = () => {
+        setFilter({
+            belong: "",
+            prodObj: "",
+            techServ: "",
+            respDep: "",
+            fromMonth: "",
+            fromYear: "",
+            toMonth: "",
+            toYear: ""
+        });
+    };
+
+    // Отработка события скрытия/раскрытия ячейки даты
+    const handleClick = (e, ref) => {
+        const curCell = ref.current;
+
+        if (e.target.type == "button" || e.target.offsetParent.type == "button") {
+            setActiveRef(curCell);
+            setRidFlag(false);
+        }
+    };
+
+    // При необходимости обновить данные таблицы
+    useEffect(() => {
+        loadData();
+    }, [loadData, dataGrid.reload]);
+
+    // При открытом фильтре
     useEffect(() => {
         if (filterOpen) {
             {
@@ -246,10 +274,29 @@ const EqsPrfrm = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filterOpen]);
 
-    //При необходимости обновить данные таблицы
+    // При нажатии скрытии/раскрытии ячейки даты, фокус на неё
     useEffect(() => {
-        loadData();
-    }, [loadData, dataGrid.reload]);
+        if (!refIsDeprecated) {
+            if (activeRef) {
+                var cellRect = activeRef.getBoundingClientRect();
+                //console.log(window.scrollX + cellRect.left + activeRef.clientWidth / 2 - window.innerWidth / 2);
+                window.scrollTo(window.scrollX + cellRect.left + activeRef.clientWidth / 2 - window.innerWidth / 2, 0);
+                setRidFlag(true);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [refIsDeprecated]);
+
+    let yearArray = [];
+    const monthArray = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+    let today = new Date();
+
+    // Получение списка лет
+    const getYearArray = () => {
+        for (let i = 1990; i <= today.getFullYear(); i++) {
+            yearArray.push(i);
+        }
+    };
 
     //Генерация содержимого
     return (
@@ -570,7 +617,7 @@ const EqsPrfrm = () => {
                                     headCellRender={prms =>
                                         headCellRender({ ...prms }, handleClick, filter.techServ, info.cntP, info.sumP, info.cntF, info.sumF)
                                     }
-                                    dataCellRender={prms => dataCellRender({ ...prms })}
+                                    dataCellRender={prms => dataCellRender({ ...prms }, showEquipSrv)}
                                     groupCellRender={prms => groupCellRender({ ...prms })}
                                     showCellRightBorder={true}
                                 />

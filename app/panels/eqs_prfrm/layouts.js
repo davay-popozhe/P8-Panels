@@ -110,7 +110,7 @@ export const headCellRender = ({ columnDef }, hClick, podr, cntP, sumP, cntF, su
     return { cellStyle, cellProps, stackStyle, data };
 };
 
-export const dataCellRender = ({ row, columnDef }) => {
+export const dataCellRender = ({ row, columnDef }, showEquipSrv) => {
     let cellStyle = {
         padding: "2px",
         border: "1px solid rgba(0, 0, 0) !important",
@@ -151,16 +151,31 @@ export const dataCellRender = ({ row, columnDef }) => {
 
     switch (row[columnDef.name]) {
         case "blue":
-            cellStyle = { ...cellStyle, backgroundColor: "royalblue", border: "1px solid rgba(0, 0, 0) !important" };
-            cellProps = { title: formatDate(columnDef.name) };
+            cellStyle = { ...cellStyle, backgroundColor: "lightblue", border: "1px solid rgba(0, 0, 0) !important" };
+            cellProps = {
+                title: formatDate(columnDef.name),
+                onClick: () => {
+                    showEquipSrv({ date: columnDef.name, workType: row["SINFO2"], info: row["groupName"] });
+                }
+            };
             return { cellStyle, cellProps, data };
         case "green":
-            cellStyle = { ...cellStyle, backgroundColor: "lawngreen", border: "1px solid rgba(0, 0, 0) !important" };
-            cellProps = { title: formatDate(columnDef.name) };
+            cellStyle = { ...cellStyle, backgroundColor: "green", border: "1px solid rgba(0, 0, 0) !important" };
+            cellProps = {
+                title: formatDate(columnDef.name),
+                onClick: () => {
+                    showEquipSrv({ date: columnDef.name, workType: row["SINFO2"], info: row["groupName"] });
+                }
+            };
             return { cellStyle, cellProps, data };
         case "red":
             cellStyle = { ...cellStyle, backgroundColor: "crimson", border: "1px solid rgba(0, 0, 0) !important" };
-            cellProps = { title: formatDate(columnDef.name) };
+            cellProps = {
+                title: formatDate(columnDef.name),
+                onClick: () => {
+                    showEquipSrv({ date: columnDef.name, workType: row["SINFO2"], info: row["groupName"] });
+                }
+            };
             return { cellStyle, cellProps, data };
         case "green red":
         case "red green":
@@ -169,10 +184,20 @@ export const dataCellRender = ({ row, columnDef }) => {
             data = (
                 <Stack sx={{ justifyContent: "center" }} direction="row">
                     <Grid container maxHeight="100%">
-                        <Grid item xs={6} sx={{ backgroundColor: "lawngreen" }}>
+                        <Grid
+                            item
+                            xs={6}
+                            sx={{ backgroundColor: "green" }}
+                            onClick={() => showEquipSrv({ date: columnDef.name, workType: row["SINFO2"], info: row["groupName"] })}
+                        >
                             <p style={{ display: "none" }}>g</p>
                         </Grid>
-                        <Grid item xs={6} sx={{ backgroundColor: "crimson" }}>
+                        <Grid
+                            item
+                            xs={6}
+                            sx={{ backgroundColor: "crimson" }}
+                            onClick={() => showEquipSrv({ date: columnDef.name, workType: row["SINFO2"], info: row["groupName"] })}
+                        >
                             <p style={{ display: "none" }}>r</p>
                         </Grid>
                     </Grid>
