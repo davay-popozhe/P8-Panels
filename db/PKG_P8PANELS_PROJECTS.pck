@@ -6123,10 +6123,20 @@ text="Проверить, что для расчётных полей дата-�
     if (DBEGIN is null) then
       DBEGIN := TRUNC(sysdate, 'yyyy');
     else
-      DBEGIN := TRUNC(DBEGIN, 'yyyy');
+      DBEGIN := TRUNC(DBEGIN, 'mm');
     end if;
     /* Обработаем дату факта */
-    DFACT := TO_DATE('01.01.2022', 'DD.MM.YYYY');
+    if (DFACT is null) then
+      select LAST_DAY(TRUNC(COALESCE(max(ENP.ENDDATE), DBEGIN), 'mm'))
+        into DFACT        
+        from PRJDEPLAN T,
+             ENPERIOD  ENP
+       where T.COMPANY = NCOMPANY
+         and T.STATE = 2
+         and T.PERIOD = ENP.RN;
+    else
+      DFACT := LAST_DAY(TRUNC(DFACT, 'mm'));
+    end if;
     /* Обработаем единицу измерения длительности (пока - она всегда должна быть "день", по умолчанию) */
     NDURATION_MEAS := NJB_DURATION_MEAS;
     /* Обработаем единицу измерения трудоёмкости (пока - она всегда должна быть "ч/ч", по умолчанию) */
