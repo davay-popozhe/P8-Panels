@@ -66,22 +66,12 @@ const STYLES = {
     PERIODS_DRAWER: { width: "1200px", flexShrink: 0, [`& .MuiDrawer-paper`]: { width: "1200px", boxSizing: "border-box" } }
 };
 
-//Единицы измерения длительности
-const DURATION_MEAS = {
-    0: "День",
-    1: "Неделя",
-    2: "Декада",
-    3: "Месяц",
-    4: "Квартал",
-    5: "Год"
-};
-
 //------------------------------------
 //Вспомогательные функции и компоненты
 //------------------------------------
 
 //Диалог параметров инициализации панели
-const InitDialog = ({ dateBegin, dateFact, onOk, onCancel }) => {
+const InitPrmsDialog = ({ dateBegin, dateFact, onOk, onCancel }) => {
     //Собственное состояние - значения с-по
     const [values, setValues] = useState({ dateBegin: formatDateJSONDateOnly(dateBegin), dateFact: formatDateJSONDateOnly(dateFact) });
 
@@ -130,11 +120,70 @@ const InitDialog = ({ dateBegin, dateFact, onOk, onCancel }) => {
 };
 
 //Контроль свойств - Диалог параметров инициализации панели
-InitDialog.propTypes = {
+InitPrmsDialog.propTypes = {
     dateBegin: PropTypes.instanceOf(Date).isRequired,
     dateFact: PropTypes.instanceOf(Date).isRequired,
     onOk: PropTypes.func,
     onCancel: PropTypes.func
+};
+
+//Область параметров инициализации панели
+const InitPrmsArea = ({ dateBegin, dateFact, durationMeasCode, labMeasCode, onClick }) => {
+    return (
+        <List>
+            <ListItem>
+                <ListItemText
+                    secondary={
+                        <>
+                            <b>Начало: </b>
+                            {formatDateRF(dateBegin)}
+                            <br />
+                            <b>Факт на: </b>
+                            {formatDateRF(dateFact)}
+                            <br />
+                            <b>Длительность: </b>
+                            {durationMeasCode}
+                            <br />
+                            <b>Трудоёмкость: </b>
+                            {labMeasCode}
+                        </>
+                    }
+                />
+            </ListItem>
+            <ListItem>
+                <Button fullWidth variant="contained" startIcon={<Icon>refresh</Icon>} onClick={onClick ? onClick : null}>
+                    Переформировать...
+                </Button>
+            </ListItem>
+        </List>
+    );
+};
+
+//Контроль свойств - Область параметров инициализации панели
+InitPrmsArea.propTypes = {
+    dateBegin: PropTypes.instanceOf(Date),
+    dateFact: PropTypes.instanceOf(Date),
+    durationMeasCode: PropTypes.string,
+    labMeasCode: PropTypes.string,
+    onClick: PropTypes.func
+};
+
+//Область сохранения изменений
+const SaveChangesArea = ({ onClick }) => {
+    return (
+        <List>
+            <ListItem>
+                <Button fullWidth color="warning" variant="contained" startIcon={<Icon>save</Icon>} onClick={onClick}>
+                    Сохранить
+                </Button>
+            </ListItem>
+        </List>
+    );
+};
+
+//Контроль свойств - Область сохранения изменений
+SaveChangesArea.propTypes = {
+    onClick: PropTypes.func
 };
 
 //Список проектов
@@ -210,7 +259,9 @@ const PrjJobs = () => {
         dateBegin: null,
         dateFact: null,
         durationMeas: null,
+        durationMeasCode: null,
         labMeas: null,
+        labMeasCode: null,
         resourceStatus: null,
         ident: null,
         projects: [],
@@ -270,12 +321,12 @@ const PrjJobs = () => {
 
     //Изменение работы в графике
     const modifyJob = useCallback(
-        async (job, dateFrom, dateTo, dateBegin, dateFact, durationMeas) => {
+        async (job, dateFrom, dateTo) => {
             let data = null;
             try {
                 data = await executeStored({
                     stored: "PKG_P8PANELS_PROJECTS.JB_JOBS_MODIFY_PERIOD",
-                    args: { NJB_JOBS: job, DDATE_FROM: dateFrom, DDATE_TO: dateTo, DBEGIN: dateBegin, DFACT: dateFact, NDURATION_MEAS: durationMeas }
+                    args: { NJB_JOBS: job, DDATE_FROM: dateFrom, DDATE_TO: dateTo }
                 });
                 if (data?.NRESOURCE_STATUS != -1) {
                     setState(pv => ({ ...pv, resourceStatus: data.NRESOURCE_STATUS, needSave: true }));
@@ -306,8 +357,6 @@ const PrjJobs = () => {
                 args: {
                     DBEGIN: state.dateBegin ? state.dateBegin : null,
                     DFACT: state.dateFact ? state.dateFact : null,
-                    NDURATION_MEAS: state.durationMeas,
-                    SLAB_MEAS: state.labMeas,
                     NIDENT: state.ident
                 }
             });
@@ -318,12 +367,14 @@ const PrjJobs = () => {
                 dateBegin: new Date(data.DBEGIN),
                 dateFact: new Date(data.DFACT),
                 durationMeas: data.NDURATION_MEAS,
-                labMeas: data.SLAB_MEAS,
+                durationMeasCode: data.SDURATION_MEAS,
+                labMeas: data.NLAB_MEAS,
+                labMeasCode: data.SLAB_MEAS,
                 resourceStatus: data.NRESOURCE_STATUS,
                 ident: data.NIDENT
             }));
         }
-    }, [state.init, state.dateBegin, state.dateFact, state.durationMeas, state.labMeas, state.ident, executeStored]);
+    }, [state.init, state.dateBegin, state.dateFact, state.ident, executeStored]);
 
     //Грузим список проектов при смене идентификатора процесса
     useEffect(() => {
@@ -377,7 +428,7 @@ const PrjJobs = () => {
 
     //Обработка измненения сроков задачи в диаграмме Гантта
     const handleTaskDatesChange = ({ task, start, end, isMain }) => {
-        if (isMain) modifyJob(task.rn, new Date(start), new Date(end), new Date(state.dateBegin), new Date(state.dateFact), state.durationMeas);
+        if (isMain) modifyJob(task.rn, new Date(start), new Date(end));
     };
 
     //Отработка нажатия на отображения диалога параметров инициализации панели
@@ -403,7 +454,7 @@ const PrjJobs = () => {
     return (
         <Box p={2}>
             {state.showInitDialog ? (
-                <InitDialog
+                <InitPrmsDialog
                     dateBegin={state.dateBegin}
                     dateFact={state.dateFact}
                     onOk={handleOKInitDialogClick}
@@ -427,48 +478,17 @@ const PrjJobs = () => {
             >
                 {state.projectsLoaded ? (
                     <>
-                        <List>
-                            <ListItem>
-                                <ListItemText
-                                    secondary={
-                                        <>
-                                            <b>Начало: </b>
-                                            {formatDateRF(state.dateBegin)}
-                                            <br />
-                                            <b>Факт на: </b>
-                                            {formatDateRF(state.dateFact)}
-                                            <br />
-                                            <b>Длительность: </b>
-                                            {DURATION_MEAS[state.durationMeas]}
-                                            <br />
-                                            <b>Трудоёмкость: </b>
-                                            {state.labMeas}
-                                        </>
-                                    }
-                                />
-                            </ListItem>
-                            <ListItem>
-                                <Button fullWidth variant="contained" startIcon={<Icon>refresh</Icon>} onClick={handleShowInitDialogClick}>
-                                    Переформировать...
-                                </Button>
-                            </ListItem>
-                        </List>
+                        <InitPrmsArea
+                            dateBegin={state.dateBegin}
+                            dateFact={state.dateFact}
+                            durationMeasCode={state.durationMeasCode}
+                            labMeasCode={state.labMeasCode}
+                            onClick={handleShowInitDialogClick}
+                        />
                         <Divider />
                         {state.needSave ? (
                             <>
-                                <List>
-                                    <ListItem>
-                                        <Button
-                                            fullWidth
-                                            color="warning"
-                                            variant="contained"
-                                            startIcon={<Icon>save</Icon>}
-                                            onClick={handleSaveToProjectsClick}
-                                        >
-                                            Сохранить
-                                        </Button>
-                                    </ListItem>
-                                </List>
+                                <SaveChangesArea onClick={handleSaveToProjectsClick} />
                                 <Divider />
                             </>
                         ) : null}

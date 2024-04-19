@@ -45,7 +45,7 @@ const LabFactRptDtl = ({ periodId, title, onHide }) => {
     const loadFactRptDtl = useCallback(async () => {
         if (factRptDtl.reload) {
             const data = await executeStored({
-                stored: "PKG_P8PANELS_PROJECTS.JB_PERIODS_LIST_FACT_RPT",
+                stored: "PKG_P8PANELS_PROJECTS.JB_PERIODS_FACT_RPT_LIST",
                 args: {
                     NJB_PERIODS: periodId,
                     CORDERS: { VALUE: object2Base64XML(factRptDtl.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
