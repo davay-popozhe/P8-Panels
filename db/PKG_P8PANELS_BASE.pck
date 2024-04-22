@@ -1,7 +1,11 @@
 create or replace package PKG_P8PANELS_BASE as
 
   /*Константы - Типовой постфикс тега для массива (при переводе XML -> JSON) */
-  SXML_ALWAYS_ARRAY_POSTFIX  constant PKG_STD.TSTRING := '__SYSTEM__ARRAY__';
+  SXML_ALWAYS_ARRAY_POSTFIX constant PKG_STD.TSTRING := '__SYSTEM__ARRAY__';
+
+  /* Константы - признаки наличия доступа */
+  NACCESS_YES               constant number(1) := 1; -- Доступ есть
+  NACCESS_NO                constant number(1) := 0; -- Доступа нет
 
   /* Конвертация строки в число */
   function UTL_S2N
@@ -14,6 +18,14 @@ create or replace package PKG_P8PANELS_BASE as
   (
     SVALUE                  in varchar2 -- Конвертируемое строковое значение
   ) return                  date;       -- Конвертированная дата
+  
+  /* Проверка доступности документа */
+  function UTL_DOC_ACCESS_CHECK
+  (
+    NCOMPANY                in number,   -- Рег. номер организации
+    SUNIT_CODE              in varchar2, -- Код раздела
+    NDOCUMENT               in number    -- Рег. номер документа
+  ) return                  number;      -- Флаг доступности (см. константы NACCESS_*)
   
   /* Базовое исполнение действий */
   procedure PROCESS
@@ -131,6 +143,53 @@ create or replace package body PKG_P8PANELS_BASE as
     when others then
       P_EXCEPTION(0, 'Неверный формат даты (%s).', SVALUE);
   end UTL_S2D;
+
+  /* Проверка доступности документа */
+  function UTL_DOC_ACCESS_CHECK
+  (
+    NCOMPANY                in number,       -- Рег. номер организации
+    SUNIT_CODE              in varchar2,     -- Код раздела
+    NDOCUMENT               in number        -- Рег. номер документа
+  ) return                  number           -- Флаг доступности (см. константы NACCESS_*)
+  is
+    NRES                    PKG_STD.TNUMBER; -- Буфер для результата
+    NVERSION                PKG_STD.TREF;    -- Рег. номер версии
+    NCATALOG                PKG_STD.TREF;    -- Рег. номер каталога
+    NJUR_PERS               PKG_STD.TREF;    -- Рег. номер юридической принадлежности
+    NHIERARCHY              PKG_STD.TREF;    -- Рег. номер ирерархии
+    BTMP                    boolean;         -- Буфер для расчетов
+    NTMP                    PKG_STD.TNUMBER; -- Буфер для расчетов
+  begin
+    /* Считаем стандартную атрибутику */
+    PKG_DOCUMENT.GET_ATTRS(NFLAG_SMART => 0,
+                           SUNITCODE   => SUNIT_CODE,
+                           NDOCUMENT   => NDOCUMENT,
+                           BFOUND      => BTMP,
+                           NCOMPANY    => NTMP,
+                           NVERSION    => NVERSION,
+                           NCATALOG    => NCATALOG,
+                           NJUR_PERS   => NJUR_PERS,
+                           NHIERARCHY  => NHIERARCHY);
+    /* Проверким доступ */
+    PKG_ENV.SMART_ACCESS(NCOMPANY   => NCOMPANY,
+                         NVERSION   => NVERSION,
+                         NCATALOG   => NCATALOG,
+                         NJUR_PERS  => NJUR_PERS,
+                         NHIERARCHY => NHIERARCHY,
+                         SUNIT      => SUNIT_CODE,
+                         SACTION    => null,
+                         NRESULT    => NRES);
+    /* Вернём результат */
+    if (NRES = 1) then
+      return NACCESS_YES;
+    else
+      return NACCESS_NO;
+    end if;
+  exception
+    /* В случае ошибки - доступ закрыт */
+    when others then
+      return NACCESS_NO;
+  end UTL_DOC_ACCESS_CHECK;
 
   /* Формирование сообщения об отсутствии значения */
   function MSG_NO_DATA_MAKE

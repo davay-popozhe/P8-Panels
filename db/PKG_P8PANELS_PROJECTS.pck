@@ -459,31 +459,26 @@ end PKG_P8PANELS_PROJECTS;
 /
 create or replace package body PKG_P8PANELS_PROJECTS as
 
-/*
-TODO: owner="root" created="25.10.2023"
-text="Права доступа в мониторе ресурвов при балансировке планов-графиков"
-*/
-
-/*
-TODO: owner="root" created="25.10.2023"
-text="Проверить, что для расчётных полей дата-гридов отключена сортировка - иначе получается ошибка, т.к. поля нет в SQL-запросе"
-*/
+  /*
+  TODO: owner="root" created="25.10.2023"
+  text="Проверить, что для расчётных полей дата-гридов отключена сортировка - иначе получается ошибка, т.к. поля нет в SQL-запросе"
+  */
 
   /* Константы - предопределённые значения */
-  SYES                        constant PKG_STD.TSTRING := 'Да';               -- Да
-  NDAYS_LEFT_LIMIT            constant PKG_STD.TNUMBER := 30;                 -- Лимит отстатка дней для контроля сроков
-  SFPDARTCL_REALIZ            constant PKG_STD.TSTRING := '14 Цена без НДС';  -- Мнемокод статьи калькуляции для учёта реализации
-  SFPDARTCL_SELF_COST         constant PKG_STD.TSTRING := '10 Себестоимость'; -- Мнемокод статьи калькуляции для учёта себестоимости
-  NGANTT_TASK_CAPTION_LEN     constant PKG_STD.TNUMBER := 50;                 -- Предельная длина (знаков) метки задачи при отображении диаграммы Ганта
-  NJB_DURATION_MEAS           constant PKG_STD.TNUMBER := 0;                  -- Единица измерения длительности по умолчанию для интерфейса балансировки работ (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
-  SJB_LAB_MEAS                constant PKG_STD.TSTRING := 'Ч/Ч';              -- Единица измерения трудоёмкости по умолчанию для интерфейса балансировки работ
-  SLAB_MEAS_HOURS             constant PKG_STD.TSTRING := 'Ч/Ч';              -- Единица измерения трудоёмкости в человеко/часах
+  SYES                      constant PKG_STD.TSTRING := 'Да';               -- Да
+  NDAYS_LEFT_LIMIT          constant PKG_STD.TNUMBER := 30;                 -- Лимит отстатка дней для контроля сроков
+  SFPDARTCL_REALIZ          constant PKG_STD.TSTRING := '14 Цена без НДС';  -- Мнемокод статьи калькуляции для учёта реализации
+  SFPDARTCL_SELF_COST       constant PKG_STD.TSTRING := '10 Себестоимость'; -- Мнемокод статьи калькуляции для учёта себестоимости
+  NGANTT_TASK_CAPTION_LEN   constant PKG_STD.TNUMBER := 50;                 -- Предельная длина (знаков) метки задачи при отображении диаграммы Ганта
+  NJB_DURATION_MEAS         constant PKG_STD.TNUMBER := 0;                  -- Единица измерения длительности по умолчанию для интерфейса балансировки работ (0 - день, 1 - неделя, 2 - декада, 3 - месяц, 4 - квартал, 5 - год)
+  SJB_LAB_MEAS              constant PKG_STD.TSTRING := 'Ч/Ч';              -- Единица измерения трудоёмкости по умолчанию для интерфейса балансировки работ
+  SLAB_MEAS_HOURS           constant PKG_STD.TSTRING := 'Ч/Ч';              -- Единица измерения трудоёмкости в человеко/часах
 
   /* Константы - дополнительные свойства */
-  SDP_SECON_RESP              constant PKG_STD.TSTRING := 'ПУП.SECON_RESP'; -- Ответственный экономист проекта
-  SDP_STAX_GROUP              constant PKG_STD.TSTRING := 'ПУП.TAX_GROUP';  -- Налоговая группа проекта
-  SDP_SCTL_COST               constant PKG_STD.TSTRING := 'ПУП.CTL_COST';   -- Принзнак необходимости контроля факт. затрат по статье калькуляции
-  SDP_SCTL_CONTR              constant PKG_STD.TSTRING := 'ПУП.CTL_CONTR';  -- Принзнак необходимости контроля контрактации по статье калькуляции
+  SDP_SECON_RESP            constant PKG_STD.TSTRING := 'ПУП.SECON_RESP'; -- Ответственный экономист проекта
+  SDP_STAX_GROUP            constant PKG_STD.TSTRING := 'ПУП.TAX_GROUP';  -- Налоговая группа проекта
+  SDP_SCTL_COST             constant PKG_STD.TSTRING := 'ПУП.CTL_COST';   -- Принзнак необходимости контроля факт. затрат по статье калькуляции
+  SDP_SCTL_CONTR            constant PKG_STD.TSTRING := 'ПУП.CTL_CONTR';  -- Принзнак необходимости контроля контрактации по статье калькуляции
 
   /* Считывание наименование подразделения по рег. номеру */
   function UTL_INS_DEPARTMENT_GET_NAME
@@ -1345,7 +1340,7 @@ text="Проверить, что для расчётных полей дата-�
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and P.CURNAMES = CN.RN');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select null from V_USERPRIV UP where UP."CATALOG" = P.CRN)');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select null from V_USERPRIV UP where UP.JUR_PERS = P.JUR_PERS and UP.UNITCODE = ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Projects') || ')');
-      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                    and P.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and P.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '     where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
@@ -5102,7 +5097,9 @@ text="Проверить, что для расчётных полей дата-�
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and FM.RN = FMH.PRN');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and ((FMH.DO_ACT_FROM between :DDATE_FROM and :DDATE_TO) or (FMH.DO_ACT_TO between :DDATE_FROM and :DDATE_TO) or');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       ((FMH.DO_ACT_FROM < :DDATE_FROM) and (COALESCE(FMH.DO_ACT_TO, :DDATE_TO + 1) > :DDATE_TO)))');
-      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and FMH.SCHEDULE = SH.RN %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and FMH.SCHEDULE = SH.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and ' || PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_BASE.UTL_DOC_ACCESS_CHECK') ||'(FM.COMPANY, ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'ClientPostPerform') || ', FM.RN) = 1');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   %ORDER_BY%) D) F');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
@@ -5356,7 +5353,10 @@ text="Проверить, что для расчётных полей дата-�
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and MP.PROJECTJOBMANPOW = PJMP.RN');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJMP.FCMANPOWER = :NFCMANPOWER');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJMP.PRN = PJ.RN');
-      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJ.PRN = P.RN %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJ.PRN = P.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and exists (select null from V_USERPRIV UP where UP."CATALOG" = T.CRN)');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and exists (select null from V_USERPRIV UP where UP.JUR_PERS = T.JUR_PERS and UP.UNITCODE = ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'ProjectDepartmentPlans') || ')');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  %ORDER_BY%) D) F');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
@@ -5653,7 +5653,10 @@ text="Проверить, что для расчётных полей дата-�
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJMP.FCMANPOWER = :NFCMANPOWER');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and PJMP.SUBDIV = :NINS_DEPARTMENT');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and ((JB.DATE_FROM between :DDATE_FROM and :DDATE_TO) or (JB.DATE_TO between :DDATE_FROM and :DDATE_TO) or');
-      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      ((JB.DATE_FROM < :DDATE_FROM) and (JB.DATE_TO > :DDATE_TO))) %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                      ((JB.DATE_FROM < :DDATE_FROM) and (JB.DATE_TO > :DDATE_TO)))');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and exists (select null from V_USERPRIV UP where UP."CATALOG" = P.CRN)');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and exists (select null from V_USERPRIV UP where UP.JUR_PERS = P.JUR_PERS and UP.UNITCODE = ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'Projects') || ')');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  %ORDER_BY%) D) F');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
@@ -5928,6 +5931,46 @@ text="Проверить, что для расчётных полей дата-�
                    and JB.SOURCE = J.RN
                    and J.RN = JMP.PRN
                    and JMP.SUBDIV is not null
+                   and exists (select null from V_USERPRIV UP where UP.CATALOG = J.CRN)
+                   and exists (select null
+                          from V_USERPRIV UP
+                         where UP.JUR_PERS = J.JUR_PERS
+                           and UP.UNITCODE = 'Projects')
+                   and exists (select null
+                          from UNITLIST UL
+                         where UL.UNITCODE = 'INS_DEPARTMENT'
+                           and UL.CHECK_ACCESS_HIER = 0
+                           and exists (select /*+ INDEX(UP I_USERPRIV_COMPANY_ROLEID) */
+                                 null
+                                  from USERPRIV UP
+                                 where UP.COMPANY = JMP.COMPANY
+                                   and UP.UNITCODE = 'INS_DEPARTMENT'
+                                   and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                                      UR.ROLEID
+                                                       from USERROLES UR
+                                                      where UR.AUTHID = UTILIZER)
+                                union all
+                                select /*+ INDEX(UP I_USERPRIV_COMPANY_AUTHID) */
+                                 null
+                                  from USERPRIV UP
+                                 where UP.COMPANY = JMP.COMPANY
+                                   and UP.UNITCODE = 'INS_DEPARTMENT'
+                                   and UP.AUTHID = UTILIZER)
+                        union all
+                        select /*+ INDEX(UP I_USERPRIV_HIERARCHY_ROLEID) */
+                         null
+                          from USERPRIV UP
+                         where UP.HIERARCHY = JMP.SUBDIV
+                           and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                              UR.ROLEID
+                                               from USERROLES UR
+                                              where UR.AUTHID = UTILIZER)
+                        union all
+                        select /*+ INDEX(UP I_USERPRIV_HIERARCHY_AUTHID) */
+                         null
+                          from USERPRIV UP
+                         where UP.HIERARCHY = JMP.SUBDIV
+                           and UP.AUTHID = UTILIZER)
                  group by JMP.FCMANPOWER,
                           JMP.SUBDIV)
       loop
@@ -6069,7 +6112,9 @@ text="Проверить, что для расчётных полей дата-�
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       FCMANPOWER       MP');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                 where P.IDENT = :NIDENT');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and P.INS_DEPARTMENT = INSD.RN');
-      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and P.FCMANPOWER = MP.RN %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and P.FCMANPOWER = MP.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and ' || PKG_SQL_BUILD.PKG_NAME(SNAME => 'PKG_P8PANELS_BASE.UTL_DOC_ACCESS_CHECK') ||'(INSD.COMPANY, ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'INS_DEPARTMENT') || ', INSD.RN) = 1');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   %ORDER_BY%) D) F');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
@@ -6302,7 +6347,12 @@ text="Проверить, что для расчётных полей дата-�
              ENPERIOD  ENP
        where T.COMPANY = NCOMPANY
          and T.STATE = 2
-         and T.PERIOD = ENP.RN;
+         and T.PERIOD = ENP.RN
+         and exists (select null from V_USERPRIV UP where UP.CATALOG = T.CRN)
+         and exists (select null
+                from V_USERPRIV UP
+               where UP.JUR_PERS = T.JUR_PERS
+                 and UP.UNITCODE = 'ProjectDepartmentPlans');
     else
       DFACT := LAST_DAY(TRUNC(DFACT, 'mm'));
     end if;
