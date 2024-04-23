@@ -459,11 +459,6 @@ end PKG_P8PANELS_PROJECTS;
 /
 create or replace package body PKG_P8PANELS_PROJECTS as
 
-  /*
-  TODO: owner="root" created="25.10.2023"
-  text="Проверить, что для расчётных полей дата-гридов отключена сортировка - иначе получается ошибка, т.к. поля нет в SQL-запросе"
-  */
-
   /* Константы - предопределённые значения */
   SYES                      constant PKG_STD.TSTRING := 'Да';               -- Да
   NDAYS_LEFT_LIMIT          constant PKG_STD.TNUMBER := 30;                 -- Лимит отстатка дней для контроля сроков
