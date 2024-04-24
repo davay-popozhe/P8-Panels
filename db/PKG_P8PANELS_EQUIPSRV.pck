@@ -5,13 +5,13 @@ create or replace package PKG_P8PANELS_EQUIPSRV as
   (
     COUT                    out clob    -- XML с параметрами фильтра по умолчанию
   );
-  
+
   /* Формирование строки с кол-вом часов */
   function HOURS_STR
   (
     NHOURS                  in number   -- Кол-во часов
   ) return                  varchar2;   -- Результат работы
-  
+
   /* Отбор документов (ТОиР или Графики ремонтов) по дате */
   procedure SELECT_EQUIPSRV
   (
@@ -27,7 +27,7 @@ create or replace package PKG_P8PANELS_EQUIPSRV as
     NWORKTYPE               in number,           -- Тип работы (0 - план, 1 - факт)
     NIDENT                  out number           -- Идентификатор буфера подобранных (списка отмеченных записей, null - не найдено)
   );
-  
+
   /* Выполнение работ по ТОиР */
   procedure EQUIPSRV_GRID
   (
@@ -54,10 +54,9 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
   is
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Рег. номер организации
     SJUR_PERS               PKG_STD.TSTRING := null;               -- Юр. лицо (наименование)
-    NJUR_PERS               PKG_STD.TREF := null;                  -- Юр. лицо (идентификатор)
   begin
     /* Находим юр. лицо */
-    FIND_JURPERSONS_MAIN(NFLAG_SMART => 1, NCOMPANY => NCOMPANY, SJUR_PERS => SJUR_PERS, NJUR_PERS => NJUR_PERS);
+    SJUR_PERS := GET_OPTIONS_STR(SCODE => 'JuridicalPerson', NCOMP_VERS => NCOMPANY);
     /* Формируем XML */
     PKG_XFAST.PROLOGUE(ITYPE => PKG_XFAST.CONTENT_);
     PKG_XFAST.DOWN_NODE(SNAME => 'DATA');
@@ -75,7 +74,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
     COUT := PKG_XFAST.SERIALIZE_TO_CLOB();
     PKG_XFAST.EPILOGUE();
   end GET_DEFAULT_FP;
-  
+
   /* Формирование строки с кол-вом часов */
   function HOURS_STR
   (
@@ -84,17 +83,18 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
   is
     SRESULT                 PKG_STD.TSTRING; -- Строка результат
   begin
-    if ((mod(NHOURS, 10) = 1) and (mod(NHOURS, 100) != 11)) then
+    if ((mod(TRUNC(NHOURS), 10) = 1) and (mod(TRUNC(NHOURS), 100) != 11)) then
       SRESULT := NHOURS || ' час';
-    elsif (((mod(NHOURS, 10) = 2) and (mod(NHOURS, 100) != 12)) or ((mod(NHOURS, 10) = 3) and (mod(NHOURS, 100) != 13)) or
-          ((mod(NHOURS, 10) = 4) and (mod(NHOURS, 100) != 14))) then
+    elsif (((mod(TRUNC(NHOURS), 10) = 2) and (mod(TRUNC(NHOURS), 100) != 12)) or
+          ((mod(TRUNC(NHOURS), 10) = 3) and (mod(TRUNC(NHOURS), 100) != 13)) or
+          ((mod(TRUNC(NHOURS), 10) = 4) and (mod(TRUNC(NHOURS), 100) != 14))) then
       SRESULT := NHOURS || ' часа';
     else
       SRESULT := NHOURS || ' часов';
     end if;
     return SRESULT;
   end HOURS_STR;
-  
+
   /* Отбор документов (ТОиР или Графики ремонтов) по дате */
   procedure SELECT_EQUIPSRV
   (
@@ -113,7 +113,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
   is
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Рег. номер организации
     NSELECTLIST             PKG_STD.TREF;                          -- Рег. номер добавленной записи буфера подобранных
-    SDATE                   PKG_STD.TSTRING;                       -- Строка даты                   
+    SDATE                   PKG_STD.TSTRING;                       -- Строка даты
   begin
     /* Проверка на дату с днём */
     if (NDAY is not null) then
@@ -138,17 +138,19 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                    and J.CODE = SBELONG
                    and T.EQCONFIG = C1.RN
                    and C1.CODE = SPRODOBJ
-                   and T.DEPTTCSRV = DS.RN
+                   and T.DEPTTCSRV = DS.RN(+)
                    and (DS.CODE = STECHSERV or STECHSERV is null)
-                   and T.DEPTRESP = DR.RN
+                   and T.DEPTRESP = DR.RN(+)
                    and (DR.CODE = SRESPDEP or SRESPDEP is null)
                    and T.EQCONFIG_TECH = C2.RN
                    and C2.NAME = STECHNAME
                    and T.EQTECSRVKIND = SK.RN
                    and SK.CODE = SSRVKIND
                    and ((NDAY is not null and TO_DATE(SDATE, 'dd.mm.yyyy') between TRUNC(T.DATEPRD_BEG) and
-                       TRUNC(T.DATEPRD_END)) or (NDAY is null and (SDATE = TO_CHAR(T.DATEPRD_BEG, 'mm.yyyy') or
-                       SDATE = TO_CHAR(T.DATEPRD_END, 'mm.yyyy')))))
+                       TRUNC(T.DATEPRD_END)) or
+                       (NDAY is null and TRUNC(T.DATEPRD_BEG, 'MONTH') <= TRUNC(TO_DATE(SDATE, 'mm.yyyy'), 'MONTH') and
+                       TRUNC(TO_DATE(SDATE, 'mm.yyyy'), 'MONTH') <= TRUNC(LAST_DAY(T.DATEPRD_END)))))
+      
       loop
         /* Сформируем идентификатор буфера */
         if (NIDENT is null) then
@@ -183,8 +185,9 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                    and T.TECSRVKIND = SK.RN
                    and SK.CODE = SSRVKIND
                    and ((NDAY is not null and TO_DATE(SDATE, 'dd.mm.yyyy') between TRUNC(T.DATEFACT_BEG) and
-                       TRUNC(T.DATEFACT_END)) or (NDAY is null and (SDATE = TO_CHAR(T.DATEFACT_BEG, 'mm.yyyy') or
-                       SDATE = TO_CHAR(T.DATEFACT_END, 'mm.yyyy')))))
+                       TRUNC(T.DATEFACT_END)) or
+                       (NDAY is null and TRUNC(T.DATEFACT_BEG, 'MONTH') <= TRUNC(TO_DATE(SDATE, 'mm.yyyy'), 'MONTH') and
+                       TRUNC(TO_DATE(SDATE, 'mm.yyyy'), 'MONTH') <= TRUNC(LAST_DAY(T.DATEFACT_END)))))
       loop
         /* Сформируем идентификатор буфера */
         if (NIDENT is null) then
@@ -243,85 +246,107 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
     NDAY_FACT               PKG_STD.TNUMBER;                       -- День факт
     SPERIODNAME             PKG_STD.TSTRING;                       -- Имя периода
     SFACT_CLR               PKG_STD.TSTRING;                       -- Цвет закрашивания фактических дат
-    NROWS                   PKG_STD.TNUMBER := 0;                  -- Кол-во строк в курсоре   
-    NWORKPERDAY             PKG_STD.TNUMBER(17,2) := null;         -- Работы в день 
-    SGROUP_FILLED           PKG_STD.TLSTRING;                      -- Группы, заполненные строками план/факт
-    SCOLS                   PKG_STD.TLSTRING;                      -- Заполнение периодов работ    
+    NROWS                   PKG_STD.TNUMBER := 0;                  -- Кол-во строк в курсоре
+    NWORKPERDAY             PKG_STD.TNUMBER(17,2) := null;         -- Работы в день
     YM                      PKG_CONTVALLOC1S.TCONTAINER;           -- Коллекция для подсчёта работ за месяц
     MCLR                    PKG_CONTVALLOC1S.TCONTAINER;           -- Коллекция для закрашивания месяцев
     CR                      PKG_STD.TSTRING;                       -- Текущий ключ коллекции MCLR
-    
+    GF                      PKG_CONTVALLOC1S.TCONTAINER;           -- Коллекция заполнения групп по объекту ремонта
+    COLS                    PKG_CONTVALLOC1S.TCONTAINER;           -- Коллекция закрашивания колонок
+
     /* Курсор с работами ТОиР */
     cursor C1 is
-           select TT.NEQV_RN,
-                  TT.NEQS_RN,
+           select TT.NEQV_RN NEQV_RN,
+                  TT.NEQS_RN NEQS_RN,
                   TT.NWRK_RN NRN,
-                  TT.COMPANY NCOMPANY,
-                  TT.NAME_WORK SWORKNAME,
+                  TT.NCOMPANY NCOMPANY,
+                  TT.SNAME_WORK SWORKNAME,
                   EC2.CODE STECHOBJCODE,
                   EC2.NAME STECHOBJNAME,
                   JP.CODE SBELONG,
                   EC1.CODE SPRODOBJ,
                   DS.CODE STECHSERV,
                   DR.CODE SRESPDEP,
-                  TT.DATEPRD_BEG DDATEPLANBEG,
-                  TT.DATEPRD_END DDATEPLANEND,
+                  TT.DDATEPRD_BEG DDATEPLANBEG,
+                  TT.DDATEPRD_END DDATEPLANEND,
                   EQJ.DATEFACT_BEG DDATEFACTBEG,
-                  EQJ.DATEFACT_END DDATEFACTEND,
+                  COALESCE(EQJ.DATEFACT_END, EQJ.DATEFACT_BEG) DDATEFACTEND, --
                   EK.CODE STECSRVKINDCODE,
                   EK.NAME STECSRVKINDNAME,
-                  COALESCE(EW.NSUM, (TT.DATEPRD_END - TT.DATEPRD_BEG) * 24) NSUMWORKPLAN,
+                  COALESCE(EW.NSUM, (TT.DDATEPRD_END - TT.DDATEPRD_BEG) * 24) NSUMWORKPLAN,
                   COALESCE(EWJ.NSUMF, (EQJ.DATEFACT_END - EQJ.DATEFACT_BEG) * 24) NSUMWORKFACT
-             from (select B.*,
-                          C.RN           NWRK_RN,
-                          C.PRN          NWRK_PRN,
-                          C.NAME_WORK,
-                          C.DATEPLAN_BEG,
-                          C.DATEPLAN_END,
-                          C.TECSRVKIND,
-                          C.EQCONFIG,
-                          C.DEPTPERF,
-                          C.DEPTTCSRV,
-                          C.RESP_AGN
-                     from (select EQV.RN          NEQV_RN,
-                                  EQV.COMPANY,
-                                  EQV.JUR_PERS,
-                                  EQV.STATE,
-                                  EQV.DATEPRD_BEG,
-                                  EQV.DATEPRD_END,
-                                  EQS.RN          NEQS_RN
+             from (select B.NEQV_RN NEQV_RN,
+                          B.NCOMPANY NCOMPANY,
+                          B.NJUR_PERS NJUR_PERS,
+                          B.NSTATE NSTATE,
+                          B.DDATEPRD_BEG DDATEPRD_BEG,
+                          B.DDATEPRD_END DDATEPRD_END,
+                          B.NEQS_RN NEQS_RN,
+                          C.RN NWRK_RN,
+                          C.PRN NWRK_PRN,
+                          C.NAME_WORK SNAME_WORK,
+                          C.DATEPLAN_BEG DDATEPLAN_BEG,
+                          C.DATEPLAN_END DDATEPLAN_END,
+                          COALESCE(C.TECSRVKIND, B.NEQTECSRVKIND) NTECSRVKIND,
+                          COALESCE(C.EQCONFIG, B.NEQCONFIG_TECH) NEQCONFIG,
+                          C.DEPTPERF NDEPTPERF,
+                          C.DEPTTCSRV NDEPTTCSRV,
+                          C.RESP_AGN NRESP_AGN
+                     from (select EQV.RN            NEQV_RN,
+                                  EQV.COMPANY       NCOMPANY,
+                                  EQV.JUR_PERS      NJUR_PERS,
+                                  EQV.STATE         NSTATE,
+                                  EQV.DATEPRD_BEG   DDATEPRD_BEG,
+                                  EQV.DATEPRD_END   DDATEPRD_END,
+                                  EQV.EQTECSRVKIND  NEQTECSRVKIND,
+                                  EQV.EQCONFIG_TECH NEQCONFIG_TECH,
+                                  EQS.RN            NEQS_RN
                              from EQTCHSRV   EQV,
+                                  JURPERSONS J,
                                   DOCLINKS   DL,
                                   EQRPSHEETS EQS
-                            where EQV.RN = DL.IN_DOCUMENT(+)
+                            where EQV.JUR_PERS = J.RN
+                              and J.CODE = SBELONG
+                              and EQV.RN = DL.IN_DOCUMENT(+)
                               and DL.OUT_UNITCODE(+) = 'EquipRepairSheets'
                               and DL.OUT_DOCUMENT = EQS.RN(+)) B,
                           EQTCHSRWRK C
                     where B.NEQV_RN = C.PRN(+)
                    union all
-                   select B.*,
-                          C.RN           NWRK_RN,
-                          C.PRN          NWRK_PRN,
-                          C.NAME_WORK,
-                          C.DATEPLAN_BEG,
-                          C.DATEPLAN_END,
-                          C.TECSRVKIND,
-                          C.EQCONFIG,
-                          C.DEPTPERF,
-                          null           DEPTTCSRV,
-                          C.RESP_AGN
+                   select B.NEQV_RN NEQV_RN,
+                          B.NCOMPANY NCOMPANY,
+                          B.NJUR_PERS NJUR_PERS,
+                          B.NSTATE NSTATE,
+                          B.DDATEPLAN_BEG DDATEPLAN_BEG,
+                          B.DDATEPLAN_END DDATEPLAN_END,
+                          B.NEQS_RN NEQS_RN,
+                          C.RN NWRK_RN,
+                          C.PRN NWRK_PRN,
+                          C.NAME_WORK SNAME_WORK,
+                          C.DATEPLAN_BEG DDATEPLAN_BEG,
+                          C.DATEPLAN_END DDATEPLAN_END,
+                          COALESCE(C.TECSRVKIND, B.NTECSRVKIND) NTECSRVKIND,
+                          COALESCE(C.EQCONFIG, B.NEQCONFIG) NEQCONFIG,
+                          C.DEPTPERF NDEPTPERF,
+                          null NDEPTTCSRV,
+                          C.RESP_AGN NRESP_AGN
                      from (select null             NEQV_RN,
-                                  EQS.COMPANY,
-                                  EQS.JURPERSONS   JUR_PERS,
-                                  EQS.STATE,
-                                  EQS.DATEPLAN_BEG,
-                                  EQS.DATEPLAN_END,
-                                  EQS.RN           NEQS_RN
-                             from EQRPSHEETS EQS
+                                  EQS.COMPANY      NCOMPANY,
+                                  EQS.JURPERSONS   NJUR_PERS,
+                                  EQS.STATE        NSTATE,
+                                  EQS.DATEPLAN_BEG DDATEPLAN_BEG,
+                                  EQS.DATEPLAN_END DDATEPLAN_END,
+                                  EQS.RN           NEQS_RN,
+                                  EQS.EQCONFIG     NEQCONFIG,
+                                  EQS.TECSRVKIND   NTECSRVKIND
+                             from EQRPSHEETS EQS,
+                                  JURPERSONS J
                             where not exists (select 1
                                      from DOCLINKS DL
                                     where DL.OUT_DOCUMENT = EQS.RN
-                                      and DL.IN_UNITCODE = 'EquipTechServices')) B,
+                                      and DL.IN_UNITCODE = 'EquipTechServices')
+                              and EQS.JURPERSONS = J.RN
+                              and J.CODE = SBELONG) B,
                           EQRPSHWRK C
                     where B.NEQS_RN = C.PRN(+)) TT,
                   EQTECSRVKIND EK,
@@ -332,28 +357,28 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                   INS_DEPARTMENT DR,
                   DOCLINKS DL,
                   EQTECSRVJRNL EQJ,
-                  (select T.PRN,
+                  (select T.PRN NPRN,
                           sum(T.WORKTIMEPLAN * T.PERFORM_QUANT) NSUM
                      from EQTCHSRWRC T
                     group by T.PRN) EW,
-                  (select T.PRN,
+                  (select T.PRN NPRN,
                           sum(T.WORKTIMEFACT * T.QUANTFACT) NSUMF
                      from EQTCHSRJRNLWRC T
                     group by T.PRN) EWJ
-            where TT.COMPANY = NCOMPANY
-              and ((TT.STATE in (1, 2) and NEQV_RN is not null) or (TT.STATE in (0, 2, 3) and NEQV_RN is null))
-              and TT.DATEPRD_BEG >= NFROMDATE
-              and TT.DATEPRD_END <= NTODATE
+            where TT.NCOMPANY = NCOMPANY
+              and ((TT.NSTATE in (1, 2) and TT.NEQV_RN is not null) or (TT.NSTATE in (0, 2, 3) and TT.NEQV_RN is null))
+              and TT.DDATEPRD_BEG >= NFROMDATE
+              and TT.DDATEPRD_END <= NTODATE
               and JP.CODE = SBELONG
               and EC1.CODE = SPRODOBJ
               and (DS.CODE = STECHSERV or STECHSERV is null)
               and (DR.CODE = SRESPDEP or SRESPDEP is null)
-              and TT.EQCONFIG = EC2.RN(+)
-              and TT.DEPTPERF = DR.RN(+)
-              and TT.DEPTTCSRV = DS.RN(+)
-              and TT.NWRK_RN = EW.PRN(+)
-              and EQJ.RN = EWJ.PRN(+)
-              and TT.TECSRVKIND = EK.RN(+)
+              and TT.NEQCONFIG = EC2.RN(+)
+              and TT.NDEPTPERF = DR.RN(+)
+              and TT.NDEPTTCSRV = DS.RN(+)
+              and TT.NWRK_RN = EW.NPRN(+)
+              and EQJ.RN = EWJ.NPRN(+)
+              and TT.NTECSRVKIND = EK.RN(+)
               and TT.NWRK_RN = DL.IN_DOCUMENT(+)
               and ((DL.OUT_UNITCODE = 'EquipTechServiceJournal' and DL.RN is not null) or
                   (DL.OUT_UNITCODE is null and DL.RN is null))
@@ -369,16 +394,16 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
     RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE();
     /* Формируем структуру заголовка */
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
-                                               SNAME      => 'STEST',
-                                               SCAPTION   => 'ТЕСТ',
+                                               SNAME      => 'SOBJINFO',
+                                               SCAPTION   => 'Информация по объекту ремонта',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'SINFO',
                                                SCAPTION   => 'Объект ремонта',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
-                                               SNAME      => 'SINFO2',
-                                               SCAPTION   => 'Объект ремонта',
+                                               SNAME      => 'SWRKTYPE',
+                                               SCAPTION   => 'Тип работ',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
                                                SPARENT    => 'SINFO');
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
@@ -459,6 +484,8 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
     /* Очистка коллекций */
     PKG_CONTVALLOC1S.PURGE(RCONTAINER => YM);
     PKG_CONTVALLOC1S.PURGE(RCONTAINER => MCLR);
+    PKG_CONTVALLOC1S.PURGE(RCONTAINER => GF);
+    PKG_CONTVALLOC1S.PURGE(RCONTAINER => COLS);
     /* Текущий год */
     NCURYEAR := EXTRACT(year from sysdate);
     /* Текущий месяц */
@@ -554,10 +581,12 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
               SPERIODNAME := '_' || TO_CHAR(Y) || '_' || TO_CHAR(M);
               PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW0,
                                                SNAME  => SPERIODNAME,
-                                               SVALUE => 'план: ' ||
-                                                         HOURS_STR(PKG_CONTVALLOC1S.GETN(YM, SPERIODNAME || '_P')) ||
-                                                         ' факт: ' ||
-                                                         HOURS_STR(PKG_CONTVALLOC1S.GETN(YM, SPERIODNAME || '_F')));
+                                               SVALUE => 'план: ' || HOURS_STR(NHOURS => TRUNC(PKG_CONTVALLOC1S.GETN(RCONTAINER => YM,
+                                                                                                                     SROWID     => SPERIODNAME || '_P'),
+                                                                                               1)) || ' факт: ' ||
+                                                         HOURS_STR(NHOURS => TRUNC(PKG_CONTVALLOC1S.GETN(RCONTAINER => YM,
+                                                                                                         SROWID     => SPERIODNAME || '_F'),
+                                                                                   1)));
               /* Добавление в коллекцию трудоёмкость план */
               PKG_CONTVALLOC1S.PUTN(RCONTAINER => YM, SROWID => SPERIODNAME || '_P', NVALUE => 0);
               /* Добавление в коллекцию трудоёмкость факт */
@@ -575,12 +604,12 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                                                  SCAPTION    => QQ.STECHOBJNAME,
                                                  BEXPANDABLE => false);
         RDG_ROW0 := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SPRJ_GROUP_NAME);
-        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW0, SNAME => 'STEST', SVALUE => SCURTECHOBJ);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW0, SNAME => 'SOBJINFO', SVALUE => SCURTECHOBJ);
       end if;
       /* Формируем имя группы для вида ремонта */
       SCURTSKCODE := SCURTECHOBJ || '_' || QQ.STECSRVKINDCODE;
       /* Если по данной группе еще нет строк плана и факта */
-      if (STRIN(SSUBSTR => SCURTSKCODE, SSOURCE => SGROUP_FILLED, SDELIM => ';') = 0) then
+      if (PKG_CONTVALLOC1S.EXISTS_(RCONTAINER => GF, SROWID => SCURTSKCODE) = false) then
         /* Добавляем строку плана */
         if (RDG_ROW.RCOLS is not null) then
           PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
@@ -607,13 +636,13 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                                                  BEXPANDABLE => false);
         /* Строка плана */
         RDG_ROW := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SPRJ_GROUP_NAME);
-        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'STEST', SVALUE => QQ.STECSRVKINDCODE);
-        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SINFO2', SVALUE => 'План');
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SOBJINFO', SVALUE => QQ.STECSRVKINDCODE);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SWRKTYPE', SVALUE => 'План');
         /* Строка факта */
         RDG_ROW2 := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SPRJ_GROUP_NAME);
-        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW2, SNAME => 'SINFO2', SVALUE => 'Факт');
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW2, SNAME => 'SWRKTYPE', SVALUE => 'Факт');
         /* Добавляем в заполненные группы */
-        SGROUP_FILLED := SGROUP_FILLED || SPRJ_GROUP_NAME || ';';
+        PKG_CONTVALLOC1S.PUTS(RCONTAINER => GF, SROWID => SPRJ_GROUP_NAME, SVALUE => '');
       end if;
       /* Плановые работы */
       if (QQ.NEQV_RN is not null) then
@@ -634,16 +663,22 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                                                   QQ.NSUMWORKPLAN);
             end if;
             /* Закрашивание месяца плана синим */
-            if (STRIN(SSUBSTR => SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN', SSOURCE => SCOLS, SDELIM => ';') = 0) then
+            if (PKG_CONTVALLOC1S.EXISTS_(RCONTAINER => COLS, SROWID => SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN') =
+               false) then
               PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => SPERIODNAME, SVALUE => 'blue');
-              SCOLS := SCOLS || SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN;';
+              PKG_CONTVALLOC1S.PUTS(RCONTAINER => COLS,
+                                    SROWID     => SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN',
+                                    SVALUE     => '');
             end if;
           end if;
           SPERIODNAME := '_' || TO_CHAR(NYEAR_PLAN) || '_' || TO_CHAR(NMONTH_PLAN) || '_' || TO_CHAR(NDAY_PLAN);
           /* Закрашивание дня плана синим */
-          if (STRIN(SSUBSTR => SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN', SSOURCE => SCOLS, SDELIM => ';') = 0) then
+          if (PKG_CONTVALLOC1S.EXISTS_(RCONTAINER => COLS, SROWID => SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN') =
+             false) then
             PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => SPERIODNAME, SVALUE => 'blue');
-            SCOLS := SCOLS || SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN;';
+            PKG_CONTVALLOC1S.PUTS(RCONTAINER => COLS,
+                                  SROWID     => SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN',
+                                  SVALUE     => '');
           end if;
         end loop;
       end if;
@@ -739,12 +774,12 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
             SPERIODNAME := '_' || TO_CHAR(Y) || '_' || TO_CHAR(M);
             PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW0,
                                              SNAME  => SPERIODNAME,
-                                             SVALUE => 'план: ' ||
-                                                       HOURS_STR(NHOURS => PKG_CONTVALLOC1S.GETN(RCONTAINER => YM,
-                                                                                                 SROWID     => SPERIODNAME || '_P')) ||
-                                                       ' факт: ' ||
-                                                       HOURS_STR(NHOURS => PKG_CONTVALLOC1S.GETN(RCONTAINER => YM,
-                                                                                                 SROWID     => SPERIODNAME || '_F')));
+                                             SVALUE => 'план: ' || HOURS_STR(NHOURS => TRUNC(PKG_CONTVALLOC1S.GETN(RCONTAINER => YM,
+                                                                                                                   SROWID     => SPERIODNAME || '_P'),
+                                                                                             1)) || ' факт: ' ||
+                                                       HOURS_STR(NHOURS => TRUNC(PKG_CONTVALLOC1S.GETN(RCONTAINER => YM,
+                                                                                                       SROWID     => SPERIODNAME || '_F'),
+                                                                                 1)));
           end loop;
         end loop;
         PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW0);
@@ -768,7 +803,11 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
     end loop;
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => 1);
+    /* Очищаем контейнеры */
     PKG_CONTVALLOC1S.PURGE(RCONTAINER => YM);
+    PKG_CONTVALLOC1S.PURGE(RCONTAINER => MCLR);
+    PKG_CONTVALLOC1S.PURGE(RCONTAINER => GF);
+    PKG_CONTVALLOC1S.PURGE(RCONTAINER => COLS);
   end EQUIPSRV_GRID;
  
 end PKG_P8PANELS_EQUIPSRV;

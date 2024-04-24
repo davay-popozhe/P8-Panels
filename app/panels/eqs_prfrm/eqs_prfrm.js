@@ -54,18 +54,6 @@ const EqsPrfrm = () => {
     // Состояние информации о трудоёмкости
     const [info, setInfo] = useState({ cntP: 0, sumP: 0, cntF: 0, sumF: 0 });
 
-    // Состояние фильтра (для отладки)
-    // const [filter, setFilter] = useState({
-    //     belong: "Демопример",
-    //     prodObj: "Карьер",
-    //     techServ: "",
-    //     respDep: "",
-    //     fromMonth: 1,
-    //     fromYear: 2024,
-    //     toMonth: 12,
-    //     toYear: 2024
-    // });
-
     // Состояние фильтра
     const [filter, setFilter] = useState({
         belong: "",
@@ -79,7 +67,7 @@ const EqsPrfrm = () => {
     });
     // Состояние открытия фильтра
     const [filterOpen, setFilterOpen] = useState(true);
-    // Состояние данных по умолчанию для фильтра (true - для отладки)
+    // Состояние данных по умолчанию для фильтра
     const [defaultLoaded, setDefaultLoaded] = useState(false);
     // Состояние хранения копии фильтра
     const [filterCopy, setFilterCopy] = useState({ ...filter });
@@ -177,18 +165,9 @@ const EqsPrfrm = () => {
             respArg: "COUT"
         });
 
-        setFilter(pv => ({ ...pv, belong: data.JURPERS, fromMonth: data.MONTH, fromYear: data.YEAR, toMonth: data.MONTH, toYear: data.YEAR }));
+        setFilter(pv => ({ ...pv, belong: data.JURPERS, fromMonth: 1, fromYear: data.YEAR, toMonth: 12, toYear: data.YEAR }));
         setDefaultLoaded(true);
     }, [executeStored]);
-
-    //пользовательский параметр JuridicalPerson системы
-    // const getJurPers = useCallback(async () => {
-    //     const data = await executeStored({
-    //         stored: "PKG_P8PANELS_EQUIPSRV.GET_JUR_PERS_PRM",
-    //         respArg: "CRES"
-    //     });
-    //     setFilter(pv => ({ ...pv, belong: data }));
-    // }, [executeStored]);
 
     // Отбор документа (ТОиР или Ремонтных ведомостей) по ячейке даты
     const showEquipSrv = async ({ date, workType, info }) => {
@@ -279,7 +258,6 @@ const EqsPrfrm = () => {
         if (!refIsDeprecated) {
             if (activeRef) {
                 var cellRect = activeRef.getBoundingClientRect();
-                //console.log(window.scrollX + cellRect.left + activeRef.clientWidth / 2 - window.innerWidth / 2);
                 window.scrollTo(window.scrollX + cellRect.left + activeRef.clientWidth / 2 - window.innerWidth / 2, 0);
                 setRidFlag(true);
             }

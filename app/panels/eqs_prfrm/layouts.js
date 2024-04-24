@@ -54,53 +54,13 @@ export const headCellRender = ({ columnDef }, hClick, podr, cntP, sumP, cntF, su
 
         stackStyle = { flexDirection: "column" };
     }
-    if (columnDef.name == "STEST") cellStyle = { display: "none" };
-    if (columnDef.name == "SINFO" || columnDef.name == "SINFO2") {
+    if (columnDef.name == "SOBJINFO") cellStyle = { display: "none" };
+    if (columnDef.name == "SINFO" || columnDef.name == "SWRKTYPE") {
         cellProps = { colSpan: 2 };
         if (columnDef.name == "SINFO") cellProps = { ...cellProps, rowSpan: 2 };
-        //if (columnDef.name == "SINFO") {
-        //cellStyle = { display: "none" };
-        //         cellStyle = { ...cellStyle, padding: "unset" };
-        //         data = (
-        //             <Stack sx={{ justifyContent: "center" }} direction="row" width={300}>
-        //                 <Grid container>
-        //                     <Grid item xs={4}>
-        //                         Подразделение:
-        //                     </Grid>
-        //                     <Grid item xs={8}>
-        //                         {podr}
-        //                     </Grid>
-        //                     <Grid item xs={4}>
-        //                         Кол-во ремонтов, план:
-        //                     </Grid>
-        //                     <Grid item xs={2}>
-        //                         {cntP}
-        //                     </Grid>
-        //                     <Grid item xs={4}>
-        //                         Трудоемкость, час. план:
-        //                     </Grid>
-        //                     <Grid item xs={2}>
-        //                         {sumP}
-        //                     </Grid>
-        //                     <Grid item xs={4}>
-        //                         Кол-во ремонтов, факт:
-        //                     </Grid>
-        //                     <Grid item xs={2}>
-        //                         {cntF}
-        //                     </Grid>
-        //                     <Grid item xs={4}>
-        //                         Трудоемкость, час. факт:
-        //                     </Grid>
-        //                     <Grid item xs={2}>
-        //                         {sumF}
-        //                     </Grid>
-        //                 </Grid>
-        //             </Stack>
-        //         );
-        //}
     }
 
-    if (columnDef.name == "SINFO2") cellStyle = { display: "none" };
+    if (columnDef.name == "SWRKTYPE") cellStyle = { display: "none" };
 
     if (columnDef.visible && DAY_NAME_REG_EXP.test(columnDef.name)) {
         cellStyle = { ...cellStyle, padding: "5px", minWidth: "25px", maxWidth: "25px" };
@@ -119,16 +79,16 @@ export const dataCellRender = ({ row, columnDef }, showEquipSrv) => {
     let cellProps = {};
     let data = " ";
 
-    if (row["SINFO2"] == undefined) {
-        if (columnDef.name == "STEST") {
+    if (row["SWRKTYPE"] == undefined) {
+        if (columnDef.name == "SOBJINFO") {
             cellProps = { colSpan: 2 };
             cellStyle = { ...cellStyle, textAlign: "right", fontWeight: "bold" };
         }
-        if (columnDef.name == "SINFO2") cellStyle = { display: "none" };
+        if (columnDef.name == "SWRKTYPE") cellStyle = { display: "none" };
         if (columnDef.parent == "" && columnDef.expandable == true && columnDef.expanded == false) {
             curParent = columnDef.name;
             return { cellStyle: { ...cellStyle, height: "25px" }, data };
-        } else if (columnDef.name != "SINFO2" && columnDef.parent != "" && columnDef.expandable == false && columnDef.expanded == true) {
+        } else if (columnDef.name != "SWRKTYPE" && columnDef.parent != "" && columnDef.expandable == false && columnDef.expanded == true) {
             if (columnDef.name.endsWith("_1")) {
                 curParent = columnDef.parent;
                 const [year, month] = curParent.substring(1).split("_");
@@ -141,39 +101,39 @@ export const dataCellRender = ({ row, columnDef }, showEquipSrv) => {
             }
         }
     }
-    if (columnDef.name == "STEST" && row["SINFO2"] == "План") {
+    if (columnDef.name == "SOBJINFO" && row["SWRKTYPE"] == "План") {
         cellStyle = { ...cellStyle };
         cellProps = { rowSpan: 2 };
     }
-    if (columnDef.name == "STEST" && row["SINFO2"] == "Факт") {
+    if (columnDef.name == "SOBJINFO" && row["SWRKTYPE"] == "Факт") {
         cellStyle = { display: "none" };
     }
 
     switch (row[columnDef.name]) {
         case "blue":
-            cellStyle = { ...cellStyle, backgroundColor: "lightblue", border: "1px solid rgba(0, 0, 0) !important" };
+            cellStyle = { ...cellStyle, cursor: "pointer", backgroundColor: "lightblue", border: "1px solid rgba(0, 0, 0) !important" };
             cellProps = {
                 title: formatDate(columnDef.name),
                 onClick: () => {
-                    showEquipSrv({ date: columnDef.name, workType: row["SINFO2"], info: row["groupName"] });
+                    showEquipSrv({ date: columnDef.name, workType: row["SWRKTYPE"], info: row["groupName"] });
                 }
             };
             return { cellStyle, cellProps, data };
         case "green":
-            cellStyle = { ...cellStyle, backgroundColor: "green", border: "1px solid rgba(0, 0, 0) !important" };
+            cellStyle = { ...cellStyle, cursor: "pointer", backgroundColor: "green", border: "1px solid rgba(0, 0, 0) !important" };
             cellProps = {
                 title: formatDate(columnDef.name),
                 onClick: () => {
-                    showEquipSrv({ date: columnDef.name, workType: row["SINFO2"], info: row["groupName"] });
+                    showEquipSrv({ date: columnDef.name, workType: row["SWRKTYPE"], info: row["groupName"] });
                 }
             };
             return { cellStyle, cellProps, data };
         case "red":
-            cellStyle = { ...cellStyle, backgroundColor: "crimson", border: "1px solid rgba(0, 0, 0) !important" };
+            cellStyle = { ...cellStyle, cursor: "pointer", backgroundColor: "crimson", border: "1px solid rgba(0, 0, 0) !important" };
             cellProps = {
                 title: formatDate(columnDef.name),
                 onClick: () => {
-                    showEquipSrv({ date: columnDef.name, workType: row["SINFO2"], info: row["groupName"] });
+                    showEquipSrv({ date: columnDef.name, workType: row["SWRKTYPE"], info: row["groupName"] });
                 }
             };
             return { cellStyle, cellProps, data };
@@ -187,16 +147,16 @@ export const dataCellRender = ({ row, columnDef }, showEquipSrv) => {
                         <Grid
                             item
                             xs={6}
-                            sx={{ backgroundColor: "green" }}
-                            onClick={() => showEquipSrv({ date: columnDef.name, workType: row["SINFO2"], info: row["groupName"] })}
+                            sx={{ cursor: "pointer", backgroundColor: "green" }}
+                            onClick={() => showEquipSrv({ date: columnDef.name, workType: row["SWRKTYPE"], info: row["groupName"] })}
                         >
                             <p style={{ display: "none" }}>g</p>
                         </Grid>
                         <Grid
                             item
                             xs={6}
-                            sx={{ backgroundColor: "crimson" }}
-                            onClick={() => showEquipSrv({ date: columnDef.name, workType: row["SINFO2"], info: row["groupName"] })}
+                            sx={{ cursor: "pointer", backgroundColor: "crimson" }}
+                            onClick={() => showEquipSrv({ date: columnDef.name, workType: row["SWRKTYPE"], info: row["groupName"] })}
                         >
                             <p style={{ display: "none" }}>r</p>
                         </Grid>
