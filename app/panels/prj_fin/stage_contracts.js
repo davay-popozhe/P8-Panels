@@ -92,7 +92,7 @@ const StageContracts = ({ stage, filters }) => {
             stored: "PKG_P8PANELS_PROJECTS.STAGE_CONTRACTS_SELECT_PAY_IN",
             args: { NPROJECTSTAGEPF: sender.NRN }
         });
-        if (data.NIDENT) pOnlineShowUnit({ unitCode: "PaymentAccountsIn", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+        if (data.NIDENT) pOnlineShowUnit({ unitCode: "PaymentAccountsIn", inputParameters: [{ name: "in_IDENT", value: data.NIDENT }] });
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 
@@ -112,7 +112,7 @@ const StageContracts = ({ stage, filters }) => {
             stored: "PKG_P8PANELS_PROJECTS.STAGE_CONTRACTS_SELECT_ININV",
             args: { NPROJECTSTAGEPF: sender.NRN }
         });
-        if (data.NIDENT) pOnlineShowUnit({ unitCode: "IncomingInvoices", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+        if (data.NIDENT) pOnlineShowUnit({ unitCode: "IncomingInvoices", inputParameters: [{ name: "in_IDENT", value: data.NIDENT }] });
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 

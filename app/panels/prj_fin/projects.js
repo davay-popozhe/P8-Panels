@@ -144,12 +144,12 @@ const Projects = () => {
     };
 
     //Отображение детализации точки графика затрат
-    const showCostNotesChartDetail = async ({ unitCode, year, month }) => {
+    const showCostNotesChartDetail = async ({ year, month }) => {
         const data = await executeStored({
             stored: "PKG_P8PANELS_PROJECTS.CHART_FCCOSTNOTES_SELECT_COST",
             args: { NYEAR: year, NMONTH: month }
         });
-        if (data.NIDENT) pOnlineShowUnit({ unitCode, inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+        if (data.NIDENT) pOnlineShowUnit({ unitCode: "CostNotes", inputParameters: [{ name: "in_IDENT", value: data.NIDENT }] });
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 
@@ -178,7 +178,7 @@ const Projects = () => {
                 pageNumber: 1,
                 reload: true
             }));
-        if (item.SUNITCODE && item.NYEAR && item.NMONTH) showCostNotesChartDetail({ unitCode: item.SUNITCODE, year: item.NYEAR, month: item.NMONTH });
+        if (item.SUNITCODE == "CostNotes" && item.NYEAR && item.NMONTH) showCostNotesChartDetail({ year: item.NYEAR, month: item.NMONTH });
     };
 
     //При необходимости обновить данные
