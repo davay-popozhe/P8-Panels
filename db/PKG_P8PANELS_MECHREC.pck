@@ -88,7 +88,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
   STASK_ATTR_DL             constant PKG_STD.TSTRING := 'detail_list'; -- Связанные документы
   STASK_ATTR_TYPE           constant PKG_STD.TSTRING := 'type';        -- Тип (0 - Деталь, 1 - Изделие/сборочная единица)
   STASK_ATTR_MEAS           constant PKG_STD.TSTRING := 'meas';        -- Единица измнения
-    
+
   /* Инциализация списка маршрутных листов (с иерархией) */
   procedure UTL_FCROUTLST_IDENT_INIT
   (
@@ -141,7 +141,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PUT_FCROUTLST(NIDENT => NIDENT, NFCROUTLST => RLST.RN);
     end loop;
   end UTL_FCROUTLST_IDENT_INIT;
-  
+
   /* Проверка наличия связанных маршрутных листов */
   function LINK_FCROUTLST_CHECK
   (
@@ -174,7 +174,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Возвращаем результат */
     return NRESULT;
   end LINK_FCROUTLST_CHECK;
-  
+
   /* Проверка наличия связанных приходов из подразделений */
   function LINK_INCOMEFROMDEPS_CHECK
   (
@@ -228,7 +228,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       P_SELECTLIST_CLEAR(NIDENT => NFCROUTLST_IDENT);
       raise;
   end LINK_INCOMEFROMDEPS_CHECK;
-  
+
   /* Получение таблицы ПиП на основании маршрутного листа, связанных со спецификацией плана */
   procedure INCOMEFROMDEPS_DG_GET
   (
@@ -444,7 +444,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       P_SELECTLIST_CLEAR(NIDENT => NFCROUTLST_IDENT);
       raise;
   end INCOMEFROMDEPS_DG_GET;
-  
+
   /* Получение таблицы строк комплектации на основании маршрутного листа */
   procedure FCDELIVERYLISTSP_DG_GET
   (
@@ -632,7 +632,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
   end FCDELIVERYLISTSP_DG_GET;
-  
+
   /* Получение таблицы товарных запасов на основании маршрутного листа */
   procedure GOODSPARTIES_DG_GET
   (
@@ -840,7 +840,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
   end GOODSPARTIES_DG_GET;
-  
+
   /* Получение таблицы маршрутных листов, связанных со спецификацией плана (по детали) */
   procedure FCROUTLST_DG_BY_DTL
   (
@@ -1038,7 +1038,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
   end FCROUTLST_DG_BY_DTL;
-  
+
   /* Получение таблицы маршрутных листов, связанных со спецификацией плана (по изделию) */
   procedure FCROUTLST_DG_BY_PRDCT
   (
@@ -1223,7 +1223,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
   end FCROUTLST_DG_BY_PRDCT;
-  
+
   /* Получение таблицы маршрутных листов, связанных со спецификацией плана (для приходов) */
   procedure FCROUTLST_DG_BY_DEPS
   (
@@ -1329,7 +1329,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.DREL_DATE,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.NREL_QUANT,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       P.NQUANT_FACT,');
-      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       case when (P.NT_SHT_PLAN <> 0) then P.NLABOUR_FACT / P.NT_SHT_PLAN * 100 else 0 end NPROCENT');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       case when (P.NT_SHT_PLAN <> 0) then ROUND(P.NLABOUR_FACT / P.NT_SHT_PLAN * 100, 3) else 0 end NPROCENT');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from (select T.RN        NRN,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                               T.DOCPREF   SDOCPREF,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                               T.DOCNUMB   SDOCNUMB,');
@@ -1361,7 +1361,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                           and exists (select ' || PKG_SQL_BUILD.SET_HINT(SHINT =>  'INDEX(UP I_USERPRIV_CATALOG_ROLEID)') || ' null');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                         from USERPRIV UP');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                        where UP."CATALOG" = T.CRN');
-      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                          and UP.ROLEID in (select ' || PKG_SQL_BUILD.SET_HINT(SHINT =>  'INDEX(UR I_USERROLES_AUTHID_FK)') || ' UR.ROLEID'); 
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                          and UP.ROLEID in (select ' || PKG_SQL_BUILD.SET_HINT(SHINT =>  'INDEX(UR I_USERROLES_AUTHID_FK)') || ' UR.ROLEID');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                              from USERROLES UR');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                             where UR.AUTHID = UTILIZER())');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                        union all');
@@ -1373,7 +1373,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                         from USERPRIV UP');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                        where UP.JUR_PERS = T.JUR_PERS');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                          and UP.UNITCODE = ' || PKG_SQL_BUILD.WRAP_STR(SVALUE => 'CostRouteLists'));
-      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                          and UP.ROLEID in (select ' || PKG_SQL_BUILD.SET_HINT(SHINT =>  'INDEX(UR I_USERROLES_AUTHID_FK)') || ' UR.ROLEID'); 
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                          and UP.ROLEID in (select ' || PKG_SQL_BUILD.SET_HINT(SHINT =>  'INDEX(UR I_USERROLES_AUTHID_FK)') || ' UR.ROLEID');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                              from USERROLES UR');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                             where UR.AUTHID = UTILIZER())');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                        union all');
@@ -1449,7 +1449,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
   end FCROUTLST_DG_BY_DEPS;
-  
+
   /* Получение таблицы маршрутных листов, связанных со спецификацией плана с учетом типа */
   procedure FCROUTLST_DG_GET
   (
@@ -1497,174 +1497,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                     'Не определен тип получения таблицы маршрутных листов.');
     end case;
   end FCROUTLST_DG_GET;
-
-  /* Формирование характеристик спецификации в Ганте */
-  procedure MAKE_GANT_ITEM
-  (
-    NDEFRESLIZ              in number,       -- Дефицит запуска
-    NREL_FACT               in number,       -- Выпуск факт
-    NDEFSTART               in number,       -- Дефицит выпуска
-    NMAIN_QUANT             in number,       -- Выпуск
-    STASK_BG_COLOR          out varchar2,    -- Цвет заливки спецификации
-    STASK_BG_PROGRESS_COLOR out varchar2,    -- Цвет заливки прогресса спецификации
-    STASK_TEXT_COLOR        in out varchar2, -- Цвет текста
-    NTASK_PROGRESS          out number       -- Прогресс спецификации
-  )
-  is
-  begin
-    /* Если дефицит запуска <> 0 */
-    if (NDEFRESLIZ <> 0) then
-      /* Если дефицит выпуска = 0 */
-      if (NDEFSTART = 0) then
-        /* Полностью зеленый */
-        STASK_BG_COLOR          := SBG_COLOR_GREEN;
-        STASK_TEXT_COLOR        := STEXT_COLOR_GREY;
-        STASK_BG_PROGRESS_COLOR := null;
-        NTASK_PROGRESS          := null;
-      else
-        /* Полностью красный */
-        STASK_BG_COLOR          := SBG_COLOR_RED;
-        STASK_BG_PROGRESS_COLOR := null;
-        NTASK_PROGRESS          := null;
-      end if;
-    else
-      /* Если дефицит выпуска = 0 */
-      if (NDEFSTART = 0) then
-        /* Полностью зеленый */
-        STASK_BG_COLOR          := SBG_COLOR_GREEN;
-        STASK_TEXT_COLOR        := STEXT_COLOR_GREY;
-        STASK_BG_PROGRESS_COLOR := null;
-        NTASK_PROGRESS          := null;
-      else
-        /* Если дефицит запуска = 0 и выпуск факт = 0 */
-        if ((NDEFRESLIZ = 0) and (NREL_FACT = 0)) then
-          /* Полностью жёлтый */
-          STASK_BG_COLOR          := SBG_COLOR_YELLOW;
-          STASK_BG_PROGRESS_COLOR := null;
-          NTASK_PROGRESS          := null;
-        end if;
-        /* Если дефицит запуска = 0 и выпуск факт <> 0 */
-        if ((NDEFRESLIZ = 0) and (NREL_FACT <> 0)) then
-          /* Частично зелёный, прогресс жёлтый */
-          STASK_BG_COLOR          := SBG_COLOR_GREEN;
-          STASK_BG_PROGRESS_COLOR := SBG_COLOR_YELLOW;
-          STASK_TEXT_COLOR        := STEXT_COLOR_GREY;
-          NTASK_PROGRESS          := ROUND(NREL_FACT / NMAIN_QUANT * 100);
-        end if;
-      end if;
-    end if;
-  end MAKE_GANT_ITEM;
-
-  /* Считывание максимального уровня иерархии плана по каталогу */
-  function PRODPLAN_MAX_LEVEL_GET
-  (
-    NCRN                    in number        -- Рег. номер каталога планов
-  ) return                  number           -- Максимальный уровень иерархии
-  is
-    NRESULT                 PKG_STD.TNUMBER; -- Максимальный уровень иерархии
-  begin
-    /* Считываем максимальный уровень */
-    begin
-      select max(level)
-        into NRESULT
-        from (select T.RN,
-                     T.UP_LEVEL
-                from FCPRODPLAN   P,
-                     FCPRODPLANSP T,
-                     FINSTATE     FS
-               where P.CRN = NCRN
-                 and P.CATEGORY = NFCPRODPLAN_CATEGORY
-                 and P.STATUS = NFCPRODPLAN_STATUS
-                 and FS.RN = P.TYPE
-                 and FS.CODE = SFCPRODPLAN_TYPE
-                 and exists (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
-                       null
-                        from USERPRIV UP
-                       where UP.JUR_PERS = P.JUR_PERS
-                         and UP.UNITCODE = 'CostProductPlans'
-                         and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
-                                            UR.ROLEID
-                                             from USERROLES UR
-                                            where UR.AUTHID = UTILIZER())
-                      union all
-                      select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
-                       null
-                        from USERPRIV UP
-                       where UP.JUR_PERS = P.JUR_PERS
-                         and UP.UNITCODE = 'CostProductPlans'
-                         and UP.AUTHID = UTILIZER())
-                 and T.PRN = P.RN
-                 and T.MAIN_QUANT > 0) TMP
-      connect by prior TMP.RN = TMP.UP_LEVEL
-       start with TMP.UP_LEVEL is null;
-    exception
-      when others then
-        NRESULT := null;
-    end;
-    /* Возвращаем результат */
-    return NRESULT;
-  end PRODPLAN_MAX_LEVEL_GET;
-
-  /* Определение дат спецификации плана */
-  procedure FCPRODPLANSP_DATES_GET
-  (
-    DREP_DATE               in date,        -- Дата запуска спецификации
-    DREP_DATE_TO            in date,        -- Дата выпуска спецификации
-    DINCL_DATE              in date,        -- Дата включения в план спецификации
-    NHAVE_LINK              in number := 0, -- Наличие связей с "Маршрутный лист" или "Приход из подразделения"
-    DDATE_FROM              out date,       -- Итоговая дата запуска спецификации
-    DDATE_TO                out date,       -- Итоговая дата выпуска спецификации
-    STASK_BG_COLOR          out varchar2,   -- Цвет элемента
-    STASK_BG_PROGRESS_COLOR out varchar2,   -- Цвет прогресса элемента
-    STASK_TEXT_COLOR        out varchar2,   -- Цвет текста элемента
-    NTASK_PROGRESS          out number      -- Прогресс элемента
-  )
-  is
-  begin
-    /* Проициниализируем цвет и прогресс */
-    STASK_BG_COLOR          := null;
-    STASK_TEXT_COLOR        := null;
-    STASK_BG_PROGRESS_COLOR := null;
-    NTASK_PROGRESS          := null;
-    /* Если даты запуска и выпуска пусты */
-    if ((DREP_DATE is null) and (DREP_DATE_TO is null)) then
-      /* Указываем дату включения в план */
-      DDATE_FROM := DINCL_DATE;
-      DDATE_TO   := DINCL_DATE;
-    else
-      /* Указываем даты исходя из дат запуска/выпуска */
-      DDATE_FROM := COALESCE(DREP_DATE, DREP_DATE_TO);
-      DDATE_TO   := COALESCE(DREP_DATE_TO, DREP_DATE);
-    end if;
-    /* Если одна из дат не указана */
-    if ((DREP_DATE is null) or (DREP_DATE_TO is null)) then
-      /* Если спецификация также не имеет связей */
-      if (NHAVE_LINK = 0) then
-        /* Закрашиваем в черный */
-        STASK_BG_COLOR   := SBG_COLOR_BLACK;
-        STASK_TEXT_COLOR := STEXT_COLOR_ORANGE;
-        NTASK_PROGRESS   := null;
-      end if;
-    end if;
-    /* Если нет связанных документов */
-    if (NHAVE_LINK = 0) then
-      /* Если дата запуска меньше текущей даты */
-      if (DREP_DATE <= sysdate) then
-        /* Закрашиваем в красный */
-        STASK_BG_COLOR   := SBG_COLOR_RED;
-        STASK_TEXT_COLOR := null;
-        NTASK_PROGRESS   := null;
-      end if;
-      /* Если дата больше текущей даты */
-      if (DREP_DATE > sysdate) then
-        /* Закрашиваем в серый */
-        STASK_BG_COLOR   := SBG_COLOR_GREY;
-        STASK_TEXT_COLOR := null;
-        NTASK_PROGRESS   := null;
-      end if;
-    end if;
-  end FCPRODPLANSP_DATES_GET;
-
+  
   /* Получение списка спецификаций планов и отчетов производства изделий для диаграммы Ганта */
   procedure FCPRODPLANSP_GET
   (
@@ -1690,6 +1523,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     SDETAIL_LIST            PKG_STD.TSTRING;                       -- Ссылки на детализацию
     SPLAN_TITLE             PKG_STD.TSTRING;                       -- Заголовок плана
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
+    NTASK_CLASS             PKG_STD.TNUMBER;                       -- Класс задачи
 
     /* Объединение значений в строковое представление */
     function MAKE_INFO
@@ -1709,6 +1543,79 @@ create or replace package body PKG_P8PANELS_MECHREC as
       /* Возвращаем результат */
       return SRESULT;
     end MAKE_INFO;
+
+    /* Считывание максимального уровня иерархии плана по каталогу */
+    function PRODPLAN_MAX_LEVEL_GET
+    (
+      NCRN                    in number        -- Рег. номер каталога планов
+    ) return                  number           -- Максимальный уровень иерархии
+    is
+      NRESULT                 PKG_STD.TNUMBER; -- Максимальный уровень иерархии
+    begin
+      /* Считываем максимальный уровень */
+      begin
+        select max(level)
+          into NRESULT
+          from (select T.RN,
+                       T.UP_LEVEL
+                  from FCPRODPLAN   P,
+                       FCPRODPLANSP T,
+                       FINSTATE     FS
+                 where P.CRN = NCRN
+                   and P.CATEGORY = NFCPRODPLAN_CATEGORY
+                   and P.STATUS = NFCPRODPLAN_STATUS
+                   and FS.RN = P.TYPE
+                   and FS.CODE = SFCPRODPLAN_TYPE
+                   and exists (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
+                         null
+                          from USERPRIV UP
+                         where UP.JUR_PERS = P.JUR_PERS
+                           and UP.UNITCODE = 'CostProductPlans'
+                           and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                              UR.ROLEID
+                                               from USERROLES UR
+                                              where UR.AUTHID = UTILIZER())
+                        union all
+                        select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
+                         null
+                          from USERPRIV UP
+                         where UP.JUR_PERS = P.JUR_PERS
+                           and UP.UNITCODE = 'CostProductPlans'
+                           and UP.AUTHID = UTILIZER())
+                   and T.PRN = P.RN
+                   and T.MAIN_QUANT > 0) TMP
+        connect by prior TMP.RN = TMP.UP_LEVEL
+         start with TMP.UP_LEVEL is null;
+      exception
+        when others then
+          NRESULT := null;
+      end;
+      /* Возвращаем результат */
+      return NRESULT;
+    end PRODPLAN_MAX_LEVEL_GET;
+  
+    /* Определение дат спецификации плана */
+    procedure FCPRODPLANSP_DATES_GET
+    (
+      DREP_DATE               in date,        -- Дата запуска спецификации
+      DREP_DATE_TO            in date,        -- Дата выпуска спецификации
+      DINCL_DATE              in date,        -- Дата включения в план спецификации
+      DDATE_FROM              out date,       -- Итоговая дата запуска спецификации
+      DDATE_TO                out date        -- Итоговая дата выпуска спецификации
+    )
+    is
+    begin
+      /* Если даты запуска и выпуска пусты */
+      if ((DREP_DATE is null) and (DREP_DATE_TO is null)) then
+        /* Указываем дату включения в план */
+        DDATE_FROM := DINCL_DATE;
+        DDATE_TO   := DINCL_DATE;
+      else
+        /* Указываем даты исходя из дат запуска/выпуска */
+        DDATE_FROM := COALESCE(DREP_DATE, DREP_DATE_TO);
+        DDATE_TO   := COALESCE(DREP_DATE_TO, DREP_DATE);
+      end if;
+    end FCPRODPLANSP_DATES_GET;
 
     /* Инициализация динамических атрибутов */
     procedure TASK_ATTRS_INIT
@@ -1739,41 +1646,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                SCAPTION => 'Единица измерения');
     end TASK_ATTRS_INIT;
 
-    /* Инициализация цветов */
-    procedure TASK_COLORS_INIT
-    (
-      RG                    in out PKG_P8PANELS_VISUAL.TGANTT -- Описание диаграммы Ганта
-    )
-    is
-    begin
-      /* Добавим описание цветов */
-      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
-                                                SBG_COLOR => SBG_COLOR_RED,
-                                                SDESC     => 'Для спецификаций планов и отчетов производства изделий с «Дефицит запуска» != 0 или ' ||
-                                                             'не имеющих связей с разделами «Маршрутный лист» или «Приход из подразделения», а также «Дата запуска» меньше текущей.');
-      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
-                                                SBG_COLOR => SBG_COLOR_YELLOW,
-                                                SDESC     => 'Для спецификаций планов и отчетов производства изделий с «Дефицит запуска» = 0 и «Выпуск факт» = 0.');
-      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT      => RG,
-                                                SBG_COLOR   => SBG_COLOR_GREEN,
-                                                STEXT_COLOR => STEXT_COLOR_GREY,
-                                                SDESC       => 'Для спецификаций планов и отчетов производства изделий с «Дефицит выпуска» = 0.');
-      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT             => RG,
-                                                SBG_COLOR          => SBG_COLOR_GREEN,
-                                                SBG_PROGRESS_COLOR => SBG_COLOR_YELLOW,
-                                                STEXT_COLOR        => STEXT_COLOR_GREY,
-                                                SDESC              => 'Для спецификаций планов и отчетов производства изделий с «Дефицит запуска» = 0 и «Выпуск факт» != 0. ');
-      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT      => RG,
-                                                SBG_COLOR   => SBG_COLOR_BLACK,
-                                                STEXT_COLOR => STEXT_COLOR_ORANGE,
-                                                SDESC       => 'Для спецификаций планов и отчетов производства изделий с пустыми «Дата запуска» и «Дата выпуска» и не имеющих связей с разделами «Маршрутный лист» или «Приход из подразделения».');
-      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
-                                                SBG_COLOR => SBG_COLOR_GREY,
-                                                SDESC     => 'Для спецификаций планов и отчетов производства изделий не имеющих связей с разделами «Маршрутный лист» или «Приход из подразделения», а также «Дата запуска» больше текущей.');
-    end TASK_COLORS_INIT;
-
     /* Заполнение значений динамических атрибутов */
-    procedure FILL_TASK_ATTRS
+    procedure TASK_ATTRS_FILL
     (
       RG                    in PKG_P8PANELS_VISUAL.TGANTT,                 -- Описание диаграммы Ганта
       RGT                   in out nocopy PKG_P8PANELS_VISUAL.TGANTT_TASK, -- Описание задачи для диаграммы
@@ -1817,8 +1691,112 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                    RTASK  => RGT,
                                                    SNAME  => STASK_ATTR_MEAS,
                                                    SVALUE => SMEAS);
-    end FILL_TASK_ATTRS;
-    
+    end TASK_ATTRS_FILL;
+
+    /* Инициализация цветов */
+    procedure TASK_COLORS_INIT
+    (
+      RG                    in out PKG_P8PANELS_VISUAL.TGANTT -- Описание диаграммы Ганта
+    )
+    is
+    begin
+      /* Добавим описание цветов */
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                                SBG_COLOR => SBG_COLOR_RED,
+                                                SDESC     => 'Для спецификаций планов и отчетов производства изделий с «Дефицит запуска» != 0 или ' ||
+                                                             'не имеющих связей с разделами «Маршрутный лист» или «Приход из подразделения», а также «Дата запуска» меньше текущей.');
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                                SBG_COLOR => SBG_COLOR_YELLOW,
+                                                SDESC     => 'Для спецификаций планов и отчетов производства изделий с «Дефицит запуска» = 0 и «Выпуск факт» = 0.');
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT      => RG,
+                                                SBG_COLOR   => SBG_COLOR_GREEN,
+                                                STEXT_COLOR => STEXT_COLOR_GREY,
+                                                SDESC       => 'Для спецификаций планов и отчетов производства изделий с «Дефицит выпуска» = 0.');
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT             => RG,
+                                                SBG_COLOR          => SBG_COLOR_GREEN,
+                                                SBG_PROGRESS_COLOR => SBG_COLOR_YELLOW,
+                                                STEXT_COLOR        => STEXT_COLOR_GREY,
+                                                SDESC              => 'Для спецификаций планов и отчетов производства изделий с «Дефицит запуска» = 0 и «Выпуск факт» != 0. ');
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT      => RG,
+                                                SBG_COLOR   => SBG_COLOR_BLACK,
+                                                STEXT_COLOR => STEXT_COLOR_ORANGE,
+                                                SDESC       => 'Для спецификаций планов и отчетов производства изделий с пустыми «Дата запуска» и «Дата выпуска» и не имеющих связей с разделами «Маршрутный лист» или «Приход из подразделения».');
+      PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
+                                                SBG_COLOR => SBG_COLOR_GREY,
+                                                SDESC     => 'Для спецификаций планов и отчетов производства изделий не имеющих связей с разделами «Маршрутный лист» или «Приход из подразделения», а также «Дата запуска» больше текущей.');
+    end TASK_COLORS_INIT;
+
+    /* Опеределение класса задачи */
+    function GET_TASK_CLASS
+    (
+      NDEFRESLIZ              in number,       -- Дефицит запуска
+      NREL_FACT               in number,       -- Выпуск факт
+      NDEFSTART               in number,       -- Дефицит выпуска
+      DREP_DATE               in date,         -- Дата запуска спецификации
+      DREP_DATE_TO            in date,         -- Дата выпуска спецификации
+      NHAVE_LINK              in number := 0   -- Наличие связей с "Маршрутный лист" или "Приход из подразделения"
+    ) return                  number           -- Класс задачи
+    is
+      NTASK_CLASS             PKG_STD.TNUMBER; -- Класс задачи
+    begin
+      /*
+        Описание классов:
+         0 - Без дефицита выпуска (последующий цвет "Зеленый")
+         1 - С частичным дефицитом выпуска (последующий цвет "Желто-зелеый")
+         2 - С полным дефицитом выпуска (последующий цвет "Желтый")
+         3 - С дефицитом запуска или датой меньше текущей (последующий цвет "Красный")
+         4 - Дата анализа еще не наступила (последующий цвет "Серый")
+         5 - Задача без связи (последующий цвет "Черный")
+      */
+      /* Если одна из дат не указана */
+      if ((DREP_DATE is null) or (DREP_DATE_TO is null)) then
+        /* Если спецификация также не имеет связей */
+        if (NHAVE_LINK = 0) then
+          NTASK_CLASS := 5;
+        end if;
+      else
+        /* Если нет связанных документов */
+        if (NHAVE_LINK = 0) then
+          /* Если дата запуска меньше текущей даты */
+          if (DREP_DATE <= sysdate) then
+            NTASK_CLASS := 3;
+          end if;
+          /* Если дата больше текущей даты */
+          if (DREP_DATE > sysdate) then
+            NTASK_CLASS := 4;
+          end if;
+        end if;
+      end if;
+      /* Если класс не определен */
+      if (NTASK_CLASS is null) then
+        /* Если дефицит запуска <> 0 */
+        if (NDEFRESLIZ <> 0) then
+          /* Если дефицит выпуска = 0 */
+          if (NDEFSTART = 0) then
+            NTASK_CLASS := 0;
+          else
+            NTASK_CLASS := 3;
+          end if;
+        else
+          /* Если дефицит выпуска = 0 */
+          if (NDEFSTART = 0) then
+            NTASK_CLASS := 0;
+          else
+            /* Если дефицит запуска = 0 и выпуск факт = 0 */
+            if ((NDEFRESLIZ = 0) and (NREL_FACT = 0)) then
+              NTASK_CLASS := 2;
+            end if;
+            /* Если дефицит запуска = 0 и выпуск факт <> 0 */
+            if ((NDEFRESLIZ = 0) and (NREL_FACT <> 0)) then
+              NTASK_CLASS := 1;
+            end if;
+          end if;
+        end if;
+      end if;
+      /* Возвращаем результат */
+      return NTASK_CLASS;
+    end GET_TASK_CLASS;
+
     /* Получение типа задачи */
     procedure GET_TASK_TYPE
     (
@@ -1826,26 +1804,25 @@ create or replace package body PKG_P8PANELS_MECHREC as
       SSORT_FIELD             in varchar2, -- Тип сортировки
       NFCPRODPLAN             in number,   -- Рег. номер плана
       NFCPRODPLANSP           in number,   -- Рег. номер спецификации плана
-      STASK_BG_COLOR          in varchar2, -- Цвет заливки задачи
-      STASK_BG_PROGRESS_COLOR in varchar2, -- Цвет заливки прогресса
+      NTASK_CLASS             in number,   -- Класс задачи
       NTYPE                   out number,  -- Тип задачи (0/1 - для "Дата выпуска", 2/3/4 - для "Дата выпуска")
       SDETAIL_LIST            out varchar2 -- Ссылки на детализацию
     )
     is
     begin
-      /* 
+      /*
         Описание типов:
-         0 - Маршрутные листы с развертыванием товарных запасов 
+         0 - Маршрутные листы с развертыванием товарных запасов
          1 - Маршрутные листы с развертыванием комплектаций
          2 - Приход из подразделений
          3 - Приход из подразделений и маршрутные листы
          4 - Маршрутные листы
-         null - Нет детализации 
+         null - Нет детализации
       */
       /* Исходим сортировка по "Дата запуска" */
       if (SSORT_FIELD = 'DREP_DATE') then
         /* Если цвет - красный */
-        if (STASK_BG_COLOR = SBG_COLOR_RED) then
+        if (NTASK_CLASS = 3) then
           /* Проверяем деталь или изделие */
           begin
             select 1
@@ -1874,10 +1851,10 @@ create or replace package body PKG_P8PANELS_MECHREC as
           SDETAIL_LIST := null;
         end if;
       else
-        /* Если цвет зеленый */
-        if (STASK_BG_COLOR = SBG_COLOR_GREEN) then
-          /* Если полностью зеленый */
-          if (STASK_BG_PROGRESS_COLOR is null) then
+        /* Исходим от класса */
+        case
+          /* Закрашен зеленым */
+          when (NTASK_CLASS = 0) then
             /* Проверяем наличией связей с приходов из подразделений */
             if (LINK_INCOMEFROMDEPS_CHECK(NCOMPANY => NCOMPANY, NFCPRODPLANSP => NFCPRODPLANSP, NSTATE => 2) = 0) then
               /* Указываем, что приходов из подразделений нет */
@@ -1888,9 +1865,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
               SDETAIL_LIST := 'Приход из подразделений';
               NTYPE        := 2;
             end if;
-          end if;
-          /* Если желтно-зеленый */
-          if (STASK_BG_PROGRESS_COLOR = SBG_COLOR_YELLOW) then
+          /* Закрашен желто-зеленым */
+          when (NTASK_CLASS = 1) then
             /* Проверяем наличией связей с приходов из подразделений */
             if (LINK_INCOMEFROMDEPS_CHECK(NCOMPANY => NCOMPANY, NFCPRODPLANSP => NFCPRODPLANSP) = 0) then
               /* Указываем, что приходов из подразделений нет */
@@ -1901,10 +1877,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
               SDETAIL_LIST := 'Приход из подразделений';
               NTYPE        := 3;
             end if;
-          end if;
-        else
-          /* Если цвет полностью желтый или красный */
-          if ((STASK_BG_COLOR = SBG_COLOR_YELLOW) or (STASK_BG_COLOR = SBG_COLOR_RED)) then
+          /* Закрашен желтым или красным */
+          when ((NTASK_CLASS = 2) or (NTASK_CLASS = 3)) then
             /* Проверяем наличие связей с маршрутными листами */
             if (LINK_FCROUTLST_CHECK(NCOMPANY => NCOMPANY, NFCPRODPLANSP => NFCPRODPLANSP, NSTATE => 1) = 0) then
               /* Указываем, что маршрутных листов нет */
@@ -1915,14 +1889,64 @@ create or replace package body PKG_P8PANELS_MECHREC as
               SDETAIL_LIST := 'Маршрутные листы';
               NTYPE        := 4;
             end if;
+          /* Класс не поддерживается */
           else
-            /* Для данных критериев ничего не выводится */
+            /* Для данных классов ничего не выводится */
             NTYPE        := null;
             SDETAIL_LIST := null;
-          end if;
-        end if;
+        end case;
       end if;
     end GET_TASK_TYPE;
+
+    /* Формирование цветовых характеристик для задачи */
+    procedure GET_TASK_COLORS
+    (
+      NTASK_CLASS             in number,      -- Класс задачи
+      STASK_BG_COLOR          out varchar2,   -- Цвет заливки спецификации
+      STASK_BG_PROGRESS_COLOR out varchar2,   -- Цвет заливки прогресса спецификации
+      STASK_TEXT_COLOR        in out varchar2 -- Цвет текста
+    )
+    is
+    begin
+      /* Исходим от класса задачи */
+      case NTASK_CLASS
+        /* Полностью зеленый */
+        when 0 then
+          STASK_BG_COLOR          := SBG_COLOR_GREEN;
+          STASK_TEXT_COLOR        := STEXT_COLOR_GREY;
+          STASK_BG_PROGRESS_COLOR := null;
+        /* Частично зелёный, прогресс жёлтый */
+        when 1 then
+          STASK_BG_COLOR          := SBG_COLOR_GREEN;
+          STASK_BG_PROGRESS_COLOR := SBG_COLOR_YELLOW;
+          STASK_TEXT_COLOR        := STEXT_COLOR_GREY;
+        /* Полностью жёлтый */
+        when 2 then
+          STASK_BG_COLOR          := SBG_COLOR_YELLOW;
+          STASK_TEXT_COLOR        := null;
+          STASK_BG_PROGRESS_COLOR := null;
+        /* Полностью красный */
+        when 3 then
+          STASK_BG_COLOR          := SBG_COLOR_RED;
+          STASK_TEXT_COLOR        := null;
+          STASK_BG_PROGRESS_COLOR := null;
+        /* Полностью серый */
+        when 4 then
+          STASK_BG_COLOR   := SBG_COLOR_GREY;
+          STASK_TEXT_COLOR := null;
+          STASK_BG_PROGRESS_COLOR := null;
+        /* Полностью черный */
+        when 5 then
+          STASK_BG_COLOR   := SBG_COLOR_BLACK;
+          STASK_TEXT_COLOR := STEXT_COLOR_ORANGE;
+          STASK_BG_PROGRESS_COLOR := null;
+        else
+          /* Не определено */
+          STASK_BG_COLOR   := null;
+          STASK_TEXT_COLOR := null;
+          STASK_BG_PROGRESS_COLOR := null;
+      end case;
+    end GET_TASK_COLORS;
   begin
     /* Определяем заголовок плана */
     FIND_ACATALOG_RN(NFLAG_SMART => 0,
@@ -2020,28 +2044,31 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                  SNOMEN_NAME  => C.SNOMEN_NAME,
                                  SSUBDIV_DLVR => C.SSUBDIV_DLVR,
                                  NMAIN_QUANT  => C.NMAIN_QUANT);
+      /* Определяем класс задачи */
+      NTASK_CLASS := GET_TASK_CLASS(NDEFRESLIZ   => C.NDEFRESLIZ,
+                                    NREL_FACT    => C.NREL_FACT,
+                                    NDEFSTART    => C.NDEFSTART,
+                                    DREP_DATE    => C.DREP_DATE,
+                                    DREP_DATE_TO => C.DREP_DATE_TO,
+                                    NHAVE_LINK   => COALESCE(C.NHAVE_LINK, 0));
       /* Инициализируем даты и цвет (если необходимо) */
-      FCPRODPLANSP_DATES_GET(DREP_DATE               => C.DREP_DATE,
-                             DREP_DATE_TO            => C.DREP_DATE_TO,
-                             DINCL_DATE              => C.DINCL_DATE,
-                             NHAVE_LINK              => COALESCE(C.NHAVE_LINK, 0),
-                             DDATE_FROM              => DDATE_FROM,
-                             DDATE_TO                => DDATE_TO,
-                             STASK_BG_COLOR          => STASK_BG_COLOR,
-                             STASK_BG_PROGRESS_COLOR => STASK_BG_PROGRESS_COLOR,
-                             STASK_TEXT_COLOR        => STASK_TEXT_COLOR,
-                             NTASK_PROGRESS          => NTASK_PROGRESS);
-      /* Если цвет изначально не указан и требуется анализирование */
-      if (STASK_BG_COLOR is null) then
-        /* Формирование характеристик элемента ганта */
-        MAKE_GANT_ITEM(NDEFRESLIZ              => C.NDEFRESLIZ,
-                       NREL_FACT               => C.NREL_FACT,
-                       NDEFSTART               => C.NDEFSTART,
-                       NMAIN_QUANT             => C.NMAIN_QUANT,
-                       STASK_BG_COLOR          => STASK_BG_COLOR,
-                       STASK_BG_PROGRESS_COLOR => STASK_BG_PROGRESS_COLOR,
-                       STASK_TEXT_COLOR        => STASK_TEXT_COLOR,
-                       NTASK_PROGRESS          => NTASK_PROGRESS);
+      FCPRODPLANSP_DATES_GET(DREP_DATE    => C.DREP_DATE,
+                             DREP_DATE_TO => C.DREP_DATE_TO,
+                             DINCL_DATE   => C.DINCL_DATE,
+                             DDATE_FROM   => DDATE_FROM,
+                             DDATE_TO     => DDATE_TO);
+      /* Формирование характеристик элемента ганта */
+      GET_TASK_COLORS(NTASK_CLASS             => NTASK_CLASS,
+                      STASK_BG_COLOR          => STASK_BG_COLOR,
+                      STASK_BG_PROGRESS_COLOR => STASK_BG_PROGRESS_COLOR,
+                      STASK_TEXT_COLOR        => STASK_TEXT_COLOR);
+      /* Если класс задачи "1" */
+      if (NTASK_CLASS = 1) then
+        /* Определяем пропорции прогресса */
+        NTASK_PROGRESS := ROUND(C.NREL_FACT / C.NMAIN_QUANT * 100);
+      else
+        /* Не требуется */
+        NTASK_PROGRESS := null;
       end if;
       /* Сформируем основную спецификацию */
       RGT := PKG_P8PANELS_VISUAL.TGANTT_TASK_MAKE(NRN                 => C.NRN,
@@ -2058,16 +2085,15 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                   BREAD_ONLY_DATES    => true,
                                                   BREAD_ONLY_PROGRESS => true);
       /* Определяем тип и ссылки на детализацию */
-      GET_TASK_TYPE(NCOMPANY                => NCOMPANY,
-                    SSORT_FIELD             => SSORT_FIELD,
-                    NFCPRODPLAN             => C.NPRN,
-                    NFCPRODPLANSP           => C.NRN,
-                    STASK_BG_COLOR          => STASK_BG_COLOR,
-                    STASK_BG_PROGRESS_COLOR => STASK_BG_PROGRESS_COLOR,
-                    NTYPE                   => NTYPE,
-                    SDETAIL_LIST            => SDETAIL_LIST);
+      GET_TASK_TYPE(NCOMPANY      => NCOMPANY,
+                    SSORT_FIELD   => SSORT_FIELD,
+                    NFCPRODPLAN   => C.NPRN,
+                    NFCPRODPLANSP => C.NRN,
+                    NTASK_CLASS   => NTASK_CLASS,
+                    NTYPE         => NTYPE,
+                    SDETAIL_LIST  => SDETAIL_LIST);
       /* Заполним значение динамических атрибутов */
-      FILL_TASK_ATTRS(RG           => RG,
+      TASK_ATTRS_FILL(RG           => RG,
                       RGT          => RGT,
                       NSTART_FACT  => C.NSTART_FACT,
                       NMAIN_QUANT  => C.NMAIN_QUANT,
