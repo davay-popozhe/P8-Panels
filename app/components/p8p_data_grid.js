@@ -35,6 +35,8 @@ const P8PDataGrid = ({
     groups,
     rows,
     size,
+    fixedHeader = false,
+    fixedColumns = 0,
     morePages = false,
     reloading,
     expandable,
@@ -111,6 +113,8 @@ const P8PDataGrid = ({
             orders={orders}
             filters={filters}
             size={size || P8P_DATA_GRID_SIZE.MEDIUM}
+            fixedHeader={fixedHeader}
+            fixedColumns={fixedColumns}
             morePages={morePages}
             reloading={reloading}
             expandable={expandable}
@@ -147,6 +151,8 @@ P8PDataGrid.propTypes = {
     groups: PropTypes.array,
     rows: PropTypes.array.isRequired,
     size: PropTypes.string,
+    fixedHeader: PropTypes.bool,
+    fixedColumns: PropTypes.number,
     morePages: PropTypes.bool,
     reloading: PropTypes.bool.isRequired,
     expandable: PropTypes.bool,
