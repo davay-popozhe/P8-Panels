@@ -161,12 +161,6 @@ const buildHeaderDef = ({ columnsDef, expandable, fixedColumns, objectsCopier })
         expandable,
         fixedColumns
     });
-    //Сформируем дерево отображаемых колонок заголовка
-    //const [displayTree, maxLevel] = buildDisplayTree(res.columnsDef, "", 1);
-    //Вытянем дерево в удобные для рендеринга структуры
-    //[res.displayLevels, res.displayLevelsColumns] = buildDisplayLevelsColumns(displayTree, maxLevel);
-    //Сформируем отображаемые колонки данных
-    //[res.displayDataColumns, res.displayDataColumnsCount] = buildDisplayDataColumns(displayTree, expandable);
     //Вернём результат
     return res;
 };
@@ -194,9 +188,6 @@ const handlers = {
             expandable,
             fixedColumns
         });
-        //const [displayTree, maxLevel] = buildDisplayTree(columnsDef, "", 1);
-        //const [displayLevels, displayLevelsColumns] = buildDisplayLevelsColumns(displayTree, maxLevel);
-        //const [displayDataColumns, displayDataColumnsCount] = buildDisplayDataColumns(displayTree, expandable);
         return {
             ...state,
             columnsDef,
