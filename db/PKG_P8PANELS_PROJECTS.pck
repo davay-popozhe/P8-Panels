@@ -1563,7 +1563,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
                and PS.ENDPLAN is not null
                and PS.HRN is null);
     /* Инициализируем таблицу данных */
-    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE();
+    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE(BFIXED_HEADER => true, NFIXED_COLUMNS => 1);
     /* Если есть данные о начале и окончании проектов в портфеле */
     if ((DFROM is not null) and (DTO is not null)) then
       /* Формируем структуру заголовка */
@@ -1575,7 +1575,8 @@ create or replace package body PKG_P8PANELS_PROJECTS as
       PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                  SNAME      => 'SJOB',
                                                  SCAPTION   => 'Работы',
-                                                 SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR);
+                                                 SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                                 NWIDTH     => 300);
       PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                  SNAME      => 'SRESP',
                                                  SCAPTION   => 'Ответственный',
@@ -2394,7 +2395,7 @@ create or replace package body PKG_P8PANELS_PROJECTS as
     RSTG := STAGES_GET(NRN => NRN);
     /* Вернём остаток дней */
     if (RSTG.ENDPLAN is not null) then
-      return RSTG.ENDPLAN - sysdate;
+      return ROUND(RSTG.ENDPLAN - sysdate);
     else
       return null;
     end if;
