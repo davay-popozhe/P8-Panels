@@ -18,6 +18,23 @@ import { formatDateRF } from "../../core/utils"; //Вспомогательны�
 //Шаблон имени ячейки месяца
 const MONTH_COLUMN_REG_EXP = /[0-9]{4}_[0-9]{1,2}/;
 
+//Стили
+const STYLES = {
+    GROUP_CELL: { padding: "2px" },
+    GROUP_CELL_LINK: { textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "pre", minWidth: "800px", maxWidth: "800px" },
+    MONTH_CELL: { padding: "2px", maxWidth: "30px", overflow: "visible", fontSize: "smaller", whiteSpace: "nowrap" },
+    MONTH_CELL_FILLED: state => ({ backgroundColor: state == 0 ? "lightyellow" : state == 1 ? "lightgreen" : "lightblue", cursor: "pointer" }),
+    JOB_CELL: {
+        padding: "2px",
+        paddingLeft: "10px",
+        maxWidth: "300px",
+        textOverflow: "ellipsis",
+        overflow: "hidden",
+        whiteSpace: "pre",
+        fontSize: "smaller"
+    }
+};
+
 //-----------
 //Тело модуля
 //-----------
@@ -46,9 +63,16 @@ const formatStageItemValue = (state, text) => {
 
 //Генерация представления ячейки заголовка группы
 export const groupCellRender = ({ group, pOnlineShowDocument }) => ({
-    cellStyle: { padding: "2px" },
+    cellStyle: STYLES.GROUP_CELL,
     data: (
-        <Link component="button" variant="body2" align="left" onClick={() => pOnlineShowDocument({ unitCode: "Projects", document: group.name })}>
+        <Link
+            component="button"
+            variant="body2"
+            align="left"
+            sx={STYLES.GROUP_CELL_LINK}
+            title={group.caption}
+            onClick={() => pOnlineShowDocument({ unitCode: "Projects", document: group.name })}
+        >
             {group.caption}
         </Link>
     )
@@ -67,14 +91,14 @@ export const dataCellRender = ({ row, columnDef, pOnlineShowDocument }) => {
         let data = null;
         if ((dF <= mF && dT >= mT) || (dF >= mF && dF <= mT) || (dT >= mF && dT <= mT)) {
             if (year == dF.getFullYear() && month == dF.getMonth() + 1) data = formatStageItemValue(row.NSTATE, row.SRESP);
-            cellStyle = { backgroundColor: row.NSTATE == 0 ? "lightyellow" : row.NSTATE == 1 ? "lightgreen" : "lightblue", cursor: "pointer" };
+            cellStyle = STYLES.MONTH_CELL_FILLED(row.NSTATE);
             cellProps = {
                 title: `${formatDateRF(dF)} - ${formatDateRF(dT)}`,
                 onClick: () => pOnlineShowDocument({ unitCode: "ProjectsStages", document: row.NRN })
             };
         }
         return {
-            cellStyle: { padding: "2px", maxWidth: "30px", overflow: "visible", fontSize: "smaller", whiteSpace: "nowrap", ...cellStyle },
+            cellStyle: { ...STYLES.MONTH_CELL, ...cellStyle },
             cellProps,
             data
         };
@@ -83,15 +107,7 @@ export const dataCellRender = ({ row, columnDef, pOnlineShowDocument }) => {
         case "SJOB":
             return {
                 cellProps: { title: row[columnDef.name] },
-                cellStyle: {
-                    padding: "2px",
-                    paddingLeft: "10px",
-                    maxWidth: "300px",
-                    textOverflow: "ellipsis",
-                    overflow: "hidden",
-                    whiteSpace: "pre",
-                    fontSize: "smaller"
-                }
+                cellStyle: STYLES.JOB_CELL
             };
     }
 };
