@@ -1524,6 +1524,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     SPLAN_TITLE             PKG_STD.TSTRING;                       -- Заголовок плана
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
     NTASK_CLASS             PKG_STD.TNUMBER;                       -- Класс задачи
+    NLEVEL_FILTER           PKG_STD.TNUMBER;                       -- Уровень для фильтра
 
     /* Объединение значений в строковое представление */
     function MAKE_INFO
@@ -1547,49 +1548,58 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Считывание максимального уровня иерархии плана по каталогу */
     function PRODPLAN_MAX_LEVEL_GET
     (
-      NCRN                    in number        -- Рег. номер каталога планов
-    ) return                  number           -- Максимальный уровень иерархии
+      NCRN                    in number             -- Рег. номер каталога планов
+    ) return                  number                -- Максимальный уровень иерархии
     is
-      NRESULT                 PKG_STD.TNUMBER; -- Максимальный уровень иерархии
+      NRESULT                 PKG_STD.TNUMBER := 1; -- Максимальный уровень иерархии
+      NTOTAL                  PKG_STD.TNUMBER := 0; -- Сумма документов по проверяемому уровню
     begin
-      /* Считываем максимальный уровень */
-      begin
-        select max(level)
-          into NRESULT
-          from (select T.RN,
-                       T.UP_LEVEL
-                  from FCPRODPLAN   P,
-                       FCPRODPLANSP T,
-                       FINSTATE     FS
-                 where P.CRN = NCRN
-                   and P.CATEGORY = NFCPRODPLAN_CATEGORY
-                   and P.STATUS = NFCPRODPLAN_STATUS
-                   and FS.RN = P.TYPE
-                   and FS.CODE = SFCPRODPLAN_TYPE
-                   and exists (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
-                         null
-                          from USERPRIV UP
-                         where UP.JUR_PERS = P.JUR_PERS
-                           and UP.UNITCODE = 'CostProductPlans'
-                           and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
-                                              UR.ROLEID
-                                               from USERROLES UR
-                                              where UR.AUTHID = UTILIZER())
-                        union all
-                        select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
-                         null
-                          from USERPRIV UP
-                         where UP.JUR_PERS = P.JUR_PERS
-                           and UP.UNITCODE = 'CostProductPlans'
-                           and UP.AUTHID = UTILIZER())
-                   and T.PRN = P.RN
-                   and T.MAIN_QUANT > 0) TMP
-        connect by prior TMP.RN = TMP.UP_LEVEL
-         start with TMP.UP_LEVEL is null;
-      exception
-        when others then
-          NRESULT := null;
-      end;
+      /* Цикл по уровням каталога планов */
+      for REC in (select level,
+                         count(TMP.RN) COUNT_DOCS
+                    from (select T.RN,
+                                 T.UP_LEVEL
+                            from FCPRODPLAN   P,
+                                 FCPRODPLANSP T,
+                                 FINSTATE     FS
+                           where P.CRN = NCRN
+                             and P.CATEGORY = NFCPRODPLAN_CATEGORY
+                             and P.STATUS = NFCPRODPLAN_STATUS
+                             and FS.RN = P.TYPE
+                             and FS.CODE = SFCPRODPLAN_TYPE
+                             and exists (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
+                                   null
+                                    from USERPRIV UP
+                                   where UP.JUR_PERS = P.JUR_PERS
+                                     and UP.UNITCODE = 'CostProductPlans'
+                                     and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */
+                                                        UR.ROLEID
+                                                         from USERROLES UR
+                                                        where UR.AUTHID = UTILIZER())
+                                  union all
+                                  select /*+ INDEX(UP I_USERPRIV_JUR_PERS_AUTHID) */
+                                   null
+                                    from USERPRIV UP
+                                   where UP.JUR_PERS = P.JUR_PERS
+                                     and UP.UNITCODE = 'CostProductPlans'
+                                     and UP.AUTHID = UTILIZER())
+                             and T.PRN = P.RN
+                             and T.MAIN_QUANT > 0) TMP
+                  connect by prior TMP.RN = TMP.UP_LEVEL
+                   start with TMP.UP_LEVEL is null
+                   group by level
+                   order by level)
+      loop
+        /* Получаем количество задач с учетом текущего уровня */
+        NTOTAL := NTOTAL + REC.COUNT_DOCS;
+        /* Если сумма документов по текущему уровню превышает максимальное количество задач */
+        if (NTOTAL >= NMAX_TASKS) then
+          /* Выходим из цикла */
+          exit;
+        end if;
+        /* Указываем текущий уровень */
+        NRESULT := REC.LEVEL;
+      end loop;
       /* Возвращаем результат */
       return NRESULT;
     end PRODPLAN_MAX_LEVEL_GET;
@@ -1620,7 +1630,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Инициализация динамических атрибутов */
     procedure TASK_ATTRS_INIT
     (
-      RG                    in out PKG_P8PANELS_VISUAL.TGANTT -- Описание диаграммы Ганта
+      RG                    in out nocopy PKG_P8PANELS_VISUAL.TGANTT -- Описание диаграммы Ганта
     )
     is
     begin
@@ -1696,7 +1706,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Инициализация цветов */
     procedure TASK_COLORS_INIT
     (
-      RG                    in out PKG_P8PANELS_VISUAL.TGANTT -- Описание диаграммы Ганта
+      RG                    in out nocopy PKG_P8PANELS_VISUAL.TGANTT -- Описание диаграммы Ганта
     )
     is
     begin
@@ -1966,6 +1976,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
     TASK_COLORS_INIT(RG => RG);
     /* Определяем максимальный уровень иерархии */
     NMAX_LEVEL := PRODPLAN_MAX_LEVEL_GET(NCRN => NCRN);
+    /* Определяем уровень фильтра */
+    NLEVEL_FILTER := COALESCE(NLEVEL, NMAX_LEVEL);
     /* Обходим данные */
     for C in (select TMP.*,
                      level NTASK_LEVEL
@@ -2034,7 +2046,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                          and FM.RN = T.MATRES
                          and D.RN = FM.NOMENCLATURE
                          and D.UMEAS_MAIN = DM.RN) TMP
-               where ((NLEVEL is null) or ((NLEVEL is not null) and (level <= NLEVEL)))
+               where level <= NLEVEL_FILTER
               connect by prior TMP.NRN = TMP.NUP_LEVEL
                start with TMP.NUP_LEVEL is null
                order siblings by TMP.DORDER_DATE asc)
@@ -2108,7 +2120,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                     where T.PRN = C.NPRN
                       and T.UP_LEVEL = C.NRN
                       and T.MAIN_QUANT > 0
-                      and ((NLEVEL is null) or ((NLEVEL is not null) and (NLEVEL >= C.NTASK_LEVEL + 1))))
+                      and NLEVEL_FILTER >= C.NTASK_LEVEL + 1)
       loop
         /* Добавляем зависимости */
         PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_DEPENDENCY(RTASK => RGT, NDEPENDENCY => LINK.RN);
