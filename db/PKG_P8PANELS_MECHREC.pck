@@ -81,6 +81,22 @@ create or replace package body PKG_P8PANELS_MECHREC as
   SFCPRODPLAN_TYPE          constant PKG_STD.TSTRING := 'План'; -- Тип планов (мнемокод состояния)
   NMAX_TASKS                constant PKG_STD.TNUMBER := 10000;  -- Максимальное количество отображаемых задач
 
+  /* Константы - классы задач плана ("Производственная программа") */
+  NCLASS_WO_DEFICIT         constant PKG_STD.TNUMBER := 0; -- Без дефицита выпуска
+  NCLASS_PART_DEFICIT       constant PKG_STD.TNUMBER := 1; -- С частичным дефицитом выпуска
+  NCLASS_FULL_DEFICIT       constant PKG_STD.TNUMBER := 2; -- С полным дефицитом выпуска
+  NCLASS_WITH_DEFICIT       constant PKG_STD.TNUMBER := 3; -- С дефицитом запуска или датой меньше текущей
+  NCLASS_FUTURE_DATE        constant PKG_STD.TNUMBER := 4; -- Дата анализа еще не наступила
+  NCLASS_WO_LINKS           constant PKG_STD.TNUMBER := 5; -- Задача без связи
+
+  /* Константы - типы задач плана, содержание детализации ("Производственная программа") */
+  NTASK_TYPE_RL_WITH_GP     constant PKG_STD.TNUMBER := 0;    -- Маршрутные листы с развертыванием товарных запасов
+  NTASK_TYPE_RL_WITH_DL     constant PKG_STD.TNUMBER := 1;    -- Маршрутные листы с развертыванием комплектаций
+  NTASK_TYPE_INC_DEPS       constant PKG_STD.TNUMBER := 2;    -- Приход из подразделений
+  NTASK_TYPE_INC_DEPS_RL    constant PKG_STD.TNUMBER := 3;    -- Приход из подразделений и маршрутные листы
+  NTASK_TYPE_RL             constant PKG_STD.TNUMBER := 4;    -- Маршрутные листы
+  NTASK_TYPE_EMPTY          constant PKG_STD.TNUMBER := null; -- Нет детализации
+
   /* Константы - дополнительные атрибуты */
   STASK_ATTR_START_FACT     constant PKG_STD.TSTRING := 'start_fact';  -- Запущено
   STASK_ATTR_MAIN_QUANT     constant PKG_STD.TSTRING := 'main_quant';  -- Количество план
@@ -273,7 +289,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
                                                BVISIBLE   => true);
     /* Если тип = 3, то необходимо включать состояние */
-    if (NTYPE = 3) then
+    if (NTYPE = NTASK_TYPE_INC_DEPS_RL) then
       PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                  SNAME      => 'SDOC_STATE',
                                                  SCAPTION   => 'Состояние',
@@ -404,7 +420,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                               ICURSOR   => ICURSOR,
                                               NPOSITION => 2);
         /* Если тип = 3, то необходимо включать состояние */
-        if (NTYPE = 3) then
+        if (NTYPE = NTASK_TYPE_INC_DEPS_RL) then
           PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
                                                 SNAME     => 'SDOC_STATE',
                                                 ICURSOR   => ICURSOR,
@@ -1455,7 +1471,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
   procedure FCROUTLST_DG_GET
   (
     NFCPRODPLANSP           in number,  -- Рег. номер связанной спецификации плана
-    NTYPE                   in number,  -- Тип спецификации плана (0 - Деталь, 1 - Изделие/сборочная единица, 3/4 - ПиП)
+    NTYPE                   in number,  -- Тип спецификации плана (см. константы NTASK_TYPE_*)
     NPAGE_NUMBER            in number,  -- Номер страницы (игнорируется при NPAGE_SIZE=0)
     NPAGE_SIZE              in number,  -- Количество записей на странице (0 - все)
     CORDERS                 in clob,    -- Сортировки
@@ -1467,7 +1483,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Выбираем сборку таблицы, исходя из типа спецификации плана */
     case
       /* Деталь */
-      when (NTYPE = 0) then
+      when (NTYPE = NTASK_TYPE_RL_WITH_GP) then
         /* Получаем таблицу по детали */
         FCROUTLST_DG_BY_DTL(NFCPRODPLANSP => NFCPRODPLANSP,
                             NPAGE_NUMBER  => NPAGE_NUMBER,
@@ -1476,7 +1492,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                             NINCLUDE_DEF  => NINCLUDE_DEF,
                             COUT          => COUT);
       /* Изделие/сборочная единица */
-      when (NTYPE = 1) then
+      when (NTYPE = NTASK_TYPE_RL_WITH_DL) then
         /* Получаем таблицу по изделию */
         FCROUTLST_DG_BY_PRDCT(NFCPRODPLANSP => NFCPRODPLANSP,
                               NPAGE_NUMBER  => NPAGE_NUMBER,
@@ -1485,7 +1501,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                               NINCLUDE_DEF  => NINCLUDE_DEF,
                               COUT          => COUT);
       /* Для приходов из подразделений */
-      when ((NTYPE = 3) or (NTYPE = 4)) then
+      when ((NTYPE = NTASK_TYPE_INC_DEPS_RL) or (NTYPE = NTASK_TYPE_RL)) then
         /* Получаем таблицу по приходу */
         FCROUTLST_DG_BY_DEPS(NFCPRODPLANSP => NFCPRODPLANSP,
                              NPAGE_NUMBER  => NPAGE_NUMBER,
@@ -1520,11 +1536,11 @@ create or replace package body PKG_P8PANELS_MECHREC as
     DDATE_FROM              PKG_STD.TLDATE;                        -- Дата запуска спецификации
     DDATE_TO                PKG_STD.TLDATE;                        -- Дата выпуска спецификации
     STASK_CAPTION           PKG_STD.TSTRING;                       -- Описание задачи в Ганте
-    NTYPE                   PKG_STD.TNUMBER;                       -- Тип задачи (0/1 - для "Дата выпуска", 2/3/4 - для "Дата выпуска")
+    NTYPE                   PKG_STD.TNUMBER;                       -- Тип задачи (см. константы NTASK_TYPE_*)
     SDETAIL_LIST            PKG_STD.TSTRING;                       -- Ссылки на детализацию
     SPLAN_TITLE             PKG_STD.TSTRING;                       -- Заголовок плана
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
-    NTASK_CLASS             PKG_STD.TNUMBER;                       -- Класс задачи
+    NTASK_CLASS             PKG_STD.TNUMBER;                       -- Класс задачи (см. константы NCLASS_*)
     NLEVEL_FILTER           PKG_STD.TNUMBER;                       -- Уровень для фильтра
 
     /* Объединение значений в строковое представление */
@@ -1666,7 +1682,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       NMAIN_QUANT           in number,                                     -- Выпуск
       NREL_FACT             in number,                                     -- Выпуск факт
       DREP_DATE_TO          in date,                                       -- Дата выпуска
-      NTYPE                 in number,                                     -- Тип (0 - Деталь, 1 - Изделие/сборочная единица)
+      NTYPE                 in number,                                     -- Тип (см. константы NTASK_TYPE_*)
       SDETAIL_LIST          in varchar2,                                   -- Ссылки на детализацию
       SMEAS                 in varchar2                                    -- Единица измерения
     )
@@ -1748,33 +1764,24 @@ create or replace package body PKG_P8PANELS_MECHREC as
       NHAVE_LINK              in number := 0   -- Наличие связей с "Маршрутный лист" или "Приход из подразделения"
     ) return                  number           -- Класс задачи
     is
-      NTASK_CLASS             PKG_STD.TNUMBER; -- Класс задачи
+      NTASK_CLASS             PKG_STD.TNUMBER; -- Класс задачи (см. константы NCLASS*)
     begin
-      /*
-        Описание классов:
-         0 - Без дефицита выпуска (последующий цвет "Зеленый")
-         1 - С частичным дефицитом выпуска (последующий цвет "Желто-зелеый")
-         2 - С полным дефицитом выпуска (последующий цвет "Желтый")
-         3 - С дефицитом запуска или датой меньше текущей (последующий цвет "Красный")
-         4 - Дата анализа еще не наступила (последующий цвет "Серый")
-         5 - Задача без связи (последующий цвет "Черный")
-      */
       /* Если одна из дат не указана */
       if ((DREP_DATE is null) or (DREP_DATE_TO is null)) then
         /* Если спецификация также не имеет связей */
         if (NHAVE_LINK = 0) then
-          NTASK_CLASS := 5;
+          NTASK_CLASS := NCLASS_WO_LINKS;
         end if;
       else
         /* Если нет связанных документов */
         if (NHAVE_LINK = 0) then
           /* Если дата запуска меньше текущей даты */
           if (DREP_DATE <= sysdate) then
-            NTASK_CLASS := 3;
+            NTASK_CLASS := NCLASS_WITH_DEFICIT;
           end if;
           /* Если дата больше текущей даты */
           if (DREP_DATE > sysdate) then
-            NTASK_CLASS := 4;
+            NTASK_CLASS := NCLASS_FUTURE_DATE;
           end if;
         end if;
       end if;
@@ -1784,22 +1791,22 @@ create or replace package body PKG_P8PANELS_MECHREC as
         if (NDEFRESLIZ <> 0) then
           /* Если дефицит выпуска = 0 */
           if (NDEFSTART = 0) then
-            NTASK_CLASS := 0;
+            NTASK_CLASS := NCLASS_WO_DEFICIT;
           else
-            NTASK_CLASS := 3;
+            NTASK_CLASS := NCLASS_WITH_DEFICIT;
           end if;
         else
           /* Если дефицит выпуска = 0 */
           if (NDEFSTART = 0) then
-            NTASK_CLASS := 0;
+            NTASK_CLASS := NCLASS_WO_DEFICIT;
           else
             /* Если дефицит запуска = 0 и выпуск факт = 0 */
             if ((NDEFRESLIZ = 0) and (NREL_FACT = 0)) then
-              NTASK_CLASS := 2;
+              NTASK_CLASS := NCLASS_FULL_DEFICIT;
             end if;
             /* Если дефицит запуска = 0 и выпуск факт <> 0 */
             if ((NDEFRESLIZ = 0) and (NREL_FACT <> 0)) then
-              NTASK_CLASS := 1;
+              NTASK_CLASS := NCLASS_PART_DEFICIT;
             end if;
           end if;
         end if;
@@ -1815,28 +1822,19 @@ create or replace package body PKG_P8PANELS_MECHREC as
       SSORT_FIELD             in varchar2, -- Тип сортировки
       NFCPRODPLAN             in number,   -- Рег. номер плана
       NFCPRODPLANSP           in number,   -- Рег. номер спецификации плана
-      NTASK_CLASS             in number,   -- Класс задачи
-      NTYPE                   out number,  -- Тип задачи (0/1 - для "Дата выпуска", 2/3/4 - для "Дата выпуска")
+      NTASK_CLASS             in number,   -- Класс задачи (см. константы NCLASS_*)
+      NTYPE                   out number,  -- Тип задачи (см. константы NTASK_TYPE_*)
       SDETAIL_LIST            out varchar2 -- Ссылки на детализацию
     )
     is
     begin
-      /*
-        Описание типов:
-         0 - Маршрутные листы с развертыванием товарных запасов
-         1 - Маршрутные листы с развертыванием комплектаций
-         2 - Приход из подразделений
-         3 - Приход из подразделений и маршрутные листы
-         4 - Маршрутные листы
-         null - Нет детализации
-      */
       /* Исходим сортировка по "Дата запуска" */
       if (SSORT_FIELD = 'DREP_DATE') then
-        /* Если цвет - красный */
-        if (NTASK_CLASS = 3) then
+        /* Если класс "С дефицитом запуска или датой меньше текущей" */
+        if (NTASK_CLASS = NCLASS_WITH_DEFICIT) then
           /* Проверяем деталь или изделие */
           begin
-            select 1
+            select NTASK_TYPE_RL_WITH_DL
               into NTYPE
               from DUAL
              where exists (select null
@@ -1845,65 +1843,65 @@ create or replace package body PKG_P8PANELS_MECHREC as
                        and SP.UP_LEVEL = NFCPRODPLANSP);
           exception
             when others then
-              NTYPE := 0;
+              NTYPE := NTASK_TYPE_RL_WITH_GP;
           end;
           /* Проверяем наличие связей с маршрутными листами */
           if (LINK_FCROUTLST_CHECK(NCOMPANY => NCOMPANY, NFCPRODPLANSP => NFCPRODPLANSP, NSTATE => 0) = 0) then
             /* Указываем, что маршрутных листов нет */
             SDETAIL_LIST := 'Нет маршрутных листов';
-            NTYPE        := null;
+            NTYPE        := NTASK_TYPE_EMPTY;
           else
             /* Указываем, что маршрутные листы есть */
             SDETAIL_LIST := 'Маршрутные листы';
           end if;
         else
           /* Не отображаем информацию о маршрутных листах */
-          NTYPE        := null;
+          NTYPE        := NTASK_TYPE_EMPTY;
           SDETAIL_LIST := null;
         end if;
       else
         /* Исходим от класса */
         case
-          /* Закрашен зеленым */
-          when (NTASK_CLASS = 0) then
+          /* Если класс "Без дефицита выпуска" */
+          when (NTASK_CLASS = NCLASS_WO_DEFICIT) then
             /* Проверяем наличией связей с приходов из подразделений */
             if (LINK_INCOMEFROMDEPS_CHECK(NCOMPANY => NCOMPANY, NFCPRODPLANSP => NFCPRODPLANSP, NSTATE => 2) = 0) then
               /* Указываем, что приходов из подразделений нет */
               SDETAIL_LIST := 'Нет приходов из подразделений';
-              NTYPE        := null;
+              NTYPE        := NTASK_TYPE_EMPTY;
             else
               /* Указываем, что приходы из подразделений есть */
               SDETAIL_LIST := 'Приход из подразделений';
-              NTYPE        := 2;
+              NTYPE        := NTASK_TYPE_INC_DEPS;
             end if;
-          /* Закрашен желто-зеленым */
-          when (NTASK_CLASS = 1) then
+          /* Если класс "С частичным дефицитом выпуска" */
+          when (NTASK_CLASS = NCLASS_PART_DEFICIT) then
             /* Проверяем наличией связей с приходов из подразделений */
             if (LINK_INCOMEFROMDEPS_CHECK(NCOMPANY => NCOMPANY, NFCPRODPLANSP => NFCPRODPLANSP) = 0) then
               /* Указываем, что приходов из подразделений нет */
               SDETAIL_LIST := 'Нет приходов из подразделений';
-              NTYPE        := null;
+              NTYPE        := NTASK_TYPE_EMPTY;
             else
               /* Указываем, что приходы из подразделений есть */
               SDETAIL_LIST := 'Приход из подразделений';
-              NTYPE        := 3;
+              NTYPE        := NTASK_TYPE_INC_DEPS_RL;
             end if;
-          /* Закрашен желтым или красным */
-          when ((NTASK_CLASS = 2) or (NTASK_CLASS = 3)) then
+          /* Если класс "С дефицитом запуска или датой меньше текущей" или "С полным дефицитом выпуска" */
+          when ((NTASK_CLASS = NCLASS_FULL_DEFICIT) or (NTASK_CLASS = NCLASS_WITH_DEFICIT)) then
             /* Проверяем наличие связей с маршрутными листами */
             if (LINK_FCROUTLST_CHECK(NCOMPANY => NCOMPANY, NFCPRODPLANSP => NFCPRODPLANSP, NSTATE => 1) = 0) then
               /* Указываем, что маршрутных листов нет */
               SDETAIL_LIST := 'Нет маршрутных листов';
-              NTYPE        := null;
+              NTYPE        := NTASK_TYPE_EMPTY;
             else
               /* Указываем, что маршрутные листы есть */
               SDETAIL_LIST := 'Маршрутные листы';
-              NTYPE        := 4;
+              NTYPE        := NTASK_TYPE_RL;
             end if;
           /* Класс не поддерживается */
           else
             /* Для данных классов ничего не выводится */
-            NTYPE        := null;
+            NTYPE        := NTASK_TYPE_EMPTY;
             SDETAIL_LIST := null;
         end case;
       end if;
@@ -1912,7 +1910,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
     /* Формирование цветовых характеристик для задачи */
     procedure GET_TASK_COLORS
     (
-      NTASK_CLASS             in number,      -- Класс задачи
+      NTASK_CLASS             in number,      -- Класс задачи (см. константы NCLASS_*)
       STASK_BG_COLOR          out varchar2,   -- Цвет заливки спецификации
       STASK_BG_PROGRESS_COLOR out varchar2,   -- Цвет заливки прогресса спецификации
       STASK_TEXT_COLOR        in out varchar2 -- Цвет текста
@@ -1921,33 +1919,33 @@ create or replace package body PKG_P8PANELS_MECHREC as
     begin
       /* Исходим от класса задачи */
       case NTASK_CLASS
-        /* Полностью зеленый */
-        when 0 then
+        /* Без дефицита выпуска */
+        when NCLASS_WO_DEFICIT then
           STASK_BG_COLOR          := SBG_COLOR_GREEN;
           STASK_TEXT_COLOR        := STEXT_COLOR_GREY;
           STASK_BG_PROGRESS_COLOR := null;
-        /* Частично зелёный, прогресс жёлтый */
-        when 1 then
+        /* С частичным дефицитом выпуска */
+        when NCLASS_PART_DEFICIT then
           STASK_BG_COLOR          := SBG_COLOR_GREEN;
           STASK_BG_PROGRESS_COLOR := SBG_COLOR_YELLOW;
           STASK_TEXT_COLOR        := STEXT_COLOR_GREY;
-        /* Полностью жёлтый */
-        when 2 then
+        /* С полным дефицитом выпуска */
+        when NCLASS_FULL_DEFICIT then
           STASK_BG_COLOR          := SBG_COLOR_YELLOW;
           STASK_TEXT_COLOR        := null;
           STASK_BG_PROGRESS_COLOR := null;
-        /* Полностью красный */
-        when 3 then
+        /* С дефицитом запуска или датой меньше текущей */
+        when NCLASS_WITH_DEFICIT then
           STASK_BG_COLOR          := SBG_COLOR_RED;
           STASK_TEXT_COLOR        := null;
           STASK_BG_PROGRESS_COLOR := null;
-        /* Полностью серый */
-        when 4 then
+        /* Дата анализа еще не наступила */
+        when NCLASS_FUTURE_DATE then
           STASK_BG_COLOR   := SBG_COLOR_GREY;
           STASK_TEXT_COLOR := null;
           STASK_BG_PROGRESS_COLOR := null;
-        /* Полностью черный */
-        when 5 then
+        /* Задача без связи */
+        when NCLASS_WO_LINKS then
           STASK_BG_COLOR   := SBG_COLOR_BLACK;
           STASK_TEXT_COLOR := STEXT_COLOR_ORANGE;
           STASK_BG_PROGRESS_COLOR := null;
@@ -2075,8 +2073,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
                       STASK_BG_COLOR          => STASK_BG_COLOR,
                       STASK_BG_PROGRESS_COLOR => STASK_BG_PROGRESS_COLOR,
                       STASK_TEXT_COLOR        => STASK_TEXT_COLOR);
-      /* Если класс задачи "1" */
-      if (NTASK_CLASS = 1) then
+      /* Если класс задачи "С частичным дефицитом выпуска" */
+      if (NTASK_CLASS = NCLASS_PART_DEFICIT) then
         /* Определяем пропорции прогресса */
         NTASK_PROGRESS := ROUND(C.NREL_FACT / C.NMAIN_QUANT * 100);
       else
