@@ -747,9 +747,9 @@ const P8PTable = ({
                                             key={`head-cell-${j}`}
                                             align={getAlignByDataType(columnDef)}
                                             sx={{
-                                                ...customRender.cellStyle,
                                                 ...(columnDef.width ? { minWidth: columnDef.width, maxWidth: columnDef.width } : {}),
-                                                ...(columnDef.fixed ? STYLES.TABLE_HEAD_CELL_STICKY(theme, columnDef.fixedLeft) : {})
+                                                ...(columnDef.fixed ? STYLES.TABLE_HEAD_CELL_STICKY(theme, columnDef.fixedLeft) : {}),
+                                                ...customRender.cellStyle
                                             }}
                                             rowSpan={columnDef.rowSpan}
                                             colSpan={columnDef.colSpan}
@@ -826,11 +826,11 @@ const P8PTable = ({
                                                               key={`data-cell-${j}`}
                                                               align={getAlignByDataType(columnDef)}
                                                               sx={{
-                                                                  ...customRender.cellStyle,
                                                                   ...(columnDef.width
                                                                       ? { minWidth: columnDef.width, maxWidth: columnDef.width }
                                                                       : {}),
-                                                                  ...(columnDef.fixed ? STYLES.TABLE_CELL_STICKY(theme, columnDef.fixedLeft) : {})
+                                                                  ...(columnDef.fixed ? STYLES.TABLE_CELL_STICKY(theme, columnDef.fixedLeft) : {}),
+                                                                  ...customRender.cellStyle
                                                               }}
                                                               {...customRender.cellProps}
                                                           >
