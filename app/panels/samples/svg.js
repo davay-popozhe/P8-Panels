@@ -17,13 +17,13 @@ import { P8PSVG } from "../../components/p8p_svg"; //Интерактивные 
 //---------
 
 //Адрес тестового изображения
-const SAMPLE_URL = "http://localhost:8080/P8WebClient/Modules/p8-panels/img/sample.svg";
+const SAMPLE_URL = "img/sample.svg";
 
 //Стили
 const STYLES = {
     CONTAINER: { textAlign: "center", paddingTop: "20px" },
     TITLE: { paddingBottom: "15px" },
-    SVG: { width: "95vw", height: "60vw", display: "flex", justifyContent: "center" }
+    SVG: { width: "95vw", height: "30vw", display: "flex", justifyContent: "center" }
 };
 
 //-----------

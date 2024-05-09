@@ -70,7 +70,6 @@ const P8PSVG = ({ data, items, onClick, style }) => {
 
     //При обновлении данных
     useEffect(() => {
-        console.log(items);
         loadSVG();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data, items]);
