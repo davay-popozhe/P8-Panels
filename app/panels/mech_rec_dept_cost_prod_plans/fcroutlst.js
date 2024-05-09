@@ -9,7 +9,7 @@
 
 import React, { useState, useCallback, useEffect, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Typography, Box, Paper, IconButton, Icon, Dialog, DialogContent, DialogActions, Button, TextField } from "@mui/material"; //Интерфейсные элементы
+import { Typography, Box, Paper, Dialog, DialogContent, DialogActions, Button, TextField } from "@mui/material"; //Интерфейсные элементы
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
@@ -44,7 +44,7 @@ export const rowExpandRender = ({ row }) => {
 };
 
 //Форматирование значений колонок
-const dataCellRender = ({ row, columnDef, handlePriorEditOpen, handleOrderEditOpen }) => {
+const dataCellRender = ({ row, columnDef /*, handlePriorEditOpen, handleOrderEditOpen */ }) => {
     //!!! Пока отключено - не удалять
     // switch (columnDef.name) {
     //     case "NPRIOR_PARTY":
@@ -287,12 +287,7 @@ const CostRouteListsDataGrid = ({ task }) => {
                                     onClick={() => {
                                         pOnlineShowDictionary({
                                             unitCode: "FaceAccounts",
-                                            inputParameters: [
-                                                {
-                                                    name: "in_NUMB",
-                                                    value: costRouteLists.editOrderValue
-                                                }
-                                            ],
+                                            inputParameters: [{ name: "in_NUMB", value: costRouteLists.editOrderValue }],
                                             callBack: res => (res.success === true ? setEditOrderValue(res.outParameters.out_NUMB) : null)
                                         });
                                     }}
@@ -321,8 +316,30 @@ CostRouteListsDataGrid.propTypes = {
     task: PropTypes.number.isRequired
 };
 
+//Диалог с таблицей сдачи продукции
+const CostRouteListsDataGridDialog = ({ task, onClose }) => {
+    return (
+        <Dialog open onClose={onClose ? onClose : null} fullWidth maxWidth="xl">
+            <DialogContent>
+                <CostRouteListsDataGrid task={task} />
+            </DialogContent>
+            {onClose ? (
+                <DialogActions>
+                    <Button onClick={onClose}>Закрыть</Button>
+                </DialogActions>
+            ) : null}
+        </Dialog>
+    );
+};
+
+//Контроль свойств - Диалог с таблицей маршрутных листов
+CostRouteListsDataGridDialog.propTypes = {
+    task: PropTypes.number.isRequired,
+    onClose: PropTypes.func
+};
+
 //----------------
 //Интерфейс модуля
 //----------------
 
-export { CostRouteListsDataGrid };
+export { CostRouteListsDataGridDialog };

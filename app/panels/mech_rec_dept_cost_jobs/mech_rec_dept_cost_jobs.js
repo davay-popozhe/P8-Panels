@@ -8,7 +8,7 @@
 //---------------------
 
 import React, { useState, useContext, useCallback, useEffect } from "react"; //Классы React
-import { Typography, Box } from "@mui/material"; //Интерфейсные элементы
+import { Typography, Box, Grid } from "@mui/material"; //Интерфейсные элементы
 import { object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
@@ -24,7 +24,17 @@ const DATA_GRID_PAGE_SIZE = 5;
 //Стили
 const STYLES = {
     CONTAINER: { textAlign: "center", paddingTop: "20px" },
-    TITLE: { paddingBottom: "15px" }
+    TITLE: { paddingBottom: "15px" },
+    DATA_GRID_CONTAINER: { minWidth: "95vw", maxWidth: "95vw", minHeight: "80vh", maxHeight: "80vh" },
+    DATA_GRID_CELL: (row, columnDef) => ({
+        padding: "8px",
+        textOverflow: "ellipsis",
+        overflow: "hidden",
+        whiteSpace: "pre",
+        ...(columnDef.name.match(/N.*_VALUE/) && row[columnDef.name]
+            ? { backgroundColor: row[`${columnDef.name.substring(0, 12)}_TYPE`] === 0 ? "lightgrey" : "lightgreen" }
+            : {})
+    })
 };
 
 //------------------------------------
@@ -32,25 +42,11 @@ const STYLES = {
 //------------------------------------
 
 //Генерация заливки строки исходя от значений
-const dataCellRender = ({ row, columnDef }) => {
-    //Описываем общие свойства
-    let cellProps = { title: row[columnDef.name] };
-    //Описываем общий стиль
-    let cellStyle = { padding: "8px", maxWidth: "300px", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "pre" };
-    //
-    if (columnDef.name.match(/N.*_VALUE/) && row[columnDef.name]) {
-        if (row[`${columnDef.name.substring(0, 12)}_TYPE`] === 0) {
-            cellStyle = { ...cellStyle, backgroundColor: "lightgrey" };
-        } else {
-            cellStyle = { ...cellStyle, backgroundColor: "lightgreen" };
-        }
-    }
-    return {
-        cellProps,
-        cellStyle,
-        data: row[columnDef]
-    };
-};
+const dataCellRender = ({ row, columnDef }) => ({
+    cellProps: { title: row[columnDef.name] },
+    cellStyle: STYLES.DATA_GRID_CELL(row, columnDef),
+    data: row[columnDef]
+});
 
 //-----------
 //Тело модуля
@@ -68,7 +64,9 @@ const MechRecDeptCostJobs = () => {
         rows: [],
         reload: true,
         pageNumber: 1,
-        morePages: true
+        morePages: true,
+        fixedHeader: false,
+        fixedColumns: 0
     });
 
     //Подключение к контексту взаимодействия с сервером
@@ -86,12 +84,12 @@ const MechRecDeptCostJobs = () => {
                     NPAGE_SIZE: DATA_GRID_PAGE_SIZE,
                     NINCLUDE_DEF: costJobs.dataLoaded ? 0 : 1
                 },
-                respArg: "COUT",
-                isArray: name => name === "XCOLUMNS_DEF" || name === "XROWS",
-                attributeValueProcessor: (name, val) => (name === "caption" ? undefined : val)
+                respArg: "COUT"
             });
             setCostJobs(pv => ({
                 ...pv,
+                fixedHeader: data.XFCJOBS.XDATA.XDATA_GRID.fixedHeader,
+                fixedColumns: data.XFCJOBS.XDATA.XDATA_GRID.fixedColumns,
                 subdiv: data.XINFO.SSUBDIV,
                 columnsDef: data.XFCJOBS.XDATA.XCOLUMNS_DEF ? [...data.XFCJOBS.XDATA.XCOLUMNS_DEF] : pv.columnsDef,
                 rows: pv.pageNumber == 1 ? [...(data.XFCJOBS.XDATA.XROWS || [])] : [...pv.rows, ...(data.XFCJOBS.XDATA.XROWS || [])],
@@ -119,15 +117,18 @@ const MechRecDeptCostJobs = () => {
     //Генерация содержимого
     return (
         <div style={STYLES.CONTAINER}>
-            <Box>
-                {costJobs.dataLoaded ? (
-                    <>
-                        <Typography sx={STYLES.TITLE} variant={"h6"}>
-                            {`Загрузка станков "${costJobs.subdiv}"`}
-                        </Typography>
-                        <Box px={1}>
+            <Typography sx={STYLES.TITLE} variant={"h6"}>
+                {costJobs.dataLoaded ? `Загрузка станков "${costJobs.subdiv}"` : null}
+            </Typography>
+            <Grid container spacing={1}>
+                <Grid item xs={12}>
+                    <Box pt={1} display="flex" justifyContent="center" alignItems="center">
+                        {costJobs.dataLoaded ? (
                             <P8PDataGrid
                                 {...P8P_DATA_GRID_CONFIG_PROPS}
+                                containerComponentProps={{ elevation: 6, style: STYLES.DATA_GRID_CONTAINER }}
+                                fixedHeader={costJobs.fixedHeader}
+                                fixedColumns={costJobs.fixedColumns}
                                 columnsDef={costJobs.columnsDef}
                                 rows={costJobs.rows}
                                 size={P8P_DATA_GRID_SIZE.LARGE}
@@ -138,10 +139,10 @@ const MechRecDeptCostJobs = () => {
                                 onPagesCountChanged={handlePagesCountChanged}
                                 dataCellRender={prms => dataCellRender({ ...prms })}
                             />
-                        </Box>
-                    </>
-                ) : null}
-            </Box>
+                        ) : null}
+                    </Box>
+                </Grid>
+            </Grid>
         </div>
     );
 };

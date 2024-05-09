@@ -9,29 +9,15 @@
 
 import React, { useContext, useState, useCallback, useEffect } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import {
-    Drawer,
-    Fab,
-    Box,
-    List,
-    ListItemButton,
-    ListItemText,
-    Typography,
-    TextField,
-    Link,
-    Dialog,
-    DialogContent,
-    DialogActions,
-    Button
-} from "@mui/material"; //Интерфейсные элементы
+import { Drawer, Fab, Box, List, ListItemButton, ListItemText, Typography, TextField, Link, Grid } from "@mui/material"; //Интерфейсные элементы
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { useFilteredPlans } from "./hooks"; //Вспомогательные хуки
 import { object2Base64XML } from "../../core/utils"; //Вспомогательные функции
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
-import { IncomFromDepsDataGrid } from "./incomefromdeps"; //Таблица сдачи продукции
-import { CostRouteListsDataGrid } from "./fcroutlst"; //Таблица маршрутных листов
+import { IncomFromDepsDataGridDialog } from "./incomefromdeps"; //Диалог сдачи продукции
+import { CostRouteListsDataGridDialog } from "./fcroutlst"; //Диалог маршрутных листов
 
 //---------
 //Константы
@@ -41,7 +27,7 @@ import { CostRouteListsDataGrid } from "./fcroutlst"; //Таблица марш�
 const STYLES = {
     PLANS_FINDER: { marginTop: "10px", marginLeft: "10px", width: "93%" },
     PLANS_LIST_ITEM_PRIMARY: { wordWrap: "break-word" },
-    PLANS_BUTTON: { position: "absolute" },
+    PLANS_BUTTON: { position: "absolute", marginTop: "10px", marginLeft: "10px" },
     PLANS_DRAWER: {
         width: "350px",
         display: "inline-block",
@@ -49,6 +35,12 @@ const STYLES = {
         [`& .MuiDrawer-paper`]: { width: "350px", display: "inline-block", boxSizing: "border-box" }
     },
     CONTAINER: { paddingTop: "40px", margin: "5px 0px", textAlign: "center" },
+    DATA_GRID_CONTAINER: { minWidth: "95vw", maxWidth: "95vw", minHeight: "80vh", maxHeight: "80vh" },
+    DATA_GRID_GROUP_CELL: { padding: "2px" },
+    DATA_GRID_CELL: { padding: "8px", maxWidth: "300px", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "pre" },
+    DATA_GRID_CELL_STATUS: (currentStyle, row) => ({ backgroundColor: getRowBackgroudColor(row), ...currentStyle }),
+    DATA_GRID_CELL_PLAN_FACT: currentStyle => ({ ...currentStyle, backgroundColor: "lightgrey" }),
+    DATA_GRID_CELL_MATRES_CODE: (currentStyle, row) => ({ backgroundColor: getRowBackgroudColor(row), ...currentStyle }),
     PLAN_FACT_VALUE: { textAlign: "center", display: "flex", justifyContent: "center" },
     PLAN_FACT_DELIMITER: { padding: "0px 5px" },
     FACT_VALUE: { color: "blue" }
@@ -60,60 +52,35 @@ const STYLES = {
 
 //Генерация представления ячейки заголовка группы
 export const groupCellRender = ({ group }) => ({
-    cellStyle: { padding: "2px" },
+    cellStyle: STYLES.DATA_GRID_GROUP_CELL,
     data: group.caption
 });
+
+//Вычисление цвета заливки для строки
+const getRowBackgroudColor = row => {
+    //Факт === План
+    if (row["NMAIN_QUANT"] === row["NREL_FACT"]) return "lightgreen";
+    //План <= (Факт + Запущено)
+    if (row["NMAIN_QUANT"] <= row["NREL_FACT"] + row["NFCROUTLST_QUANT"]) return "lightblue";
+    //Сумма "Количество план" = 0 или < "План"
+    if (row["NSUM_PLAN"] === 0 || (row["NSUM_PLAN"] !== 0 && row["NSUM_PLAN"] < row["NMAIN_QUANT"])) {
+        //"Факт" >= "План"
+        if (row["NREL_FACT"] >= row["NMAIN_QUANT"]) return "#F0E68C";
+    } else {
+        //Сумма "Количество факт" >= сумма "Количество план"
+        if (row["NSUM_FACT"] >= row["NSUM_PLAN"]) return "#F0E68C";
+    }
+    return "lightcoral";
+};
 
 //Генерация заливки строки исходя от значений
 const dataCellRender = ({ row, columnDef, handleProdOrderClick, handleMatresCodeClick }) => {
     //Описываем общие свойства
     let cellProps = { title: row[columnDef.name] };
     //Описываем общий стиль
-    let cellStyle = { padding: "8px", maxWidth: "300px", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "pre" };
+    let cellStyle = STYLES.DATA_GRID_CELL;
     //Для колонки "Статус"
-    if (columnDef.name === "SSTATUS") {
-        //Факт === План
-        if (row["NMAIN_QUANT"] === row["NREL_FACT"]) {
-            return {
-                cellProps,
-                cellStyle: { backgroundColor: "lightgreen", ...cellStyle },
-                data: row[columnDef]
-            };
-        }
-        //План <= (Факт + Запущено)
-        if (row["NMAIN_QUANT"] <= row["NREL_FACT"] + row["NFCROUTLST_QUANT"]) {
-            return {
-                cellProps,
-                cellStyle: { backgroundColor: "lightblue", ...cellStyle },
-                data: row[columnDef]
-            };
-        }
-        //Сумма "Количество план" = 0 или < "План"
-        if (row["NSUM_PLAN"] === 0 || (row["NSUM_PLAN"] !== 0 && row["NSUM_PLAN"] < row["NMAIN_QUANT"])) {
-            //"Факт" >= "План"
-            if (row["NREL_FACT"] >= row["NMAIN_QUANT"]) {
-                return {
-                    cellProps,
-                    cellStyle: { backgroundColor: "#F0E68C", ...cellStyle },
-                    data: row[columnDef]
-                };
-            }
-        } else {
-            //Сумма "Количество факт" >= сумма "Количество план"
-            if (row["NSUM_FACT"] >= row["NSUM_PLAN"]) {
-                return {
-                    cellProps,
-                    cellStyle: { backgroundColor: "#F0E68C", ...cellStyle },
-                    data: row[columnDef]
-                };
-            }
-        }
-        return {
-            cellProps,
-            cellStyle: { backgroundColor: "lightcoral", ...cellStyle },
-            data: row[columnDef]
-        };
-    }
+    if (columnDef.name === "SSTATUS") return { cellProps, cellStyle: STYLES.DATA_GRID_CELL_STATUS(cellStyle, row), data: row[columnDef] };
     //Для колонки даты
     if (columnDef.name.indexOf("PLAN_FACT") >= 0) {
         //Получаем текущий день
@@ -121,10 +88,8 @@ const dataCellRender = ({ row, columnDef, handleProdOrderClick, handleMatresCode
         //Формируем regex для проверки
         let regex = new RegExp(`N_${curDay}.*`, "g");
         //Если это значение текущего дня
-        if (columnDef.name.match(regex)) {
-            cellStyle = { ...cellStyle, backgroundColor: "lightgrey" };
-        }
-        //Если в колонке есть значени
+        if (columnDef.name.match(regex)) cellStyle = STYLES.DATA_GRID_CELL_PLAN_FACT(cellStyle);
+        //Если в колонке есть значение
         if (row[columnDef.name]) {
             //Разбиваем его на план/факт
             let values = row[columnDef.name].split("/");
@@ -140,14 +105,7 @@ const dataCellRender = ({ row, columnDef, handleProdOrderClick, handleMatresCode
                     </Box>
                 )
             };
-        } else {
-            //Если значения нет
-            return {
-                cellProps,
-                cellStyle,
-                data: row[columnDef]
-            };
-        }
+        } else return { cellProps, cellStyle, data: row[columnDef] };
     }
     //Для колонки "Заказ"
     if (columnDef.name === "SPROD_ORDER") {
@@ -162,22 +120,18 @@ const dataCellRender = ({ row, columnDef, handleProdOrderClick, handleMatresCode
         };
     }
     //Для колонки "Обозначение"
-    if (columnDef.name === "SMATRES_CODE") {
+    if (columnDef.name === "SMATRES_CODE")
         return {
             cellProps,
-            cellStyle,
+            cellStyle: STYLES.DATA_GRID_CELL_MATRES_CODE(cellStyle, row),
             data: (
                 <Link component="button" variant="body2" align="left" underline="hover" onClick={() => handleMatresCodeClick(row["NRN"])}>
                     {row[columnDef.name]}
                 </Link>
             )
         };
-    }
-    return {
-        cellProps,
-        cellStyle,
-        data: row[columnDef]
-    };
+    //Для всех остальных
+    return { cellProps, cellStyle, data: row[columnDef] };
 };
 
 //Список каталогов планов
@@ -237,7 +191,9 @@ const MechRecDeptCostProdPlans = () => {
         rows: [],
         reload: true,
         pageNumber: 1,
-        morePages: true
+        morePages: true,
+        fixedHeader: false,
+        fixedColumns: 0
     });
 
     //Состояние для фильтра каталогов
@@ -287,6 +243,8 @@ const MechRecDeptCostProdPlans = () => {
                 });
                 setState(pv => ({
                     ...pv,
+                    fixedHeader: data.XDATA_GRID.fixedHeader,
+                    fixedColumns: data.XDATA_GRID.fixedColumns,
                     columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
                     rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
                     dataLoaded: true,
@@ -373,7 +331,7 @@ const MechRecDeptCostProdPlans = () => {
 
     //Генерация содержимого
     return (
-        <Box p={2}>
+        <>
             <Fab variant="extended" sx={STYLES.PLANS_BUTTON} onClick={() => setState(pv => ({ ...pv, showPlanList: !pv.showPlanList }))}>
                 Планы
             </Fab>
@@ -393,48 +351,43 @@ const MechRecDeptCostProdPlans = () => {
             </Drawer>
             <div style={STYLES.CONTAINER}>
                 {state.dataLoaded ? (
-                    <>
-                        <Typography
-                            variant={"h6"}
-                        >{`Производственный план цеха "${state.selectedPlan.SSUBDIV}" на ${state.selectedPlan.SPERIOD}`}</Typography>
-                        <P8PDataGrid
-                            {...P8P_DATA_GRID_CONFIG_PROPS}
-                            columnsDef={state.columnsDef}
-                            rows={state.rows}
-                            size={P8P_DATA_GRID_SIZE.MEDIUM}
-                            morePages={state.morePages}
-                            reloading={state.reload}
-                            onOrderChanged={handleOrderChanged}
-                            onPagesCountChanged={handlePagesCountChanged}
-                            dataCellRender={prms => dataCellRender({ ...prms, handleProdOrderClick, handleMatresCodeClick })}
-                            groupCellRender={groupCellRender}
-                        />
-                    </>
-                ) : !state.selectedPlan.NRN ? (
-                    <InlineMsgInfo okBtn={false} text={"Укажите план для отображения его спецификаций"} />
+                    <Typography variant={"h6"}>
+                        {`Производственный план цеха "${state.selectedPlan.SSUBDIV}" на ${state.selectedPlan.SPERIOD}`}
+                    </Typography>
+                ) : null}
+                <Grid container spacing={1}>
+                    <Grid item xs={12}>
+                        <Box pt={1} display="flex" justifyContent="center" alignItems="center">
+                            {state.dataLoaded ? (
+                                <P8PDataGrid
+                                    {...P8P_DATA_GRID_CONFIG_PROPS}
+                                    containerComponentProps={{ elevation: 6, style: STYLES.DATA_GRID_CONTAINER }}
+                                    fixedHeader={state.fixedHeader}
+                                    fixedColumns={state.fixedColumns}
+                                    columnsDef={state.columnsDef}
+                                    rows={state.rows}
+                                    size={P8P_DATA_GRID_SIZE.MEDIUM}
+                                    morePages={state.morePages}
+                                    reloading={state.reload}
+                                    onOrderChanged={handleOrderChanged}
+                                    onPagesCountChanged={handlePagesCountChanged}
+                                    dataCellRender={prms => dataCellRender({ ...prms, handleProdOrderClick, handleMatresCodeClick })}
+                                    groupCellRender={groupCellRender}
+                                />
+                            ) : !state.selectedPlan.NRN ? (
+                                <InlineMsgInfo okBtn={false} text={"Укажите план для отображения его спецификаций"} />
+                            ) : null}
+                        </Box>
+                    </Grid>
+                </Grid>
+                {state.showIncomeFromDeps ? (
+                    <IncomFromDepsDataGridDialog task={state.showIncomeFromDeps} onClose={() => handleProdOrderClick(null)} />
+                ) : null}
+                {state.showFcroutelst ? (
+                    <CostRouteListsDataGridDialog task={state.showFcroutelst} onClose={() => handleMatresCodeClick(null)} />
                 ) : null}
             </div>
-            {state.showIncomeFromDeps ? (
-                <Dialog open onClose={() => handleProdOrderClick(null)} fullWidth maxWidth="xl">
-                    <DialogContent>
-                        <IncomFromDepsDataGrid task={state.showIncomeFromDeps} />
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => handleProdOrderClick(null)}>Закрыть</Button>
-                    </DialogActions>
-                </Dialog>
-            ) : null}
-            {state.showFcroutelst ? (
-                <Dialog open onClose={() => handleMatresCodeClick(null)} fullWidth maxWidth="xl">
-                    <DialogContent>
-                        <CostRouteListsDataGrid task={state.showFcroutelst} />
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => handleMatresCodeClick(null)}>Закрыть</Button>
-                    </DialogActions>
-                </Dialog>
-            ) : null}
-        </Box>
+        </>
     );
 };
 

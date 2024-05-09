@@ -9,7 +9,7 @@
 
 import React, { useState, useCallback, useEffect, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Typography, Box } from "@mui/material"; //Интерфейсные элементы
+import { Typography, Box, Dialog, DialogContent, DialogActions, Button } from "@mui/material"; //Интерфейсные элементы
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
@@ -113,8 +113,30 @@ IncomFromDepsDataGrid.propTypes = {
     task: PropTypes.number.isRequired
 };
 
+//Диалог с таблицей сдачи продукции
+const IncomFromDepsDataGridDialog = ({ task, onClose }) => {
+    return (
+        <Dialog open onClose={onClose ? onClose : null} fullWidth maxWidth="xl">
+            <DialogContent>
+                <IncomFromDepsDataGrid task={task} />
+            </DialogContent>
+            {onClose ? (
+                <DialogActions>
+                    <Button onClick={onClose}>Закрыть</Button>
+                </DialogActions>
+            ) : null}
+        </Dialog>
+    );
+};
+
+//Контроль свойств - Диалог с таблицей сдачи продукции
+IncomFromDepsDataGridDialog.propTypes = {
+    task: PropTypes.number.isRequired,
+    onClose: PropTypes.func
+};
+
 //----------------
 //Интерфейс модуля
 //----------------
 
-export { IncomFromDepsDataGrid };
+export { IncomFromDepsDataGridDialog };
