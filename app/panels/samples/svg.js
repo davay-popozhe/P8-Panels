@@ -23,6 +23,7 @@ const SAMPLE_URL = "img/sample.svg";
 const STYLES = {
     CONTAINER: { textAlign: "center", paddingTop: "20px" },
     TITLE: { paddingBottom: "15px" },
+    FORM: { justifyContent: "center", alignItems: "center" },
     SVG: { width: "95vw", height: "30vw", display: "flex", justifyContent: "center" }
 };
 
@@ -38,14 +39,19 @@ const Svg = ({ title }) => {
         data: null,
         mode: "items1",
         items1: [
-            { id: "1", backgroundColor: "red", desc: "Цифра на флюзеляже" },
-            { id: "2", backgroundColor: "magenta", desc: "Ребро флюзеляжа" },
-            { id: "3", backgroundColor: "yellow", desc: "Люк" }
+            { id: "1", backgroundColor: "red", desc: "Цифра на флюзеляже", title: "Цифра на флюзеляже" },
+            { id: "2", backgroundColor: "magenta", desc: "Ребро флюзеляжа", title: "Ребро флюзеляжа" },
+            { id: "3", backgroundColor: "yellow", desc: "Люк", title: "Люк" }
         ],
         items2: [
             { id: "4", backgroundColor: "green", desc: "Хвост", title: "Хвост" },
             { id: "5", backgroundColor: "blue", desc: "Хвостовой руль", title: "Хвостовой руль" },
             { id: "6", backgroundColor: "aquamarine", desc: "Ребро жесткости хвоста", title: "Ребро жесткости хвоста" }
+        ],
+        items3: [
+            { id: "7", backgroundColor: "blueviolet", desc: "Крыло левое", title: "Крыло левое" },
+            { id: "8", backgroundColor: "orange", desc: "Двигатель левый", title: "Двигатель левый" },
+            { id: "9", backgroundColor: "springgreen", desc: "Крыло правое", title: "Крыло правое" }
         ],
         selectedItemDesc: ""
     });
@@ -55,6 +61,11 @@ const Svg = ({ title }) => {
         const resp = await fetch(SAMPLE_URL);
         const data = await resp.text();
         setSVG(pv => ({ ...pv, loaded: true, data }));
+    };
+
+    //Отработка нажатия на изображение
+    const handleSVGClick = () => {
+        setSVG(pv => ({ ...pv, selectedItemDesc: "Выбрано изображение целиком" }));
     };
 
     //Отработка нажатия на элемент изображения
@@ -74,17 +85,26 @@ const Svg = ({ title }) => {
             <Typography sx={STYLES.TITLE} variant={"h6"}>
                 {title}
             </Typography>
-            <FormControl>
+            <FormControl sx={STYLES.FORM}>
                 <FormLabel>Группа элементов</FormLabel>
                 <RadioGroup row value={svg.mode} onChange={e => setSVG(pv => ({ ...pv, mode: e.target.value, selectedItemDesc: "" }))}>
-                    <FormControlLabel value="items1" control={<Radio />} label="Элементы первой группы" />
-                    <FormControlLabel value="items2" control={<Radio />} label="Элементы второй группы" />
+                    <FormControlLabel value="items1" control={<Radio />} label="Первая" />
+                    <FormControlLabel value="items2" control={<Radio />} label="Вторая" />
+                    <FormControlLabel value="items3" control={<Radio />} label="Третья" />
                 </RadioGroup>
                 <FormLabel>{svg.selectedItemDesc ? svg.selectedItemDesc : "Нажмите на элемент изображения для получения его описания"}</FormLabel>
             </FormControl>
             <Grid container spacing={0} pt={5} direction="column" alignItems="center">
                 <Grid item xs={12}>
-                    {svg.loaded ? <P8PSVG data={svg.data} items={svg[svg.mode]} onClick={handleSVGItemClick} style={STYLES.SVG} /> : null}
+                    {svg.loaded ? (
+                        <P8PSVG
+                            data={svg.data}
+                            items={svg[svg.mode]}
+                            onClick={handleSVGClick}
+                            onItemClick={handleSVGItemClick}
+                            canvasStyle={STYLES.SVG}
+                        />
+                    ) : null}
                 </Grid>
             </Grid>
         </div>

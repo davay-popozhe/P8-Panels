@@ -7,7 +7,8 @@
 //Подключение библиотек
 //---------------------
 
-import React, { useEffect, useRef } from "react"; //Классы React
+import React, { useEffect, useRef, useState } from "react"; //Классы React
+import { IconButton, Icon } from "@mui/material"; //Интерфейсные элементы
 import PropTypes from "prop-types"; //Контроль свойств компонента
 
 //---------
@@ -16,7 +17,8 @@ import PropTypes from "prop-types"; //Контроль свойств компо
 
 //Стили
 const STYLES = {
-    CANVAS: { width: "100%", height: "100%" }
+    CANVAS: { width: "100%", height: "100%" },
+    CONTROLS: { justifyContent: "center", alignItems: "center", display: "flex" }
 };
 
 //Структура элемента изображения
@@ -30,17 +32,29 @@ const P8P_SVG_ITEM_SHAPE = PropTypes.shape({
 //-----------
 
 //Интерактивные изображения SVG
-const P8PSVG = ({ data, items, onClick, style }) => {
+const P8PSVG = ({ data, items, onClick, onItemClick, canvasStyle }) => {
+    //Собственное состояние
+    const [state, setState] = useState({
+        images: [],
+        currentImage: 0,
+        imagesCount: 0
+    });
+
     //Ссылки на DOM
     const svgContainerRef = useRef(null);
     const svgRef = useRef(null);
 
     //Обработка нажатия на элемент изображения
     const handleClick = e => {
-        if (e.target.id && items && onClick) {
+        let itemClickFired = false;
+        if (e.target.id && items && onItemClick) {
             const item = items.find(item => item.id == e.target.id);
-            if (item) onClick({ item });
+            if (item) {
+                onItemClick({ item });
+                itemClickFired = true;
+            }
         }
+        if (!itemClickFired && onClick) onClick(e);
     };
 
     //Формирование интерактивных элементов изображения
@@ -48,7 +62,7 @@ const P8PSVG = ({ data, items, onClick, style }) => {
         items.forEach(item => {
             const svgE = document.getElementById(item.id);
             if (svgE) {
-                svgE.setAttribute("style", `${onClick ? "cursor: pointer" : ""}; ${item.backgroundColor ? `fill: ${item.backgroundColor}` : ""}`);
+                svgE.setAttribute("style", `${onItemClick ? "cursor: pointer" : ""}; ${item.backgroundColor ? `fill: ${item.backgroundColor}` : ""}`);
                 if (item?.title) {
                     const titleE = document.createElementNS("http://www.w3.org/2000/svg", "title");
                     titleE.textContent = item.title;
@@ -60,22 +74,74 @@ const P8PSVG = ({ data, items, onClick, style }) => {
 
     //Загрузка изображения
     const loadSVG = () => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(data, "image/svg+xml");
-        svgRef.current = doc.documentElement;
-        svgRef.current.onclick = handleClick;
-        svgContainerRef.current.replaceChildren(svgRef.current);
-        if (items) makeSVGItems(items);
+        const images = data
+            .split("</svg>")
+            .filter(i => i)
+            .map(i => i + "</svg>");
+        setState(pv => ({ ...pv, images, imagesCount: images.length, currentImage: 0 }));
+    };
+
+    //Отображение текущего изображения
+    const showSVG = () => {
+        if (state.imagesCount > 0) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(state.images[state.currentImage], "image/svg+xml");
+            svgRef.current = doc.documentElement;
+            svgRef.current.onclick = handleClick;
+            svgContainerRef.current.replaceChildren(svgRef.current);
+            if (items) makeSVGItems(items);
+        }
+    };
+
+    //Переключение текущего изображения
+    const switchImage = direction => {
+        setState(pv => ({
+            ...pv,
+            currentImage:
+                direction > 0
+                    ? pv.currentImage + 1 >= pv.imagesCount
+                        ? 0
+                        : pv.currentImage + 1
+                    : pv.currentImage - 1 < 0
+                    ? pv.imagesCount - 1
+                    : pv.currentImage - 1
+        }));
     };
 
     //При обновлении данных
     useEffect(() => {
         loadSVG();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data, items]);
+    }, [data]);
+
+    //При загрузке изображения
+    useEffect(() => {
+        showSVG();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.images, state.currentImage, items]);
+
+    //При прокрутке изображений назад
+    const handlePrevClick = () => switchImage(-1);
+
+    //При прокрутке изображений вперёд
+    const handleNextClick = () => switchImage(1);
 
     //Генерация содержимого
-    return <div ref={svgContainerRef} style={{ ...STYLES.CANVAS, ...(style ? style : {}) }}></div>;
+    return (
+        <div>
+            <div ref={svgContainerRef} style={{ ...STYLES.CANVAS, ...(canvasStyle ? canvasStyle : {}) }}></div>
+            {state.imagesCount > 1 ? (
+                <div style={STYLES.CONTROLS}>
+                    <IconButton onClick={handlePrevClick}>
+                        <Icon>arrow_left</Icon>
+                    </IconButton>
+                    <IconButton onClick={handleNextClick}>
+                        <Icon>arrow_right</Icon>
+                    </IconButton>
+                </div>
+            ) : null}
+        </div>
+    );
 };
 
 //Контроль свойств - Интерактивные изображения SVG
@@ -83,7 +149,8 @@ P8PSVG.propTypes = {
     data: PropTypes.string.isRequired,
     items: PropTypes.arrayOf(P8P_SVG_ITEM_SHAPE),
     onClick: PropTypes.func,
-    style: PropTypes.object
+    onItemClick: PropTypes.func,
+    canvasStyle: PropTypes.object
 };
 
 //----------------
