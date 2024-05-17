@@ -203,7 +203,6 @@ const CostRouteListsDataGrid = ({ task }) => {
 
     //Изменение заказа
     const setEditOrderValue = value => {
-        console.log(value);
         setCostRouteLists(pv => ({ ...pv, editOrderValue: value }));
     };
 

@@ -131,7 +131,6 @@ const MechRecCostJobs = () => {
     //Очистка селектлиста по идентификатору процесса
     const clearSelectlist = useCallback(
         async NIDENT => {
-            console.log(NIDENT);
             try {
                 await executeStored({
                     stored: "P_SELECTLIST_CLEAR",
