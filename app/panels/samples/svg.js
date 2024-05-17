@@ -24,7 +24,7 @@ const STYLES = {
     CONTAINER: { textAlign: "center", paddingTop: "20px" },
     TITLE: { paddingBottom: "15px" },
     FORM: { justifyContent: "center", alignItems: "center" },
-    SVG: { width: "95vw", height: "30vw", display: "flex", justifyContent: "center" }
+    SVG: { height: "30vw", display: "flex", justifyContent: "center" }
 };
 
 //-----------
