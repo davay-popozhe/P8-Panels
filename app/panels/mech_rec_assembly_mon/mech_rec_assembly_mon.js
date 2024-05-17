@@ -9,26 +9,12 @@
 
 import React, { useState, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import {
-    Drawer,
-    Fab,
-    Box,
-    List,
-    ListItemButton,
-    ListItemText,
-    Typography,
-    Grid,
-    TextField,
-    FormGroup,
-    FormControlLabel,
-    Checkbox,
-    Container
-} from "@mui/material"; //Интерфейсные элементы
+import { Drawer, Fab, Box, List, ListItemButton, ListItemText, Typography, TextField, FormGroup, FormControlLabel, Checkbox } from "@mui/material"; //Интерфейсные элементы
 import { ThemeProvider } from "@mui/material/styles"; //Подключение темы
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
-import { CardBlock } from "./blocks/cardBlock"; //Информация об объекте
-import { CardDetail } from "./blocks/cardDetail"; //Детализация по объекту
-import { theme } from "./styles/themes.js"; //Стиль темы
+import { PlansList } from "./components/plans_list"; //Список планов
+import { PlanDetail } from "./components/plan_detail"; //Детали плана
+import { theme } from "./styles/themes"; //Стиль темы
 import { useFilteredPlanCtlgs } from "./hooks"; //Вспомогательные хуки
 import { useMechRecAssemblyMon } from "./backend"; //Хук корневой панели мониторинга сборки изделий
 
@@ -49,7 +35,8 @@ const STYLES = {
         display: "inline-block",
         flexShrink: 0,
         [`& .MuiDrawer-paper`]: { width: "350px", display: "inline-block", boxSizing: "border-box" }
-    }
+    },
+    PLANS_LIST_BOX: { paddingTop: "20px" }
 };
 
 //------------------------------------
@@ -131,10 +118,17 @@ PlanCtlgsList.propTypes = {
 //Корневая панель мониторинга сборки изделий
 const MechRecAssemblyMon = () => {
     //Собственное состояние
-    const [state, setState, selectPlan, unselectPlan] = useMechRecAssemblyMon();
+    const [state, setState, selectPlanCtlg, unselectPlanCtlg] = useMechRecAssemblyMon();
 
-    //Состояние для фильтра каталогов
+    //Состояние фильтра каталогов
     const [filter, setFilter] = useState({ ctlgName: "", haveDocs: false });
+
+    //Состояние навигации по карточкам детализации
+    const [planDetailNavigation, setPlanDetailNavigation] = useState({
+        disableNavigatePrev: false,
+        disableNavigateNext: false,
+        currentPlanIndex: 0
+    });
 
     //Массив отфильтрованных каталогов
     const filteredPlanCtgls = useFilteredPlanCtlgs(state.planCtlgs, filter);
@@ -143,23 +137,37 @@ const MechRecAssemblyMon = () => {
     const { InlineMsgInfo } = useContext(MessagingСtx);
 
     //Обработка нажатия на элемент в списке каталогов планов
-    const handleProjectClick = project => {
-        if (state.selectedPlanCtlg.NRN != project.NRN) selectPlan(project);
-        else unselectPlan();
+    const handlePlanCtlgClick = planCtlg => {
+        if (state.selectedPlanCtlg.NRN != planCtlg.NRN) selectPlanCtlg(planCtlg);
+        else unselectPlanCtlg();
     };
 
-    //Обработка нажатия на карточку объекта
-    const handleCardClick = plan => {
+    //Перемещение к нужному плану
+    const navigateToPlan = planIndex => {
+        if (planIndex < 0) planIndex = 0;
+        if (planIndex > state.plans.length - 1) planIndex = state.plans.length - 1;
         setState(pv => ({
             ...pv,
-            selectedPlan: { NRN: plan.NRN, SNUMB: plan.SNUMB, NPROGRESS: plan.NPROGRESS, SDETAIL: plan.SDETAIL, NYEAR: plan.NYEAR }
+            selectedPlan: { ...state.plans[planIndex] }
+        }));
+        setPlanDetailNavigation(pv => ({
+            ...pv,
+            disableNavigatePrev: planIndex == 0 ? true : false,
+            disableNavigateNext: planIndex == state.plans.length - 1 ? true : false,
+            currentPlanIndex: planIndex
         }));
     };
 
+    //Обработка нажатия на документ плана
+    const handlePlanClick = (plan, planIndex) => navigateToPlan(planIndex);
+
     //Обработка нажатия на кнопку "Назад"
-    const handleBackClick = () => {
-        setState(pv => ({ ...pv, selectedPlan: { NRN: null, SNUMB: null, NPROGRESS: null, SDETAIL: null, NYEAR: null } }));
+    const handlePlanDetailBackClick = () => {
+        setState(pv => ({ ...pv, selectedPlan: {} }));
     };
+
+    //Обработка навигации из карточки с деталями плана
+    const handlePlanDetailNavigateClick = direction => navigateToPlan(planDetailNavigation.currentPlanIndex + direction);
 
     //Генерация содержимого
     return (
@@ -179,34 +187,30 @@ const MechRecAssemblyMon = () => {
                         selectedPlanCtlg={state.selectedPlanCtlg.NRN}
                         filter={filter}
                         setFilter={setFilter}
-                        onClick={handleProjectClick}
+                        onClick={handlePlanCtlgClick}
                     />
                 </Drawer>
                 {state.init == true ? (
                     state.selectedPlanCtlg.NRN ? (
                         <>
-                            <Typography variant="h1" align="center" py={3}>
-                                {`${state.selectedPlanCtlg.SNAME} на ${state.selectedPlanCtlg.NMIN_YEAR}г. - ${state.selectedPlanCtlg.NMAX_YEAR}г.`}
+                            <Typography variant="h3" align="center" color="text.title.fontColor" py={2}>
+                                {`${state.selectedPlanCtlg.SNAME} ${
+                                    state.selectedPlanCtlg.NMIN_YEAR ? `с ${state.selectedPlanCtlg.NMIN_YEAR} г` : ""
+                                } ${state.selectedPlanCtlg.NMAX_YEAR ? `по ${state.selectedPlanCtlg.NMAX_YEAR}` : ""}`}
                             </Typography>
                             {state.plansLoaded == true ? (
                                 state.selectedPlan.NRN ? (
-                                    <CardDetail card={state.selectedPlan} handleBackClick={handleBackClick} />
+                                    <PlanDetail
+                                        plan={state.selectedPlan}
+                                        disableNavigatePrev={planDetailNavigation.disableNavigatePrev}
+                                        disableNavigateNext={planDetailNavigation.disableNavigateNext}
+                                        onNavigate={handlePlanDetailNavigateClick}
+                                        onBack={handlePlanDetailBackClick}
+                                    />
                                 ) : (
-                                    <Container>
-                                        <Grid container spacing={5}>
-                                            {state.plans.map(el => (
-                                                <Grid
-                                                    item
-                                                    xs={state.plans.length >= 5 ? 2.4 : 12 / state.plans.length}
-                                                    key={el.NRN}
-                                                    display="flex"
-                                                    justifyContent="center"
-                                                >
-                                                    <CardBlock card={el} handleCardClick={handleCardClick} />
-                                                </Grid>
-                                            ))}
-                                        </Grid>
-                                    </Container>
+                                    <Box sx={STYLES.PLANS_LIST_BOX}>
+                                        <PlansList plans={state.plans} onItemClick={handlePlanClick} />
+                                    </Box>
                                 )
                             ) : null}
                         </>

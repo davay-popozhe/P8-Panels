@@ -4,6 +4,7 @@ import { createTheme } from "@mui/material/styles"; //Интерфейсные �
 const theme = createTheme({
     palette: {
         text: {
+            title: { fontColor: "rgba(0, 0, 0, 0.65)" },
             secondary: { fontColor: "rgba(0, 0, 0, 0.298)" }
         }
     },

@@ -11,7 +11,7 @@ import { object2Base64XML } from "../../core/utils"; //Вспомогатель�
 //---------
 
 //Размер страницы данных
-const DATA_GRID_PAGE_SIZE = 10;
+const DATA_GRID_PAGE_SIZE = 0;
 
 //-----------
 //Тело модуля
@@ -25,10 +25,10 @@ const useMechRecAssemblyMon = () => {
         showPlanList: false,
         planCtlgs: [],
         planCtlgsLoaded: false,
-        selectedPlanCtlg: { NRN: null, SNAME: null, NMIN_YEAR: null, NMAX_YEAR: null },
+        selectedPlanCtlg: {},
         plans: [],
         plansLoaded: false,
-        selectedPlan: { NRN: null, SNUMB: null, NPROGRESS: null, SDETAIL: null, NYEAR: null }
+        selectedPlan: {}
     });
 
     //Подключение к контексту взаимодействия с сервером
@@ -66,19 +66,21 @@ const useMechRecAssemblyMon = () => {
     );
 
     //Выбор каталога планов
-    const selectPlan = project => {
+    const selectPlanCtlg = planCtlg => {
         setState(pv => ({
             ...pv,
-            selectedPlanCtlg: project,
+            selectedPlanCtlg: { ...planCtlg },
+            selectedPlan: {},
             showPlanList: false
         }));
     };
 
     //Сброс выбора каталога планов
-    const unselectPlan = () =>
+    const unselectPlanCtlg = () =>
         setState(pv => ({
             ...pv,
-            selectedPlanCtlg: { NRN: null, SNAME: null, NMIN_YEAR: null, NMAX_YEAR: null },
+            selectedPlanCtlg: {},
+            selectedPlan: {},
             showPlanList: false
         }));
 
@@ -99,7 +101,7 @@ const useMechRecAssemblyMon = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.selectedPlanCtlg]);
 
-    return [state, setState, selectPlan, unselectPlan];
+    return [state, setState, selectPlanCtlg, unselectPlanCtlg];
 };
 
 //Хук для информации по производственным составам
@@ -109,6 +111,8 @@ const useCostProductComposition = nProdPlan => {
         init: false,
         showPlanList: false,
         products: [],
+        productsLoaded: false,
+        model: null,
         selectedProduct: null
     });
 
@@ -124,7 +128,13 @@ const useCostProductComposition = nProdPlan => {
                 respArg: "COUT",
                 isArray: name => name === "XFCPRODCMP"
             });
-            setCostProductComposition(pv => ({ ...pv, init: true, products: [...(data?.XFCPRODCMP || [])], productsLoaded: true }));
+            setCostProductComposition(pv => ({
+                ...pv,
+                init: true,
+                products: [...(data?.XFCPRODCMP || [])],
+                productsLoaded: true,
+                model: data?.BMODEL
+            }));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [costProductComposition.init, executeStored]);
@@ -138,204 +148,53 @@ const useCostProductComposition = nProdPlan => {
     return [costProductComposition, setCostProductComposition];
 };
 
-//Хук для таблицы маршрутных листов
-const useCostRouteLists = (plan, product) => {
+//Хук для таблицы детализации изделия
+const useProductDetailsTable = (plan, product, orders, pageNumber, stored) => {
+    //Собственное состояние - флаг загрузки
+    const [isLoading, setLoading] = useState(true);
+
     //Собственное состояние - таблица данных
-    const [costRouteLists, setCostRouteLists] = useState({
-        dataLoaded: false,
+    const [data, setData] = useState({
         columnsDef: [],
-        orders: null,
         rows: [],
-        reload: true,
-        pageNumber: 1,
-        morePages: true,
-        selectedProduct: null
+        morePages: true
     });
 
     //Подключение к контексту взаимодействия с сервером
     const { executeStored, SERV_DATA_TYPE_CLOB } = useContext(BackEndСtx);
 
-    //Загрузка данных таблицы с сервера
-    const loadData = useCallback(
-        async () => {
-            if (costRouteLists.reload) {
+    //Загрузка данных при изменении зависимостей
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setLoading(true);
                 const data = await executeStored({
-                    stored: "PKG_P8PANELS_MECHREC.FCROUTLST_MON_DG_GET",
+                    stored,
                     args: {
                         NPRODCMPSP: product,
                         NFCPRODPLAN: plan,
-                        CORDERS: { VALUE: object2Base64XML(costRouteLists.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
-                        NPAGE_NUMBER: costRouteLists.pageNumber,
+                        CORDERS: { VALUE: object2Base64XML(orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
+                        NPAGE_NUMBER: pageNumber,
                         NPAGE_SIZE: DATA_GRID_PAGE_SIZE,
-                        NINCLUDE_DEF: costRouteLists.dataLoaded ? 0 : 1
+                        NINCLUDE_DEF: 1
                     },
                     respArg: "COUT"
                 });
-                setCostRouteLists(pv => ({
+                setData(pv => ({
                     ...pv,
                     columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
-                    rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
-                    dataLoaded: true,
-                    reload: false,
-                    morePages: (data.XROWS || []).length >= DATA_GRID_PAGE_SIZE
+                    rows: pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
+                    morePages: DATA_GRID_PAGE_SIZE == 0 ? false : (data.XROWS || []).length >= DATA_GRID_PAGE_SIZE
                 }));
+            } finally {
+                setLoading(false);
             }
-        },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [costRouteLists.reload, costRouteLists.orders, costRouteLists.dataLoaded, costRouteLists.pageNumber, executeStored, SERV_DATA_TYPE_CLOB]
-    );
+        };
+        if (plan && product) loadData();
+    }, [plan, product, orders, pageNumber, stored, executeStored, SERV_DATA_TYPE_CLOB]);
 
-    //При изменении продукта
-    useEffect(() => {
-        //Если продукт указан
-        if (product) {
-            //Принудительно обновляем состояние
-            setCostRouteLists(pv => ({
-                ...pv,
-                dataLoaded: false,
-                columnsDef: [],
-                orders: null,
-                rows: [],
-                reload: true,
-                pageNumber: 1,
-                morePages: true,
-                selectedProduct: null
-            }));
-            //Загружаем данные с учетом выбранного продукта
-            loadData();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [product]);
-
-    //При необходимости обновить данные таблицы
-    useEffect(() => {
-        //Если продукт указан и необходимо стандартное обновление
-        if (product) {
-            loadData();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [costRouteLists.reload, loadData]);
-
-    //При изменении плана
-    useEffect(() => {
-        setCostRouteLists(pv => ({
-            ...pv,
-            dataLoaded: false,
-            columnsDef: [],
-            orders: null,
-            rows: [],
-            reload: true,
-            pageNumber: 1,
-            morePages: true,
-            selectedProduct: null
-        }));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [plan]);
-
-    return [costRouteLists, setCostRouteLists];
+    //Вернём данные
+    return { data, isLoading };
 };
 
-//Хук для таблицы комплектовочных ведомостей
-const useCostDeliverySheets = (plan, product) => {
-    //Собственное состояние - таблица данных
-    const [costDeliverySheets, setCostDeliverySheets] = useState({
-        dataLoaded: false,
-        columnsDef: [],
-        orders: null,
-        rows: [],
-        reload: true,
-        pageNumber: 1,
-        morePages: true,
-        selectedProduct: null
-    });
-
-    //Подключение к контексту взаимодействия с сервером
-    const { executeStored, SERV_DATA_TYPE_CLOB } = useContext(BackEndСtx);
-
-    //Загрузка данных таблицы с сервера
-    const loadData = useCallback(
-        async () => {
-            if (costDeliverySheets.reload) {
-                const data = await executeStored({
-                    stored: "PKG_P8PANELS_MECHREC.FCDELIVSH_DG_GET",
-                    args: {
-                        NPRODCMPSP: product,
-                        NFCPRODPLAN: plan,
-                        CORDERS: { VALUE: object2Base64XML(costDeliverySheets.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
-                        NPAGE_NUMBER: costDeliverySheets.pageNumber,
-                        NPAGE_SIZE: DATA_GRID_PAGE_SIZE,
-                        NINCLUDE_DEF: costDeliverySheets.dataLoaded ? 0 : 1
-                    },
-                    respArg: "COUT"
-                });
-                setCostDeliverySheets(pv => ({
-                    ...pv,
-                    columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
-                    rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
-                    dataLoaded: true,
-                    reload: false,
-                    morePages: (data.XROWS || []).length >= DATA_GRID_PAGE_SIZE
-                }));
-            }
-        },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [
-            costDeliverySheets.reload,
-            costDeliverySheets.orders,
-            costDeliverySheets.dataLoaded,
-            costDeliverySheets.pageNumber,
-            executeStored,
-            SERV_DATA_TYPE_CLOB
-        ]
-    );
-
-    //При изменении продукта
-    useEffect(() => {
-        //Если продукт указан
-        if (product) {
-            //Принудительно обновляем состояние
-            setCostDeliverySheets(pv => ({
-                ...pv,
-                dataLoaded: false,
-                columnsDef: [],
-                orders: null,
-                rows: [],
-                reload: true,
-                pageNumber: 1,
-                morePages: true
-            }));
-            //Загружаем данные с учетом выбранного продукта
-            loadData();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [product]);
-
-    //При необходимости обновить данные таблицы
-    useEffect(() => {
-        //Если продукт указан и необходимо стандартное обновление
-        if (product) {
-            loadData();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [costDeliverySheets.reload, loadData]);
-
-    //При изменении плана
-    useEffect(() => {
-        setCostDeliverySheets(pv => ({
-            ...pv,
-            dataLoaded: false,
-            columnsDef: [],
-            orders: null,
-            rows: [],
-            reload: true,
-            pageNumber: 1,
-            morePages: true,
-            selectedProduct: null
-        }));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [plan]);
-
-    return [costDeliverySheets, setCostDeliverySheets];
-};
-
-export { useMechRecAssemblyMon, useCostProductComposition, useCostRouteLists, useCostDeliverySheets };
+export { useMechRecAssemblyMon, useCostProductComposition, useProductDetailsTable };
