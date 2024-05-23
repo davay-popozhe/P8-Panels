@@ -798,87 +798,85 @@ const P8PTable = ({
                         ))}
                     </TableHead>
                     <TableBody>
-                        {rows.length > 0
-                            ? (Array.isArray(groups) && groups.length > 0 ? groups : [{}]).map((group, g) => {
-                                  const rowsView = rows.map((row, i) =>
-                                      !group?.name || group?.name == row.groupName ? (
-                                          <React.Fragment key={`data-${i}`}>
-                                              <TableRow key={`data-row-${i}`} sx={STYLES.TABLE_ROW}>
-                                                  {expandable && rowExpandRender ? (
-                                                      <TableCell
-                                                          key={`data-cell-expand-control-${i}`}
-                                                          align="center"
-                                                          sx={{
-                                                              ...STYLES.TABLE_CELL_EXPAND_CONTROL,
-                                                              ...(fixedColumns ? STYLES.TABLE_CELL_STICKY(theme, 0) : {})
-                                                          }}
-                                                      >
-                                                          <IconButton onClick={() => handleExpandClick(i)}>
-                                                              <Icon>{expanded[i] === true ? "keyboard_arrow_down" : "keyboard_arrow_right"}</Icon>
-                                                          </IconButton>
-                                                      </TableCell>
-                                                  ) : null}
-                                                  {header.displayDataColumns.map((columnDef, j) => {
-                                                      let customRender = {};
-                                                      if (dataCellRender) customRender = dataCellRender({ row, columnDef }) || {};
-                                                      return (
-                                                          <TableCell
-                                                              key={`data-cell-${j}`}
-                                                              align={getAlignByDataType(columnDef)}
-                                                              sx={{
-                                                                  ...(columnDef.width
-                                                                      ? { minWidth: columnDef.width, maxWidth: columnDef.width }
-                                                                      : {}),
-                                                                  ...(columnDef.fixed ? STYLES.TABLE_CELL_STICKY(theme, columnDef.fixedLeft) : {}),
-                                                                  ...customRender.cellStyle
-                                                              }}
-                                                              {...customRender.cellProps}
-                                                          >
-                                                              {customRender.data
-                                                                  ? customRender.data
-                                                                  : valueFormatter
-                                                                  ? valueFormatter({ value: row[columnDef.name], columnDef })
-                                                                  : row[columnDef.name]}
-                                                          </TableCell>
-                                                      );
-                                                  })}
-                                              </TableRow>
-                                              {expandable && rowExpandRender && expanded[i] === true ? (
-                                                  <TableRow key={`data-row-expand-${i}`}>
-                                                      <TableCell
-                                                          sx={{
-                                                              ...STYLES.TABLE_CELL_EXPAND_CONTAINER,
-                                                              ...(fixedColumns ? STYLES.TABLE_CELL_STICKY(theme, 0) : {})
-                                                          }}
-                                                          colSpan={
-                                                              fixedColumns ? header.displayFixedColumnsCount + 1 : header.displayDataColumnsCount
-                                                          }
-                                                      >
-                                                          {rowExpandRender({ columnsDef, row })}
-                                                      </TableCell>
-                                                  </TableRow>
-                                              ) : null}
-                                          </React.Fragment>
-                                      ) : null
-                                  );
-                                  return !group?.name ? (
-                                      rowsView
-                                  ) : (
-                                      <React.Fragment key={`group-${g}`}>
-                                          <TableRow key={`group-header-${g}`}>{renderGroupCell(group)}</TableRow>
-                                          {!group.expandable || expandedGroups[group.name] === true ? rowsView : null}
-                                      </React.Fragment>
-                                  );
-                              })
-                            : null}
+                        {rows.length > 0 ? (
+                            (Array.isArray(groups) && groups.length > 0 ? groups : [{}]).map((group, g) => {
+                                const rowsView = rows.map((row, i) =>
+                                    !group?.name || group?.name == row.groupName ? (
+                                        <React.Fragment key={`data-${i}`}>
+                                            <TableRow key={`data-row-${i}`} sx={STYLES.TABLE_ROW}>
+                                                {expandable && rowExpandRender ? (
+                                                    <TableCell
+                                                        key={`data-cell-expand-control-${i}`}
+                                                        align="center"
+                                                        sx={{
+                                                            ...STYLES.TABLE_CELL_EXPAND_CONTROL,
+                                                            ...(fixedColumns ? STYLES.TABLE_CELL_STICKY(theme, 0) : {})
+                                                        }}
+                                                    >
+                                                        <IconButton onClick={() => handleExpandClick(i)}>
+                                                            <Icon>{expanded[i] === true ? "keyboard_arrow_down" : "keyboard_arrow_right"}</Icon>
+                                                        </IconButton>
+                                                    </TableCell>
+                                                ) : null}
+                                                {header.displayDataColumns.map((columnDef, j) => {
+                                                    let customRender = {};
+                                                    if (dataCellRender) customRender = dataCellRender({ row, columnDef }) || {};
+                                                    return (
+                                                        <TableCell
+                                                            key={`data-cell-${j}`}
+                                                            align={getAlignByDataType(columnDef)}
+                                                            sx={{
+                                                                ...(columnDef.width ? { minWidth: columnDef.width, maxWidth: columnDef.width } : {}),
+                                                                ...(columnDef.fixed ? STYLES.TABLE_CELL_STICKY(theme, columnDef.fixedLeft) : {}),
+                                                                ...customRender.cellStyle
+                                                            }}
+                                                            {...customRender.cellProps}
+                                                        >
+                                                            {customRender.data
+                                                                ? customRender.data
+                                                                : valueFormatter
+                                                                ? valueFormatter({ value: row[columnDef.name], columnDef })
+                                                                : row[columnDef.name]}
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                            </TableRow>
+                                            {expandable && rowExpandRender && expanded[i] === true ? (
+                                                <TableRow key={`data-row-expand-${i}`}>
+                                                    <TableCell
+                                                        sx={{
+                                                            ...STYLES.TABLE_CELL_EXPAND_CONTAINER,
+                                                            ...(fixedColumns ? STYLES.TABLE_CELL_STICKY(theme, 0) : {})
+                                                        }}
+                                                        colSpan={fixedColumns ? header.displayFixedColumnsCount + 1 : header.displayDataColumnsCount}
+                                                    >
+                                                        {rowExpandRender({ columnsDef, row })}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : null}
+                                        </React.Fragment>
+                                    ) : null
+                                );
+                                return !group?.name ? (
+                                    rowsView
+                                ) : (
+                                    <React.Fragment key={`group-${g}`}>
+                                        <TableRow key={`group-header-${g}`}>{renderGroupCell(group)}</TableRow>
+                                        {!group.expandable || expandedGroups[group.name] === true ? rowsView : null}
+                                    </React.Fragment>
+                                );
+                            })
+                        ) : noDataFoundText && !reloading ? (
+                            <TableRow>
+                                <TableCell colSpan={header.displayDataColumnsCount}>
+                                    <P8PAppInlineError text={noDataFoundText} />
+                                </TableCell>
+                            </TableRow>
+                        ) : null}
                     </TableBody>
                 </Table>
             </TableContainer>
-            {rows.length == 0 ? (
-                noDataFoundText && !reloading ? (
-                    <P8PAppInlineError text={noDataFoundText} />
-                ) : null
-            ) : morePages ? (
+            {morePages ? (
                 <Container style={STYLES.MORE_BUTTON_CONTAINER}>
                     <Button fullWidth onClick={handleMorePagesBtnClick}>
                         {morePagesBtnCaption}
