@@ -72,8 +72,8 @@ create or replace package PKG_P8PANELS_MECHREC as
     NMAX_LEVEL              out number                     -- Максимальный уровень иерархии
   );
 
-  /* Инициализация каталогов раздела "Планы и отчеты производства изделий"  */
-  procedure ACATALOG_INIT
+  /* Инициализация каталогов раздела "Планы и отчеты производства изделий" для панели "Производственная программа" */
+  procedure FCPRODPLAN_PP_CTLG_INIT
   (
     COUT                    out clob    -- Список каталогов раздела "Планы и отчеты производства изделий"
   );
@@ -260,8 +260,8 @@ create or replace package PKG_P8PANELS_MECHREC as
     COUT                    out clob    -- Сериализованная таблица данных
   );
   
-  /* Инициализация каталогов раздела "Планы и отчеты производства изделий"  */
-  procedure FCPRODPLAN_CTLG_INIT
+  /* Инициализация каталогов раздела "Планы и отчеты производства изделий" для панели "Мониторинг сборки изделий" */
+  procedure FCPRODPLAN_AM_CTLG_INIT
   (
     COUT                    out clob    -- Список каталогов раздела "Планы и отчеты производства изделий"
   );
@@ -2649,8 +2649,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
     COUT := PKG_P8PANELS_VISUAL.TGANTT_TO_XML(RGANTT => RG);
   end FCPRODPLANSP_GET;
 
-  /* Инициализация каталогов раздела "Планы и отчеты производства изделий"  */
-  procedure ACATALOG_INIT
+  /* Инициализация каталогов раздела "Планы и отчеты производства изделий" для панели "Производственная программа" */
+  procedure FCPRODPLAN_PP_CTLG_INIT
   (
     COUT                    out clob    -- Список каталогов раздела "Планы и отчеты производства изделий"
   )
@@ -2669,6 +2669,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                          where P.CRN = T.RN
                            and P.CATEGORY = NFCPRODPLAN_CATEGORY
                            and P.STATUS = NFCPRODPLAN_STATUS
+                           and P.COMPANY = GET_SESSION_COMPANY()
                            and FS.RN = P.TYPE
                            and FS.CODE = SFCPRODPLAN_TYPE
                            and exists (select PSP.RN
@@ -2696,6 +2697,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                  where T.DOCNAME = 'CostProductPlans'
                    and T.SIGNS = 1
                    and T.DOCNAME = UL.UNITCODE
+                   and T.COMPANY = GET_SESSION_COMPANY()
                    and (UL.SHOW_INACCESS_CTLG = 1 or exists
                         (select null from V_USERPRIV UP where UP.CATALOG = T.RN) or exists
                         (select null
@@ -2727,7 +2729,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       /* Вернем ошибку */
       PKG_STATE.DIAGNOSTICS_STACKED();
       P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
-  end ACATALOG_INIT;
+  end FCPRODPLAN_PP_CTLG_INIT;
   
   /*
     Процедуры панели "Производственный план цеха"
@@ -3888,6 +3890,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                        ENPERIOD       E
                  where P.CATEGORY = NFCPRODPLAN_DEPT_CTGR
                    and P.STATUS = NFCPRODPLAN_STATUS
+                   and P.COMPANY = NCOMPANY
                    and P.DOCDATE >= trunc(sysdate, 'mm')
                    and P.SUBDIV in (select C.DEPTRN
                                       from CLNPSPFM      C,
@@ -5800,8 +5803,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
       P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
   end FCPRODPLAN_GET;
   
-  /* Инициализация каталогов раздела "Планы и отчеты производства изделий"  */
-  procedure FCPRODPLAN_CTLG_INIT
+  /* Инициализация каталогов раздела "Планы и отчеты производства изделий" для панели "Мониторинг сборки изделий"  */
+  procedure FCPRODPLAN_AM_CTLG_INIT
   (
     COUT                    out clob    -- Список каталогов раздела "Планы и отчеты производства изделий"
   )
@@ -5815,13 +5818,14 @@ create or replace package body PKG_P8PANELS_MECHREC as
     for REC in (select TMP.NRN,
                        TMP.SNAME,
                        count(P.RN) NCOUNT_DOCS,
-                       min(D_YEAR(P.DOCDATE)) NMIN_YEAR,
-                       max(D_YEAR(P.DOCDATE)) NMAX_YEAR
+                       min(D_YEAR(ENP.STARTDATE)) NMIN_YEAR,
+                       max(D_YEAR(ENP.ENDDATE)) NMAX_YEAR
                   from (select T.RN   as NRN,
                                T.NAME as SNAME
                           from ACATALOG T,
                                UNITLIST UL
                          where T.DOCNAME = 'CostProductPlans'
+                           and T.COMPANY = GET_SESSION_COMPANY()
                            and T.SIGNS = 1
                            and T.DOCNAME = UL.UNITCODE
                            and (UL.SHOW_INACCESS_CTLG = 1 or exists
@@ -5836,6 +5840,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                     on TMP.NRN = P.CRN
                    and P.CATEGORY = NFCPRODPLAN_CATEGORY_MON
                    and P.STATUS = NFCPRODPLAN_STATUS_MON
+                   and P.COMPANY = GET_SESSION_COMPANY()
                    and exists (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
                          null
                           from USERPRIV UP
@@ -5855,6 +5860,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
                   left outer join FINSTATE FS
                     on P.TYPE = FS.RN
                    and FS.CODE = SFCPRODPLAN_TYPE_MON
+                  left join ENPERIOD ENP
+                    on P.CALC_PERIOD = ENP.RN
                  group by TMP.NRN,
                           TMP.SNAME
                  order by TMP.SNAME asc)
@@ -5883,7 +5890,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       /* Вернем ошибку */
       PKG_STATE.DIAGNOSTICS_STACKED();
       P_EXCEPTION(0, PKG_STATE.SQL_ERRM());
-  end FCPRODPLAN_CTLG_INIT;
+  end FCPRODPLAN_AM_CTLG_INIT;
 
   /* Считывание деталей производственного состава */
   procedure FCPRODCMP_DETAILS_GET
