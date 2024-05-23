@@ -168,6 +168,11 @@ const MechRecAssemblyMon = () => {
     //Обработка навигации из карточки с деталями плана
     const handlePlanDetailNavigateClick = direction => navigateToPlan(planDetailNavigation.currentPlanIndex + direction);
 
+    //Формирование текста заголовка
+    const title = `${state.selectedPlanCtlg.SNAME} на ${state.selectedPlanCtlg.NMIN_YEAR} ${
+        state.selectedPlanCtlg.NMIN_YEAR == state.selectedPlanCtlg.NMAX_YEAR ? "г." : `- ${state.selectedPlanCtlg.NMAX_YEAR} г.г.`
+    } `;
+
     //Генерация содержимого
     return (
         <Box p={2}>
@@ -193,11 +198,7 @@ const MechRecAssemblyMon = () => {
                     state.selectedPlanCtlg.NRN ? (
                         <>
                             <Typography variant="h3" align="center" color="text.title.fontColor" py={2}>
-                                {`${state.selectedPlanCtlg.SNAME} на ${state.selectedPlanCtlg.NMIN_YEAR} ${
-                                    state.selectedPlanCtlg.NMIN_YEAR == state.selectedPlanCtlg.NMAX_YEAR
-                                        ? "г."
-                                        : `- ${state.selectedPlanCtlg.NMAX_YEAR} г.г.`
-                                } `}
+                                {title}
                             </Typography>
                             {state.plansLoaded == true ? (
                                 state.selectedPlan.NRN ? (
