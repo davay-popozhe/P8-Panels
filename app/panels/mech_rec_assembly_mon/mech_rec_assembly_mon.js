@@ -15,8 +15,7 @@ import { MessagingСtx } from "../../context/messaging"; //Контекст со
 import { PlansList } from "./components/plans_list"; //Список планов
 import { PlanDetail } from "./components/plan_detail"; //Детали плана
 import { theme } from "./styles/themes"; //Стиль темы
-import { useFilteredPlanCtlgs } from "./hooks"; //Вспомогательные хуки
-import { useMechRecAssemblyMon } from "./backend"; //Хук корневой панели мониторинга сборки изделий
+import { useMechRecAssemblyMon, useFilteredPlanCtlgs } from "./hooks"; //Вспомогательные хуки
 
 //---------
 //Константы
@@ -194,9 +193,11 @@ const MechRecAssemblyMon = () => {
                     state.selectedPlanCtlg.NRN ? (
                         <>
                             <Typography variant="h3" align="center" color="text.title.fontColor" py={2}>
-                                {`${state.selectedPlanCtlg.SNAME} ${
-                                    state.selectedPlanCtlg.NMIN_YEAR ? `с ${state.selectedPlanCtlg.NMIN_YEAR} г` : ""
-                                } ${state.selectedPlanCtlg.NMAX_YEAR ? `по ${state.selectedPlanCtlg.NMAX_YEAR}` : ""}`}
+                                {`${state.selectedPlanCtlg.SNAME} на ${state.selectedPlanCtlg.NMIN_YEAR} ${
+                                    state.selectedPlanCtlg.NMIN_YEAR == state.selectedPlanCtlg.NMAX_YEAR
+                                        ? "г."
+                                        : `- ${state.selectedPlanCtlg.NMAX_YEAR} г.г.`
+                                } `}
                             </Typography>
                             {state.plansLoaded == true ? (
                                 state.selectedPlan.NRN ? (

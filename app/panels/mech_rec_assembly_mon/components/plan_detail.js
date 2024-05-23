@@ -13,7 +13,7 @@ import { Box, Grid, Container, Button, Typography, Icon, Stack, IconButton } fro
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../../components/p8p_data_grid"; //Таблица данных
 import { P8PSVG } from "../../../components/p8p_svg"; //Интерактивные изображения
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../../config_wrapper"; //Подключение компонентов к настройкам приложения
-import { useCostProductComposition, useProductDetailsTable } from "../backend"; //Взаимодействие с сервером
+import { useCostProductComposition, useProductDetailsTable } from "../hooks"; //Вспомогательные хуки
 import { ProgressBox } from "./progress_box"; //Информация по прогрессу объекта
 
 //---------
