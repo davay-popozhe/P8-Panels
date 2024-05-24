@@ -501,6 +501,7 @@ const P8PTable = ({
     clearFilterBtnCaption,
     cancelFilterBtnCaption,
     morePagesBtnCaption,
+    morePagesBtnProps,
     noDataFoundText,
     headCellRender,
     dataCellRender,
@@ -878,7 +879,7 @@ const P8PTable = ({
             </TableContainer>
             {morePages ? (
                 <Container style={STYLES.MORE_BUTTON_CONTAINER}>
-                    <Button fullWidth onClick={handleMorePagesBtnClick}>
+                    <Button fullWidth onClick={handleMorePagesBtnClick} {...(morePagesBtnProps ? morePagesBtnProps : {})}>
                         {morePagesBtnCaption}
                     </Button>
                 </Container>
@@ -936,6 +937,7 @@ P8PTable.propTypes = {
     clearFilterBtnCaption: PropTypes.string.isRequired,
     cancelFilterBtnCaption: PropTypes.string.isRequired,
     morePagesBtnCaption: PropTypes.string.isRequired,
+    morePagesBtnProps: PropTypes.object,
     noDataFoundText: PropTypes.string,
     headCellRender: PropTypes.func,
     dataCellRender: PropTypes.func,

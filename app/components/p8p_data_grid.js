@@ -50,6 +50,7 @@ const P8PDataGrid = ({
     clearFilterBtnCaption,
     cancelFilterBtnCaption,
     morePagesBtnCaption,
+    morePagesBtnProps,
     noDataFoundText,
     headCellRender,
     dataCellRender,
@@ -137,6 +138,7 @@ const P8PDataGrid = ({
             objectsCopier={objectsCopier}
             containerComponent={containerComponent}
             containerComponentProps={containerComponentProps}
+            morePagesBtnProps={morePagesBtnProps}
             onOrderChanged={handleOrderChanged}
             onFilterChanged={handleFilterChanged}
             onPagesCountChanged={handlePagesCountChanged}
@@ -166,6 +168,7 @@ P8PDataGrid.propTypes = {
     clearFilterBtnCaption: PropTypes.string.isRequired,
     cancelFilterBtnCaption: PropTypes.string.isRequired,
     morePagesBtnCaption: PropTypes.string.isRequired,
+    morePagesBtnProps: PropTypes.object,
     noDataFoundText: PropTypes.string,
     headCellRender: PropTypes.func,
     dataCellRender: PropTypes.func,
