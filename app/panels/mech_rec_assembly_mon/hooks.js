@@ -123,10 +123,9 @@ const useMechRecAssemblyMon = () => {
 };
 
 //Хук для информации по производственным составам
-const useCostProductComposition = nProdPlan => {
+const useCostProductComposition = plan => {
     //Собственное состояние
     let [costProductComposition, setCostProductComposition] = useState({
-        init: false,
         showPlanList: false,
         products: [],
         productsLoaded: false,
@@ -137,32 +136,27 @@ const useCostProductComposition = nProdPlan => {
     //Подключение к контексту взаимодействия с сервером
     const { executeStored } = useContext(BackEndСtx);
 
-    //Инициализация производственных составов
-    const initCostProductComposition = useCallback(async () => {
-        if (!costProductComposition.init) {
+    //При подключении компонента к странице
+    useEffect(() => {
+        const loadData = async () => {
             const data = await executeStored({
                 stored: "PKG_P8PANELS_MECHREC.FCPRODCMP_DETAILS_GET",
-                args: { NFCPRODPLAN: nProdPlan },
+                args: { NFCPRODPLAN: plan },
                 respArg: "COUT",
                 isArray: name => name === "XFCPRODCMP"
             });
             setCostProductComposition(pv => ({
                 ...pv,
-                init: true,
                 products: [...(data?.XFCPRODCMP || [])],
                 productsLoaded: true,
-                model: data?.BMODEL
+                model: data?.BMODEL,
+                selectedProduct: null
             }));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [costProductComposition.init, executeStored]);
+        };
+        if (plan) loadData();
+    }, [plan, executeStored]);
 
-    //При подключении компонента к странице
-    useEffect(() => {
-        initCostProductComposition();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
+    //Вернём данные
     return [costProductComposition, setCostProductComposition];
 };
 

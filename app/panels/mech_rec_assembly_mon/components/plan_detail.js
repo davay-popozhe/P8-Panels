@@ -123,11 +123,11 @@ PlanInfo.propTypes = {
 };
 
 //Модель выпуска плана
-const PlanProductCompositionModel = ({ model, products, setCostProductComposition }) => {
+const PlanProductCompositionModel = ({ model, products, onProductSelect }) => {
     //При выборе детали на модели
     const handleProductClick = ({ item }) => {
         const product = products.find(p => p.SMODEL_ID == item.id);
-        if (product) setCostProductComposition(pv => ({ ...pv, selectedProduct: { ...product } }));
+        if (product && onProductSelect) onProductSelect(product);
     };
 
     //Генерация содержимого
@@ -153,7 +153,7 @@ const PlanProductCompositionModel = ({ model, products, setCostProductCompositio
 PlanProductCompositionModel.propTypes = {
     model: PropTypes.any,
     products: PropTypes.array,
-    setCostProductComposition: PropTypes.func
+    onProductSelect: PropTypes.func
 };
 
 //Генерация представления ячейки заголовка
@@ -239,13 +239,24 @@ const PlanDetail = ({ plan, disableNavigatePrev = false, disableNavigateNext = f
     //Собственное состояние - данные производственных составов SVG
     const [costProductComposition, setCostProductComposition] = useCostProductComposition(plan.NRN);
 
+    //Выбор элемента изделия
+    const setProduct = product => {
+        setCostProductComposition(pv => ({ ...pv, selectedProduct: product ? { ...product } : null }));
+    };
+
+    //При навигации между карточками
+    const handleNavigate = direction => {
+        setProduct(null);
+        if (onNavigate) onNavigate(direction);
+    };
+
     //Формируем представление
     return (
         <Container maxWidth={false} sx={STYLES.CARD_DETAILS_CONTAINER}>
             <Grid container direction="row" justifyContent="center" alignItems="center" spacing={0}>
                 <Grid item display="flex" justifyContent="center" xs={1}>
                     <Stack display="flex" direction="row" justifyContent="flex-end" alignItems="center" sx={STYLES.CARD_DETAILS_NAVIGATION_STACK}>
-                        <IconButton disabled={disableNavigatePrev} onClick={() => (onNavigate ? onNavigate(-1) : null)}>
+                        <IconButton disabled={disableNavigatePrev} onClick={() => handleNavigate(-1)}>
                             <Icon>navigate_before</Icon>
                         </IconButton>
                     </Stack>
@@ -289,7 +300,7 @@ const PlanDetail = ({ plan, disableNavigatePrev = false, disableNavigateNext = f
                                     <PlanProductCompositionModel
                                         model={costProductComposition.model}
                                         products={costProductComposition.products}
-                                        setCostProductComposition={setCostProductComposition}
+                                        onProductSelect={setProduct}
                                     />
                                 </Box>
                             </Grid>
@@ -298,7 +309,7 @@ const PlanDetail = ({ plan, disableNavigatePrev = false, disableNavigateNext = f
                 </Grid>
                 <Grid item display="flex" justifyContent="center" xs={1}>
                     <Stack display="flex" direction="row" justifyContent="flex-start" alignItems="center" sx={STYLES.CARD_DETAILS_NAVIGATION_STACK}>
-                        <IconButton disabled={disableNavigateNext} onClick={() => (onNavigate ? onNavigate(1) : null)}>
+                        <IconButton disabled={disableNavigateNext} onClick={() => handleNavigate(1)}>
                             <Icon>navigate_next</Icon>
                         </IconButton>
                     </Stack>
