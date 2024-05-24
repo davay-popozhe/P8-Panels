@@ -66,7 +66,8 @@ const P8P_GANTT_TASK_SHAPE = PropTypes.shape({
 //Структура динамического атрибута задачи
 const P8P_GANTT_TASK_ATTRIBUTE_SHAPE = PropTypes.shape({
     name: PropTypes.string.isRequired,
-    caption: PropTypes.string.isRequired
+    caption: PropTypes.string.isRequired,
+    visible: PropTypes.bool.isRequired
 });
 
 //Структура описания цвета задачи
