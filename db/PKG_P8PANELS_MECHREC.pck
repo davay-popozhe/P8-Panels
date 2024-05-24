@@ -5682,11 +5682,11 @@ create or replace package body PKG_P8PANELS_MECHREC as
   /* Получение таблицы записей "Планы и отчеты производства изделий" */
   procedure FCPRODPLAN_GET
   (
-    NCRN                    in number,       -- Рег. номер каталога
-    COUT                    out clob         -- Сериализованная таблица данных
+    NCRN                    in number,        -- Рег. номер каталога
+    COUT                    out clob          -- Сериализованная таблица данных
   )
   is
-    NPROGRESS               PKG_STD.TNUMBER; -- Прогресс плана
+    NPROGRESS               PKG_STD.TLNUMBER; -- Прогресс плана
     
     /* Получение номера плана из примечания */
     function NUMB_BY_NOTE_GET
@@ -5730,11 +5730,12 @@ create or replace package body PKG_P8PANELS_MECHREC as
     for REC in (select P.RN NRN,
                        P.NOTE SNOTE,
                        D_YEAR(EN.STARTDATE) NYEAR,
-                       COALESCE(SUM(SP.LABOUR_FACT), 0) NLABOUR_FACT,
-                       COALESCE(SUM(SP.LABOUR_NORM), 0) NLABOUR_NORM                       
-                  from FCPRODPLAN P left outer join FCPRODPLANSP SP on P.RN = SP.PRN and ((SP.LABOUR_NORM is not null) or (SP.LABOUR_FACT is not null)),
-                       FINSTATE   FS,
-                       ENPERIOD   EN
+                       COALESCE(sum(SP.LABOUR_FACT), 0) NLABOUR_FACT,
+                       COALESCE(sum(SP.LABOUR_PLAN), 0) NLABOUR_PLAN
+                  from FCPRODPLAN P
+                  left outer join FCPRODPLANSP SP
+                    on P.RN = SP.PRN
+                   and ((SP.LABOUR_PLAN is not null) or (SP.LABOUR_FACT is not null)), FINSTATE FS, ENPERIOD EN
                  where P.CRN = NCRN
                    and P.CATEGORY = NFCPRODPLAN_CATEGORY_MON
                    and P.STATUS = NFCPRODPLAN_STATUS_MON
@@ -5757,8 +5758,10 @@ create or replace package body PKG_P8PANELS_MECHREC as
                          where UP.JUR_PERS = P.JUR_PERS
                            and UP.UNITCODE = 'CostProductPlans'
                            and UP.AUTHID = UTILIZER())
-                  group by P.RN, P.NOTE, EN.STARTDATE
-                  order by EN.STARTDATE asc)
+                 group by P.RN,
+                          P.NOTE,
+                          EN.STARTDATE
+                 order by EN.STARTDATE asc)
     loop
       /* Открываем план */
       PKG_XFAST.DOWN_NODE(SNAME => 'XFCPRODPLAN_INFO');
@@ -5766,7 +5769,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PKG_XFAST.ATTR(SNAME => 'NRN', NVALUE => REC.NRN);
       PKG_XFAST.ATTR(SNAME => 'SNUMB', SVALUE => NUMB_BY_NOTE_GET(SNOTE => REC.SNOTE));
       /* Определяем прогресс */
-      if (REC.NLABOUR_NORM = 0) then
+      if (REC.NLABOUR_PLAN = 0) then
         /* Не можем определить прогресс */
         NPROGRESS := 0;
       else
@@ -5775,8 +5778,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
           /* Не можем определить прогресс */
           NPROGRESS := 0;
         else
-          /* Не можем определить прогресс */
-          NPROGRESS := REC.NLABOUR_FACT / REC.NLABOUR_NORM;
+          /* Определим прогресс */
+          NPROGRESS := ROUND(REC.NLABOUR_FACT / REC.NLABOUR_PLAN * 100, 2);
         end if;
       end if;
       PKG_XFAST.ATTR(SNAME => 'NPROGRESS', NVALUE => NPROGRESS);
