@@ -16,7 +16,7 @@ import { object2Base64XML } from "../../core/utils"; //Вспомогатель�
 //---------
 
 //Размер страницы данных
-const DATA_GRID_PAGE_SIZE = 0;
+const DATA_GRID_PAGE_SIZE = 50;
 
 //-----------
 //Тело модуля
@@ -194,7 +194,7 @@ const useProductDetailsTable = (plan, product, orders, pageNumber, stored) => {
                         CORDERS: { VALUE: object2Base64XML(orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
                         NPAGE_NUMBER: pageNumber,
                         NPAGE_SIZE: DATA_GRID_PAGE_SIZE,
-                        NINCLUDE_DEF: 1
+                        NINCLUDE_DEF: pageNumber == 1 ? 1 : 0
                     },
                     respArg: "COUT"
                 });

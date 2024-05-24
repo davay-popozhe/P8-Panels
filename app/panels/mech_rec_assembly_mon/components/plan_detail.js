@@ -69,7 +69,7 @@ const STYLES = {
         width: "280px",
         borderBottom: "1px solid"
     },
-    TABLE_DETAILS: { height: "260px" },
+    TABLE_DETAILS: { height: "230px" },
     TABLE_DETAILS_HEADER_CELL: maxWidth => ({
         padding: "2px 2px",
         fontSize: "11px",
@@ -78,6 +78,7 @@ const STYLES = {
         ...(maxWidth ? { maxWidth } : {})
     }),
     TABLE_DETAILS_DATA_CELL: textAlign => ({ padding: "2px 2px", fontSize: "11px", ...(textAlign ? { textAlign } : {}) }),
+    TABLE_DETAILS_MORE_BUTTON: { borderRadius: "25px" },
     CARD_DETAILS_CONTAINER: { minWidth: "1200px", maxWidth: "1400px" },
     CARD_DETAILS_NAVIGATION_STACK: { width: "100%" }
 };
@@ -193,20 +194,19 @@ const ProductDetailsTable = ({ plan, product, stored, noProductMessage, noDataFo
         <Box sx={STYLES.BOX_INFO_SUB(!product || data.rows.length === 0)}>
             {!product ? (
                 <Typography variant="UDO_body2">{noProductMessage}</Typography>
-            ) : isLoading ? null : data.rows.length === 0 ? (
-                <Typography variant="subtitle2">{noDataFoundMessage}</Typography>
             ) : (
                 <>
                     <Typography variant="h4">
                         <b>{title}</b>
                     </Typography>
                     <P8PDataGrid
-                        {...P8P_DATA_GRID_CONFIG_PROPS}
+                        {...{ ...P8P_DATA_GRID_CONFIG_PROPS, noDataFoundText: isLoading ? "" : noDataFoundMessage }}
                         containerComponentProps={{ sx: STYLES.TABLE_DETAILS, elevation: 0 }}
                         columnsDef={data.columnsDef}
                         rows={data.rows}
                         size={P8P_DATA_GRID_SIZE.SMALL}
                         morePages={data.morePages}
+                        morePagesBtnProps={{ sx: STYLES.TABLE_DETAILS_MORE_BUTTON }}
                         fixedHeader={true}
                         reloading={false}
                         dataCellRender={dataCellRender}
