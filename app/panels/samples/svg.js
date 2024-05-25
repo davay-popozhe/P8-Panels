@@ -103,6 +103,7 @@ const Svg = ({ title }) => {
                             onClick={handleSVGClick}
                             onItemClick={handleSVGItemClick}
                             canvasStyle={STYLES.SVG}
+                            fillOpacity={"0.4"}
                         />
                     ) : null}
                 </Grid>

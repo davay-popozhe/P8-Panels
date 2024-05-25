@@ -24,6 +24,7 @@ const STYLES = {
 //Структура элемента изображения
 const P8P_SVG_ITEM_SHAPE = PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.any,
     backgroundColor: PropTypes.oneOfType([PropTypes.string, PropTypes.arrayOf(PropTypes.string)])
 });
 
