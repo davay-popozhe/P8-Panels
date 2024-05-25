@@ -2050,3 +2050,146 @@ const Gantt = ({ title }) => {
 ```
 
 Полные актуальные исходные коды примеров можно увидеть в "db/PKG_P8PANELS_SAMPLES.pck" и "app/panels/samples/gantt.js" данного репозитория соответственно.
+
+##### Интерактивное изображение "P8PSVG"
+
+Компонент предназначен для отображения изображений в формате SVG. Поддерживается:
+
+-   Режим галереи с зацикленным переключением между несколькими переданными компоненту изображениями
+-   Обработка событий `onClick` для изображения в целом и `onItemClick` для отдельных замкнутых контуров и групп, имеющих атрибут `id`
+-   Управление цветом и прозрачностью заливки отдельных замкнутых контуров и их групп
+
+![Пример P8PSVG](docs/img/71.png)
+
+**Подключение**
+
+Клиентская часть реализована в компоненте `P8PSVG`, объявленном в "app/components/p8p_svg". Для использования компонента на панели его необходимо импортировать:
+
+```
+import { P8PSVG } from "../../components/p8p_svg";
+
+const MyPanel = () => {
+    return (
+        <div>
+            <P8PSVG .../>
+        </div>
+    );
+}
+```
+
+**Свойства**
+
+`data` - обязательный, строка, данные в формате SVG (`<svg>...ДАННЫЕ_ИЗОБРАЖЕНИЯ...</svg>`), при необходимости передать несколько изображений они должны просто идти подряд, разделённые закрывающим тегом `</svg>`: `<svg>...ДАННЫЕ_ИЗОБРАЖЕНИЯ_1...</svg><svg>...ДАННЫЕ_ИЗОБРАЖЕНИЯ_N...</svg>`, вложенные теги `<svg>` не допускаются (`<svg><svg></svg></svg>` - нельзя)\
+`items` - необязательный, массив, интерактивные элементы изображения, должен состоять из объектов вида `{id: <УНИКАЛЬНЫЙ_ИДЕНТИФИКАТОР>, title: <ТЕКСТ_ВСПЛЫВАЮЩЕЙ_ПОДСКАЗКИ>, backgroundColor: <ЦВЕТ_ЗАЛИВКИ>}`\
+`onClick` - необязательный, функция, будет вызвана при нажатии пользователем на изображение, сигнатура функции `f(event)`, результат функции не интерпретируется. В функцию будет передан типовой JS-объект `MouseEvent` с описанием события. Функция не будет вызвана, если произошло нажатие на интерактивный элемент и была вызвана функция `onItemClick` (см. ниже).\
+`onItemClick` - необязательный, функция, будет вызвана при нажатии пользователем на интерактивный элемент изображения, сигнатура функции `f({item})`, результат функции не интерпретируется. В функцию будет передан объект в поле `item`, которого, будет содержаться элемент массива `items`, описывающий интерактивный элемент изображения, на котором произошло событие. Если функция была вызвана, то вызов функции `onClick` (см. выше) не происходит.\
+`canvasStyle` - необязательный, объект, будет применён в качестве значения атрибута `style` контейнера `div` изображения\
+`fillOpacity` - необязательный, строка, прозрачность заливки интерактивных элементов, где "0" - 100% прозрачность, "0.5" - 50% прозрачность, "1" - 100% непрозрачность и т.п.\
+
+**API на сервере БД**
+
+Компонент компонент не имеет специального серверного API.\
+
+**Пример**
+
+Код панели на стороне клиента (WEB-приложения):
+
+```
+import React, { useState, useEffect } from "react"; //Классы React
+import { Typography, Grid, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio } from "@mui/material"; //Интерфейсные элементы
+import { P8PSVG } from "../../components/p8p_svg"; //Интерактивные изображения
+
+//Адрес тестового изображения
+const SAMPLE_URL = "img/sample.svg";
+
+//Стили
+const STYLES = {
+    CONTAINER: { textAlign: "center", paddingTop: "20px" },
+    TITLE: { paddingBottom: "15px" },
+    FORM: { justifyContent: "center", alignItems: "center" },
+    SVG: { height: "30vw", display: "flex", justifyContent: "center" }
+};
+
+//Пример: Интерактивные изображения "P8PSVG"
+const Svg = ({ title }) => {
+    //Собственное состояние - SVG-изображение
+    const [svg, setSVG] = useState({
+        loaded: false,
+        data: null,
+        mode: "items1",
+        items1: [
+            { id: "1", backgroundColor: "red", desc: "Цифра на флюзеляже", title: "Цифра на флюзеляже" },
+            { id: "2", backgroundColor: "magenta", desc: "Ребро флюзеляжа", title: "Ребро флюзеляжа" },
+            { id: "3", backgroundColor: "yellow", desc: "Люк", title: "Люк" }
+        ],
+        items2: [
+            { id: "4", backgroundColor: "green", desc: "Хвост", title: "Хвост" },
+            { id: "5", backgroundColor: "blue", desc: "Хвостовой руль", title: "Хвостовой руль" },
+            { id: "6", backgroundColor: "aquamarine", desc: "Ребро жесткости хвоста", title: "Ребро жесткости хвоста" }
+        ],
+        items3: [
+            { id: "7", backgroundColor: "blueviolet", desc: "Крыло левое", title: "Крыло левое" },
+            { id: "8", backgroundColor: "orange", desc: "Двигатель левый", title: "Двигатель левый" },
+            { id: "9", backgroundColor: "springgreen", desc: "Крыло правое", title: "Крыло правое" }
+        ],
+        selectedItemDesc: ""
+    });
+
+    //Загрузка изображения
+    const loadSVG = async () => {
+        const resp = await fetch(SAMPLE_URL);
+        const data = await resp.text();
+        setSVG(pv => ({ ...pv, loaded: true, data }));
+    };
+
+    //Отработка нажатия на изображение
+    const handleSVGClick = () => {
+        setSVG(pv => ({ ...pv, selectedItemDesc: "Выбрано изображение целиком" }));
+    };
+
+    //Отработка нажатия на элемент изображения
+    const handleSVGItemClick = ({ item }) => {
+        setSVG(pv => ({ ...pv, selectedItemDesc: item?.desc ? `Выбран элемент: ${item.desc}` : "Для выбранного элемента не задано описание" }));
+    };
+
+    //При подключении к странице
+    useEffect(() => {
+        loadSVG();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    //Генерация содержимого
+    return (
+        <div style={STYLES.CONTAINER}>
+            <Typography sx={STYLES.TITLE} variant={"h6"}>
+                {title}
+            </Typography>
+            <FormControl sx={STYLES.FORM}>
+                <FormLabel>Группа элементов</FormLabel>
+                <RadioGroup row value={svg.mode} onChange={e => setSVG(pv => ({ ...pv, mode: e.target.value, selectedItemDesc: "" }))}>
+                    <FormControlLabel value="items1" control={<Radio />} label="Первая" />
+                    <FormControlLabel value="items2" control={<Radio />} label="Вторая" />
+                    <FormControlLabel value="items3" control={<Radio />} label="Третья" />
+                </RadioGroup>
+                <FormLabel>{svg.selectedItemDesc ? svg.selectedItemDesc : "Нажмите на элемент изображения для получения его описания"}</FormLabel>
+            </FormControl>
+            <Grid container spacing={0} pt={5} direction="column" alignItems="center">
+                <Grid item xs={12}>
+                    {svg.loaded ? (
+                        <P8PSVG
+                            data={svg.data}
+                            items={svg[svg.mode]}
+                            onClick={handleSVGClick}
+                            onItemClick={handleSVGItemClick}
+                            canvasStyle={STYLES.SVG}
+                            fillOpacity={"0.4"}
+                        />
+                    ) : null}
+                </Grid>
+            </Grid>
+        </div>
+    );
+};
+```
+
+Полные актуальные исходные коды примера можно увидеть в "app/panels/samples/svg.js" данного репозитория соответственно.
