@@ -163,10 +163,11 @@ const useCostProductComposition = plan => {
 //Хук для таблицы детализации изделия
 const useProductDetailsTable = (plan, product, orders, pageNumber, stored) => {
     //Собственное состояние - флаг загрузки
-    const [isLoading, setLoading] = useState(true);
+    const [isLoading, setLoading] = useState(false);
 
     //Собственное состояние - таблица данных
     const [data, setData] = useState({
+        init: false,
         columnsDef: [],
         rows: [],
         morePages: true
@@ -190,13 +191,15 @@ const useProductDetailsTable = (plan, product, orders, pageNumber, stored) => {
                         NPAGE_SIZE: DATA_GRID_PAGE_SIZE,
                         NINCLUDE_DEF: pageNumber == 1 ? 1 : 0
                     },
-                    respArg: "COUT"
+                    respArg: "COUT",
+                    loader: false
                 });
                 setData(pv => ({
                     ...pv,
                     columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
                     rows: pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
-                    morePages: DATA_GRID_PAGE_SIZE == 0 ? false : (data.XROWS || []).length >= DATA_GRID_PAGE_SIZE
+                    morePages: DATA_GRID_PAGE_SIZE == 0 ? false : (data.XROWS || []).length >= DATA_GRID_PAGE_SIZE,
+                    init: true
                 }));
             } finally {
                 setLoading(false);

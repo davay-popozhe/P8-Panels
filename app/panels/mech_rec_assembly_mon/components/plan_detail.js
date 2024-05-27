@@ -9,7 +9,7 @@
 
 import React, { useEffect, useState } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Box, Grid, Container, Button, Typography, Icon, Stack, IconButton } from "@mui/material"; //Интерфейсные элементы
+import { Box, Grid, Container, Button, Typography, Icon, Stack, IconButton, CircularProgress } from "@mui/material"; //Интерфейсные элементы
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../../components/p8p_data_grid"; //Таблица данных
 import { P8PSVG } from "../../../components/p8p_svg"; //Интерактивные изображения
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../../config_wrapper"; //Подключение компонентов к настройкам приложения
@@ -69,7 +69,7 @@ const STYLES = {
         width: "280px",
         borderBottom: "1px solid"
     },
-    TABLE_DETAILS: { height: "230px" },
+    TABLE_DETAILS: { height: "240px" },
     TABLE_DETAILS_HEADER_CELL: maxWidth => ({
         padding: "2px 2px",
         fontSize: "11px",
@@ -78,7 +78,7 @@ const STYLES = {
         ...(maxWidth ? { maxWidth } : {})
     }),
     TABLE_DETAILS_DATA_CELL: textAlign => ({ padding: "2px 2px", fontSize: "11px", ...(textAlign ? { textAlign } : {}) }),
-    TABLE_DETAILS_MORE_BUTTON: { borderRadius: "25px" },
+    TABLE_DETAILS_MORE_BUTTON: { borderRadius: "25px", height: "20px" },
     CARD_DETAILS_CONTAINER: { minWidth: "1200px", maxWidth: "1400px" },
     CARD_DETAILS_NAVIGATION_STACK: { width: "100%" }
 };
@@ -196,11 +196,14 @@ const ProductDetailsTable = ({ plan, product, stored, noProductMessage, noDataFo
                 <Typography variant="UDO_body2">{noProductMessage}</Typography>
             ) : (
                 <>
-                    <Typography variant="h4">
-                        <b>{title}</b>
-                    </Typography>
+                    <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
+                        <CircularProgress size={18} sx={{ opacity: isLoading ? 1 : 0 }} />
+                        <Typography variant="h4">
+                            <b>{title}</b>
+                        </Typography>
+                    </Stack>
                     <P8PDataGrid
-                        {...{ ...P8P_DATA_GRID_CONFIG_PROPS, noDataFoundText: isLoading ? "" : noDataFoundMessage }}
+                        {...{ ...P8P_DATA_GRID_CONFIG_PROPS, noDataFoundText: isLoading || !data.init ? "" : noDataFoundMessage }}
                         containerComponentProps={{ sx: STYLES.TABLE_DETAILS, elevation: 0 }}
                         columnsDef={data.columnsDef}
                         rows={data.rows}
