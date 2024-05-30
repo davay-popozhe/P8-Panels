@@ -85,14 +85,6 @@ create or replace package PKG_P8PANELS_MECHREC as
     SPRIOR_PARTY            in varchar  -- Новое значение приоритета партии
   );
   
-  /* Изменение заказа маршрутного листа */
-  procedure FCROUTLST_FACEACC_UPDATE
-  (
-    NFCROUTLST              in number,  -- Рег. номер маршрутного листа
-    SFACEACC_NUMB           in varchar, -- Номер заказа
-    NFCPRODPLANSP           in number   -- Рег. номер строки плана
-  );
-  
   /* Получение таблицы маршрутных листов, связанных со спецификацией плана */
   procedure FCROUTLST_DEPT_DG_GET
   (
@@ -104,8 +96,8 @@ create or replace package PKG_P8PANELS_MECHREC as
     COUT                    out clob    -- Сериализованная таблица данных
   );
   
-  /* Получение таблицы заказов маршрутного листа */
-  procedure FCROUTLSTORD_DEPT_DG_GET
+  /* Получение таблицы строк маршрутного листа */
+  procedure FCROUTLSTSP_DEPT_DG_GET
   (
     NFCROUTLST              in number,  -- Рег. номер маршрутного листа
     NPAGE_NUMBER            in number,  -- Номер страницы (игнорируется при NPAGE_SIZE=0)
@@ -333,7 +325,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
   STASK_ATTR_MEAS           constant PKG_STD.TSTRING := 'meas';        -- Единица измнения
   
   /* Константы - дополнительные параметры */
-  SCOL_PATTERN_DATE         constant PKG_STD.TSTRING := 'dd_mm_yyyy'; -- Паттерн для динамической колонки граф ("день_месяц_год")
+  SCOL_PATTERN_DATE         constant PKG_STD.TSTRING := 'dd_mm_yyyy';         -- Паттерн для динамической колонки граф ("день_месяц_год")
+  SFCROUTLSTSP_STATE_DOMAIN constant PKG_STD.TSTRING := 'TFCROUTLSTSP_STATE'; -- Мнемокод домена состояния спецификации маршрутного листа
   
   /* Константы - типовые присоединённые документы */
   SFLINKTYPE_PREVIEW        constant PKG_STD.TSTRING := 'Предпросмотр';     -- Тип ПД для изображений предпросмотра
@@ -662,7 +655,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
          and T.OUT_UNITCODE = 'CostProductPlansSpecs'
          and S.RN = T.IN_DOCUMENT
          and P.RN = S.PRN
-         and P.CATEGORY = 1
+         and P.CATEGORY = NFCPRODPLAN_CATEGORY
          and P.COMPANY = NCOMPANY
          and ROWNUM = 1;
     exception
@@ -2744,8 +2737,6 @@ create or replace package body PKG_P8PANELS_MECHREC as
   is
     RFCROUTLST              FCROUTLST%rowtype; -- Запись маршрутного листа
   begin
-    /* Дорабатывается */
-    P_EXCEPTION(0, 'На стадии разработки.');
     /* Проверяем нет ли лишних символов */
     if ((SPRIOR_PARTY is not null) and (REGEXP_COUNT(SPRIOR_PARTY, '[^0123456789]+') > 0)) then
       P_EXCEPTION(0, 'Значение приоритета должно быть целым числом.');
@@ -2802,61 +2793,6 @@ create or replace package body PKG_P8PANELS_MECHREC as
                             SSEP_NUMB      => RFCROUTLST.SEP_NUMB,
                             SINT_NUMB      => RFCROUTLST.INT_NUMB);
   end FCROUTLST_PRIOR_PARTY_UPDATE;
-  
-  /* Изменение заказа маршрутного листа */
-  procedure FCROUTLST_FACEACC_UPDATE
-  (
-    NFCROUTLST              in number,         -- Рег. номер маршрутного листа
-    SFACEACC_NUMB           in varchar,        -- Номер заказа
-    NFCPRODPLANSP           in number          -- Рег. номер строки плана
-  )
-  is
-    RFCROUTLST              FCROUTLST%rowtype; -- Запись маршрутного листа
-    NFACEACC                PKG_STD.TREF;      -- Рег. номер лицевого счета
-    
-    /* Проверка наличия связей с другими строками плана */
-    function FCROUTLST_CHECK_OTHER_PROD
-    (
-      NFCROUTLST            in number,       -- Рег. номер маршрутного листа
-      NFCPRODPLANSP         in number        -- Рег. номер строки плана
-    ) return                number           -- Наличие других связей (0 - нет, 1 - да)
-    is
-      NRESULT               PKG_STD.TNUMBER; -- Наличие других связей (0 - нет, 1 - да)
-    begin
-      /* Проверка наличия других связей */
-      begin
-        select 1
-          into NRESULT
-          from DUAL
-         where exists (select null
-                  from DOCLINKS D
-                 where D.OUT_UNITCODE = 'CostRouteLists'
-                   and D.OUT_DOCUMENT = NFCROUTLST
-                   and D.IN_UNITCODE = 'CostProductPlansSpecs'
-                   and D.IN_DOCUMENT <> NFCPRODPLANSP);
-      exception
-        when others then
-          NRESULT := 0;
-      end;
-      /* Возвращаем результат */
-      return NRESULT;
-    end FCROUTLST_CHECK_OTHER_PROD;
-  begin
-    /* Дорабатывается */
-    P_EXCEPTION(0, 'На стадии разработки.');
-    /* Считываем запись маршрутного листа */
-    UTL_FCROUTLST_GET(NFCROUTLST => NFCROUTLST, RFCROUTLST => RFCROUTLST);
-    /* Определяем рег. номер лицевого счета */
-    FIND_FACEACC_NUMB(NFLAG_SMART  => 0,
-                      NFLAG_OPTION => 1,
-                      NCOMPANY     => RFCROUTLST.COMPANY,
-                      SNUMB        => SFACEACC_NUMB,
-                      NRN          => NFACEACC);
-    /* Если есть связи с другими строками плана */
-    if (FCROUTLST_CHECK_OTHER_PROD(NFCROUTLST => NFCROUTLST, NFCPRODPLANSP => NFCPRODPLANSP) = 1) then
-      null;
-    end if;
-  end FCROUTLST_FACEACC_UPDATE;
   
   /* Получение таблицы маршрутных листов, связанных со спецификацией плана */
   procedure FCROUTLST_DEPT_DG_GET
@@ -3140,8 +3076,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
       raise;
   end FCROUTLST_DEPT_DG_GET;
   
-  /* Получение таблицы заказов маршрутного листа */
-  procedure FCROUTLSTORD_DEPT_DG_GET
+  /* Получение таблицы строк маршрутного листа */
+  procedure FCROUTLSTSP_DEPT_DG_GET
   (
     NFCROUTLST              in number,                             -- Рег. номер маршрутного листа
     NPAGE_NUMBER            in number,                             -- Номер страницы (игнорируется при NPAGE_SIZE=0)
@@ -3159,62 +3095,32 @@ create or replace package body PKG_P8PANELS_MECHREC as
     NROW_TO                 PKG_STD.TREF;                          -- Номер строки по
     CSQL                    clob;                                  -- Буфер для запроса
     ICURSOR                 integer;                               -- Курсор для исполнения запроса
-    SPROD_ORDER             PKG_STD.TSTRING;                       -- Заказ МЛ
-    NQUANT                  PKG_STD.TLNUMBER;                      -- Количество МЛ
-    NPRIOR_ORDER            PKG_STD.TLNUMBER;                      -- Приоритет заказа МЛ
+    NSTATE                  PKG_STD.TNUMBER;                       -- Состояние
     
-    /* Проверка наличия записей спецификации "Заказы" */
-    function FCROUTLSTORD_EXISTS
+    /* Считывание текстового представления состояния строки маршрутного листа */
+    function FCROUTLSTSP_STATE_NAME_GET
     (
-      NFCROUTLST            in number        -- Рег. номер маршрутного листа
-    ) return                number           -- Наличие записей спецификации заказы (0 - нет, 1 - да)
+      NSTATE                in number        -- Состояние строки маршрутного листа
+    ) return                varchar2         -- Наименование состояния строки маршрутного листа
     is
-      NRESULT               PKG_STD.TNUMBER; -- Наличие записей спецификации заказы (0 - нет, 1 - да)
+      SRESULT               PKG_STD.TSTRING; -- Наименование состояния строки маршрутного листа
     begin
-      /* Проверяем наличие */
+      /* Считываем наименование состояния по домену */
       begin
-        select 1
-          into NRESULT
-          from DUAL
-         where exists (select null
-                  from FCROUTLSTORD T
-                 where T.PRN = NFCROUTLST
-                   and ROWNUM = 1);
+        select V.NAME
+          into SRESULT
+          from DMSDOMAINS    T,
+               DMSENUMVALUES V
+         where T.CODE = SFCROUTLSTSP_STATE_DOMAIN
+           and V.PRN = T.RN
+           and V.VALUE_NUM = NSTATE;
       exception
         when others then
-          NRESULT := 0;
+          SRESULT := null;
       end;
       /* Возвращаем результат */
-      return NRESULT;
-    end FCROUTLSTORD_EXISTS;
-    
-    /* Получение значений из заголовка МЛ */
-    procedure FCROUTLST_INFO_GET
-    (
-      NFCROUTLST            in number,    -- Рег. номер маршрутного листа
-      SPROD_ORDER           out varchar2, -- Заказ
-      NQUANT                out number,   -- Количество
-      NPRIOR_ORDER          out number    -- Приоритет заказа
-    )
-    is
-    begin
-      /* Считываем информацию из заголовка */
-      begin
-        select (select F.NUMB from FACEACC F where T.FACEACC = F.RN),
-               T.QUANT,
-               T.PRIOR_ORDER
-          into SPROD_ORDER,
-               NQUANT,
-               NPRIOR_ORDER
-          from FCROUTLST T
-         where T.RN = NFCROUTLST;
-      exception
-        when others then
-          SPROD_ORDER  := null;
-          NQUANT       := null;
-          NPRIOR_ORDER := null;
-      end;
-    end FCROUTLST_INFO_GET;
+      return SRESULT;
+    end FCROUTLSTSP_STATE_NAME_GET;
   begin
     /* Читем сортировки */
     RO := PKG_P8PANELS_VISUAL.TORDERS_FROM_XML(CORDERS => CORDERS);
@@ -3232,106 +3138,151 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                BVISIBLE   => false);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
-                                               SNAME      => 'SPROD_ORDER',
-                                               SCAPTION   => 'Заказ',
+                                               SNAME      => 'SSTATE',
+                                               SCAPTION   => 'Состояние',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
-                                               BVISIBLE   => true,
-                                               BORDER     => true);
+                                               BVISIBLE   => true);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
-                                               SNAME      => 'NQUANT',
-                                               SCAPTION   => 'Количество',
-                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
-                                               BVISIBLE   => true,
-                                               BORDER     => true);
+                                               SNAME      => 'SOPER_NUMB',
+                                               SCAPTION   => 'Номер операции',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE   => true);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
-                                               SNAME      => 'NPRIOR_ORDER',
-                                               SCAPTION   => 'Приоритет заказа',
+                                               SNAME      => 'SROUTSHTSP_NAME',
+                                               SCAPTION   => 'Операция',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE   => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SSUBDIV',
+                                               SCAPTION   => 'Цех, участок',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE   => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NQUANT_PLAN',
+                                               SCAPTION   => 'План',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
-                                               BVISIBLE   => true,
-                                               BORDER     => true);
-    /* Если у маршрутного листа есть записи спецификации "Заказы" - работаем по ним */
-    if (FCROUTLSTORD_EXISTS(NFCROUTLST => NFCROUTLST) = 1) then
-      /* Обходим данные */
-      begin
-        /* Добавляем подсказку совместимости */
-        CSQL := PKG_SQL_BUILD.COMPATIBLE(SSQL => CSQL);
-        /* Формируем запрос */
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => 'select *');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '          from (select T.RN          NRN,');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       F.NUMB        SPROD_ORDER,');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.QUANT       NQUANT,');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.PRIOR_ORDER NPRIOR_ORDER,');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from FCROUTLSTORD T');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       left outer join FACEACC F on T.PROD_ORDER = F.RN');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                 where T.PRN = :NFCROUTLST');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and T.COMPANY = :NCOMPANY');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                %ORDER_BY%) D) F');
-        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
-        /* Учтём сортировки */
-        PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
-        /* Разбираем его */
-        ICURSOR := PKG_SQL_DML.OPEN_CURSOR(SWHAT => 'SELECT');
-        PKG_SQL_DML.PARSE(ICURSOR => ICURSOR, SQUERY => CSQL);
-        /* Делаем подстановку параметров */
-        PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NCOMPANY', NVALUE => NCOMPANY);
-        PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_FROM', NVALUE => NROW_FROM);
-        PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_TO', NVALUE => NROW_TO);
-        PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NFCROUTLST', NVALUE => NFCROUTLST);
-        /* Описываем структуру записи курсора */
-        PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 1);
-        PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 2);
-        PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 3);
-        PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 4);
-        PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 5);
-        /* Делаем выборку */
-        if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
-          null;
-        end if;
-        /* Обходим выбранные записи */
-        while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
-        loop
-          /* Добавляем колонки с данными */
-          PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
-                                                SNAME     => 'NRN',
-                                                ICURSOR   => ICURSOR,
-                                                NPOSITION => 1,
-                                                BCLEAR    => true);
-          PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
-                                                SNAME     => 'SPROD_ORDER',
-                                                ICURSOR   => ICURSOR,
-                                                NPOSITION => 2);
-          PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW => RDG_ROW, SNAME => 'NQUANT', ICURSOR => ICURSOR, NPOSITION => 3);
-          PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
-                                                SNAME     => 'NPRIOR_ORDER',
-                                                ICURSOR   => ICURSOR,
-                                                NPOSITION => 4);
-          /* Добавляем строку в таблицу */
-          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
-        end loop;
-      exception
-        when others then
-          PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
-          raise;
-      end;
-    else
-      /* Считываем значения из заголовка МЛ */
-      FCROUTLST_INFO_GET(NFCROUTLST   => NFCROUTLST,
-                         SPROD_ORDER  => SPROD_ORDER,
-                         NQUANT       => NQUANT,
-                         NPRIOR_ORDER => NPRIOR_ORDER);
-      /* Добавляем колонки с данными */
-      PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NRN', NVALUE => NFCROUTLST, BCLEAR => true);
-      PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SPROD_ORDER', SVALUE => SPROD_ORDER);
-      PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NQUANT', NVALUE => NQUANT);
-      PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NPRIOR_ORDER', NVALUE => NPRIOR_ORDER);
-      /* Добавляем строку в таблицу */
-      PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
-    end if;
+                                               BVISIBLE   => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NQUANT_FACT',
+                                               SCAPTION   => 'Факт',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NT_SHT_PLAN',
+                                               SCAPTION   => 'Трудоемкость план',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'NLABOUR_FACT',
+                                               SCAPTION   => 'Трудоемкость факт',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
+                                               BVISIBLE   => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SMUNIT',
+                                               SCAPTION   => 'ЕИ трудоемкости',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE   => true);
+    /* Обходим данные */
+    begin
+      /* Добавляем подсказку совместимости */
+      CSQL := PKG_SQL_BUILD.COMPATIBLE(SSQL => CSQL);
+      /* Формируем запрос */
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => 'select *');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '          from (select T.RN          NRN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.STATE       NSTATE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.OPER_NUMB   SOPER_NUMB,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       trim(T.OPER_NUMB) || '', '' || ');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       trim(COALESCE(( select O.NAME from FCOPERTYPES O where T.OPER_TPS = O.RN ), T.OPER_UK)) SROUTSHTSP_NAME,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       ( select I.CODE from INS_DEPARTMENT I where T.SUBDIV = I.RN ) SSUBDIV,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.QUANT_PLAN NQUANT_PLAN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.QUANT_FACT NQUANT_FACT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.T_SHT_PLAN NT_SHT_PLAN,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.LABOUR_FACT NLABOUR_FACT,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       ( select D.MEAS_MNEMO from DICMUNTS D where T.MUNIT = D.RN ) SMUNIT');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from FCROUTLSTSP T');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                 where T.PRN = :NFCROUTLST');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and T.COMPANY = :NCOMPANY');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
+      /* Учтём сортировки */
+      PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
+      /* Разбираем его */
+      ICURSOR := PKG_SQL_DML.OPEN_CURSOR(SWHAT => 'SELECT');
+      PKG_SQL_DML.PARSE(ICURSOR => ICURSOR, SQUERY => CSQL);
+      /* Делаем подстановку параметров */
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NCOMPANY', NVALUE => NCOMPANY);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_FROM', NVALUE => NROW_FROM);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NROW_TO', NVALUE => NROW_TO);
+      PKG_SQL_DML.BIND_VARIABLE_NUM(ICURSOR => ICURSOR, SNAME => 'NFCROUTLST', NVALUE => NFCROUTLST);
+      /* Описываем структуру записи курсора */
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 1);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 2);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 3);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 4);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 5);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 6);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 7);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 8);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 9);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 10);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 11);
+      /* Делаем выборку */
+      if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
+        null;
+      end if;
+      /* Обходим выбранные записи */
+      while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
+      loop
+        /* Добавляем колонки с данными */
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NRN',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 1,
+                                              BCLEAR    => true);
+        /* Читаем состояние из курсора */
+        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 2, NVALUE => NSTATE);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW,
+                                         SNAME  => 'SSTATE',
+                                         SVALUE => FCROUTLSTSP_STATE_NAME_GET(NSTATE => NSTATE));
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
+                                              SNAME     => 'SOPER_NUMB',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 3);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
+                                              SNAME     => 'SROUTSHTSP_NAME',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 4);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SSUBDIV', ICURSOR => ICURSOR, NPOSITION => 5);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NQUANT_PLAN',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 6);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NQUANT_FACT',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 7);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NT_SHT_PLAN',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 8);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
+                                              SNAME     => 'NLABOUR_FACT',
+                                              ICURSOR   => ICURSOR,
+                                              NPOSITION => 9);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SMUNIT', ICURSOR => ICURSOR, NPOSITION => 10);
+        /* Добавляем строку в таблицу */
+        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
+      end loop;
+    exception
+      when others then
+        PKG_SQL_DML.CLOSE_CURSOR(ICURSOR => ICURSOR);
+        raise;
+    end;
     /* Сериализуем описание */
     COUT := PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML(RDATA_GRID => RDG, NINCLUDE_DEF => NINCLUDE_DEF);
-  end FCROUTLSTORD_DEPT_DG_GET;
+  end FCROUTLSTSP_DEPT_DG_GET;
   
   /* Получение таблицы ПиП на основании маршрутного листа, связанных со спецификацией плана */
   procedure INCOMEFROMDEPS_DEPT_DG_GET
@@ -3371,6 +3322,11 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                BVISIBLE   => false);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SSTATE',
+                                               SCAPTION   => 'Состояние',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE   => true);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'SDOC_INFO',
                                                SCAPTION   => 'Документ (тип, №, дата)',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
@@ -3403,6 +3359,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
         PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
         PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
         PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '          from (select T.RN NRN,');
+        PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       SUBSTR(F_DOCSTATE_PLAN_FACT(T.DOC_STATE), 1, 20) SSTATE,');
         PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       DT.DOCCODE ||');
         PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       '', '' || TRIM(T.DOC_PREF) ||');
         PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       ''-'' || TRIM(T.DOC_NUMB) ||');
@@ -3444,9 +3401,10 @@ create or replace package body PKG_P8PANELS_MECHREC as
         /* Описываем структуру записи курсора */
         PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 1);
         PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 2);
-        PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 3);
-        PKG_SQL_DML.DEFINE_COLUMN_DATE(ICURSOR => ICURSOR, IPOSITION => 4);
-        PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 5);
+        PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 3);
+        PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 4);
+        PKG_SQL_DML.DEFINE_COLUMN_DATE(ICURSOR => ICURSOR, IPOSITION => 5);
+        PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 6);
         /* Делаем выборку */
         if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
           null;
@@ -3461,17 +3419,21 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                 NPOSITION => 1,
                                                 BCLEAR    => true);
           PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
-                                                SNAME     => 'SDOC_INFO',
+                                                SNAME     => 'SSTATE',
                                                 ICURSOR   => ICURSOR,
                                                 NPOSITION => 2);
+          PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW      => RDG_ROW,
+                                                SNAME     => 'SDOC_INFO',
+                                                ICURSOR   => ICURSOR,
+                                                NPOSITION => 3);
           PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
                                                 SNAME     => 'NQUANT_FACT',
                                                 ICURSOR   => ICURSOR,
-                                                NPOSITION => 3);
+                                                NPOSITION => 4);
           PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLD(RROW      => RDG_ROW,
                                                 SNAME     => 'DDUE_DATE',
                                                 ICURSOR   => ICURSOR,
-                                                NPOSITION => 4);
+                                                NPOSITION => 5);
           /* Добавляем строку в таблицу */
           PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
         end loop;
@@ -3533,7 +3495,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       begin
         select F.NOMEN_MODIF
           into NRESULT
-          from FCPRODPLANSP T,
+          from FCPRODPLANSP  T,
                FCMATRESOURCE F
          where T.RN = NFCPRODPLANSP
            and F.RN = T.MATRES;
@@ -3579,7 +3541,40 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                    SPARENT    => 'NVALUE_BY_DAYS');
       end loop;
     end INIT_DAYS;
+    
+    /* Расчет факта выпусков плана */
+    procedure FCPRODPLANSP_CALC
+    (
+      NFCPRODPLAN           in number,    -- Рег. номер планов и отчетов производства изделий
+      NCOMPANY              in number     -- Рег. номер организации
+    )
+    is
+      NIDENT                PKG_STD.TREF; -- Идентификатор отмеченных записей
+      NTMP                  PKG_STD.TREF; -- Буфер
+    begin
+      /* Генерируем идентификатор отмеченных записей */
+      NIDENT := GEN_IDENT();
+      /* Цикл по записям спецификации плана */
+      for REC in (select T.RN from FCPRODPLANSP T where T.PRN = NFCPRODPLAN)
+      loop
+        /* Добавляем запись в отмеченные записи */
+        P_SELECTLIST_INSERT(NIDENT => NIDENT, NDOCUMENT => REC.RN, SUNITCODE => 'CostProductPlansSpecs', NRN => NTMP);
+      end loop;
+      /* Расчет факта */
+      P_FCPRODPLANSP_BASE_CALC_FACT(NCOMPANY => NCOMPANY, NIDENT => NIDENT);
+      /* Очистка отмеченных записей */
+      P_SELECTLIST_CLEAR(NIDENT => NIDENT);
+    exception
+      when others then
+        /* Очистка отмеченных записей */
+        P_SELECTLIST_CLEAR(NIDENT => NIDENT);
+    end FCPRODPLANSP_CALC;
   begin
+    /* Если это выбор плана */
+    if (NINCLUDE_DEF = 1) then
+      /* Расчет факта выпусков плана */
+      FCPRODPLANSP_CALC(NFCPRODPLAN => NFCPRODPLAN, NCOMPANY => NCOMPANY);
+    end if;
     /* Читем сортировки */
     RO := PKG_P8PANELS_VISUAL.TORDERS_FROM_XML(CORDERS => CORDERS);
     /* Преобразуем номер и размер страницы в номер строк с и по */
@@ -3588,7 +3583,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                              NROW_FROM    => NROW_FROM,
                                              NROW_TO      => NROW_TO);
     /* Инициализируем таблицу данных */
-    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE(BFIXED_HEADER => true, NFIXED_COLUMNS => 6);
+    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE(BFIXED_HEADER => true, NFIXED_COLUMNS => 7);
     /* Описываем колонки таблицы данных */
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NRN',
@@ -3630,6 +3625,13 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                BORDER     => true,
                                                NWIDTH     => 200);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SSUBDIV',
+                                               SCAPTION   => 'Цех-получатель',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE   => true,
+                                               BORDER     => true,
+                                               NWIDTH     => 180);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NMAIN_QUANT',
                                                SCAPTION   => 'План',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
@@ -3646,7 +3648,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                                SCAPTION   => 'Запущено',
                                                SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_NUMB,
                                                BVISIBLE   => true,
-                                               NWIDTH     => 80);
+                                               NWIDTH     => 90);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'NVALUE_BY_DAYS',
                                                SCAPTION   => 'План/факт по дням',
@@ -3682,6 +3684,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       (select PORD.NUMB from FACEACC PORD where (PORD.RN = T.PROD_ORDER)) SPROD_ORDER,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       MRES.CODE SMATRES_CODE,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       MRES."NAME" SMATRES_NAME,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       (select INS_D.CODE from INS_DEPARTMENT INS_D where INS_D.RN = T.SUBDIV) SSUBDIV,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.MAIN_QUANT NMAIN_QUANT,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       T.REL_FACT NREL_FACT,');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       (select COALESCE(sum(F.QUANT), ' || PKG_SQL_BUILD.WRAP_NUM(NVALUE => 0) || ')');
@@ -3702,6 +3705,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                 where P.RN = :NFCPRODPLAN');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and P.COMPANY = :NCOMPANY');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and T.PRN = P.RN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and T.MAIN_QUANT <> ' || PKG_SQL_BUILD.WRAP_NUM(NVALUE => 0));
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and T.MATRES = MRES.RN');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                   and exists (select ' || PKG_SQL_BUILD.SET_HINT(SHINT => 'INDEX(UP I_USERPRIV_CATALOG_ROLEID)') || ' null');
       PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                 from USERPRIV UP');
@@ -3744,10 +3748,11 @@ create or replace package body PKG_P8PANELS_MECHREC as
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 2);
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 3);
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 4);
-      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 5);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 5);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 6);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 7);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 8);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 9);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
@@ -3772,18 +3777,19 @@ create or replace package body PKG_P8PANELS_MECHREC as
                                               SNAME     => 'SMATRES_NAME',
                                               ICURSOR   => ICURSOR,
                                               NPOSITION => 4);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SSUBDIV', ICURSOR => ICURSOR, NPOSITION => 5);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
                                               SNAME     => 'NMAIN_QUANT',
                                               ICURSOR   => ICURSOR,
-                                              NPOSITION => 5);
+                                              NPOSITION => 6);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
                                               SNAME     => 'NREL_FACT',
                                               ICURSOR   => ICURSOR,
-                                              NPOSITION => 6);
+                                              NPOSITION => 7);
         PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW      => RDG_ROW,
                                               SNAME     => 'NFCROUTLST_QUANT',
                                               ICURSOR   => ICURSOR,
-                                              NPOSITION => 7);
+                                              NPOSITION => 8);
         /* Считываем рег. номер связанной спецификации из "Производственная программа" */
         NFCPRODPLANSP_MAIN := UTL_FCPRODPLANSP_MAIN_GET(NCOMPANY => NCOMPANY, NFCPRODPLANSP => NFCPRODPLANSP);
         /* Если есть связанная спецификация из производственной программы */
@@ -3798,39 +3804,54 @@ create or replace package body PKG_P8PANELS_MECHREC as
         NSUM_FACT := 0;
         /* Добавляем значения по графику сдачи */
         for REC in (select TMP.DOC_DATE,
-                           COALESCE(SUM(TMP.QUANT_PLAN), 0) QUANT_PLAN,
-                           COALESCE(SUM(TMP.QUANT_FACT), 0) QUANT_FACT
-                      from (select T.DOC_DATE,
-                                   T.QUANT_PLAN,
-                                   0 QUANT_FACT
+                           COALESCE(sum(TMP.QUANT_PLAN), 0) QUANT_PLAN,
+                           COALESCE(sum(TMP.QUANT_FACT), 0) QUANT_FACT
+                      from ( /* Указаны в спецификации */
+                            select T.DOC_DATE,
+                                    T.QUANT_PLAN,
+                                    0 QUANT_FACT
                               from FCPRODPLANDLVSH T
                              where T.PRN = NFCPRODPLANSP
                                and T.DOC_DATE >= DDATE_FROM
                                and T.DOC_DATE <= DDATE_TO
-                             union 
+                            union
+                            /* Связаны со спецификацией плана или связанной строкой "Производственная программа" */
                             select D.WORK_DATE,
-                                   0,
-                                   SUM(S.QUANT_FACT)
-                              from FCROUTLST FL,
-                                   DOCLINKS  DL,
-                                   INCOMEFROMDEPS D,
-                                   INCOMEFROMDEPSSPEC S
-                             where FL.RN in (select SL.DOCUMENT
-                                               from SELECTLIST SL
-                                              where SL.IDENT = NFCROUTLST_IDENT
-                                                and SL.UNITCODE = 'CostRouteLists')
-                               and FL.STATE = 1
-                               and DL.IN_DOCUMENT = FL.RN
-                               and DL.IN_UNITCODE = 'CostRouteLists'
-                               and DL.OUT_UNITCODE = 'IncomFromDeps'
-                               and D.RN = DL.OUT_DOCUMENT
-                               and D.DOC_STATE = 2
+                                    0,
+                                    sum(S.QUANT_FACT)
+                              from INCOMEFROMDEPS     D,
+                                    INCOMEFROMDEPSSPEC S
+                             where ( /* Связь по МЛ связанной строки "Производственная программа" */
+                                    (D.RN in (select DL.OUT_DOCUMENT
+                                                from SELECTLIST SL,
+                                                     FCROUTLST  FL,
+                                                     DOCLINKS   DL
+                                               where SL.IDENT = NFCROUTLST_IDENT
+                                                 and SL.UNITCODE = 'CostRouteLists'
+                                                 and FL.RN = SL.DOCUMENT
+                                                 and FL.STATE = 1
+                                                 and DL.IN_DOCUMENT = FL.RN
+                                                 and DL.IN_UNITCODE = 'CostRouteLists'
+                                                 and DL.OUT_UNITCODE = 'IncomFromDeps')) or
+                                   /* Прямая связь со связанной строкой "Производственная программа" */
+                                    (D.RN in (select L.OUT_DOCUMENT
+                                                from DOCLINKS L
+                                               where L.IN_DOCUMENT = NFCPRODPLANSP_MAIN
+                                                 and L.IN_UNITCODE = 'CostProductPlansSpecs'
+                                                 and L.OUT_UNITCODE = 'IncomFromDeps')) or
+                                   /* Прямая связь с обрабатываемой строкой */
+                                    (D.RN in (select L.OUT_DOCUMENT
+                                                from DOCLINKS L
+                                               where L.IN_DOCUMENT = NFCPRODPLANSP
+                                                 and L.IN_UNITCODE = 'CostProductPlansSpecs'
+                                                 and L.OUT_UNITCODE = 'IncomFromDeps')))
+                               and D.DOC_STATE = NFCPRODPLAN_STATUS
                                and D.WORK_DATE >= DDATE_FROM
                                and D.WORK_DATE <= DDATE_TO
                                and S.PRN = D.RN
                                and S.NOMMODIF = NMODIF
                              group by D.WORK_DATE) TMP
-                          group by TMP.DOC_DATE)
+                     group by TMP.DOC_DATE)
         loop
           /* Добавляем значение план/факт в соответствующую колонку */
           PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW,
@@ -3870,9 +3891,13 @@ create or replace package body PKG_P8PANELS_MECHREC as
   is
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Организация сеанса
     NVERSION                PKG_STD.TREF;                          -- Версия контрагентов
+    DDATE_FROM              PKG_STD.TLDATE;                        -- Дата с
+    DDATE_TO                PKG_STD.TLDATE;                        -- Дата по
   begin
     /* Считываем версию контрагентов */
     FIND_VERSION_BY_COMPANY(NCOMPANY => NCOMPANY, SUNITCODE => 'AGNLIST', NVERSION => NVERSION);
+    /* Определяем период записей */
+    P_FIRST_LAST_DAY(DCALCDATE => sysdate, DBGNDATE => DDATE_FROM, DENDDATE => DDATE_TO);
     /* Начинаем формирование XML */
     PKG_XFAST.PROLOGUE(ITYPE => PKG_XFAST.CONTENT_);
     /* Открываем корень */
@@ -3882,7 +3907,7 @@ create or replace package body PKG_P8PANELS_MECHREC as
                        DT.DOCCODE || ', ' || trim(P.PREFIX) || '-' || trim(P.NUMB) || ', ' ||
                        TO_CHAR(P.DOCDATE, 'dd.mm.yyyy') SDOC_INFO,
                        D.CODE as SSUBDIV,
-                       E.CODE as SPERIOD
+                       TO_CHAR(E.STARTDATE, 'mm.yyyy') as SPERIOD
                   from FCPRODPLAN     P,
                        FINSTATE       FS,
                        DOCTYPES       DT,
@@ -3891,7 +3916,6 @@ create or replace package body PKG_P8PANELS_MECHREC as
                  where P.CATEGORY = NFCPRODPLAN_DEPT_CTGR
                    and P.STATUS = NFCPRODPLAN_STATUS
                    and P.COMPANY = NCOMPANY
-                   and P.DOCDATE >= trunc(sysdate, 'mm')
                    and P.SUBDIV in (select C.DEPTRN
                                       from CLNPSPFM      C,
                                            CLNPSPFMTYPES CT
@@ -3914,6 +3938,8 @@ create or replace package body PKG_P8PANELS_MECHREC as
                    and D.RN = P.SUBDIV
                    and DT.RN = P.DOCTYPE
                    and E.RN = P.CALC_PERIOD
+                   and E.STARTDATE >= DDATE_FROM
+                   and E.ENDDATE <= DDATE_TO
                    and exists (select /*+ INDEX(UP I_USERPRIV_JUR_PERS_ROLEID) */
                          null
                           from USERPRIV UP

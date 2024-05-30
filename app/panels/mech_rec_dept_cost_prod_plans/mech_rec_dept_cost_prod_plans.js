@@ -218,7 +218,8 @@ const MechRecDeptCostProdPlans = () => {
                 stored: "PKG_P8PANELS_MECHREC.FCPRODPLAN_DEPT_INIT",
                 args: {},
                 respArg: "COUT",
-                isArray: name => name === "XFCPRODPLANS"
+                isArray: name => name === "XFCPRODPLANS",
+                attributeValueProcessor: (name, val) => (name === "SPERIOD" ? undefined : val)
             });
             setState(pv => ({ ...pv, init: true, planList: [...(data?.XFCPRODPLANS || [])], planListLoaded: true }));
         }
@@ -352,7 +353,7 @@ const MechRecDeptCostProdPlans = () => {
             <div style={STYLES.CONTAINER}>
                 {state.dataLoaded ? (
                     <Typography variant={"h6"}>
-                        {`Производственный план цеха "${state.selectedPlan.SSUBDIV}" на ${state.selectedPlan.SPERIOD}`}
+                        {`Производственный план цеха №${state.selectedPlan.SSUBDIV} на ${state.selectedPlan.SPERIOD}`}
                     </Typography>
                 ) : null}
                 <Grid container spacing={1}>
