@@ -1,6 +1,6 @@
 /*
     Парус 8 - Панели мониторинга - ПУП - Производственный план цеха
-    Компонент панели: Таблица заказов маршрутного листа
+    Компонент панели: Таблица строк маршрутного листа
 */
 
 //---------------------
@@ -28,10 +28,10 @@ const STYLES = {
 //Тело модуля
 //-----------
 
-//Таблица заказов маршрутного листа
-const CostRouteListsOrdDataGrid = ({ mainRowRN }) => {
+//Таблица строк маршрутного листа
+const CostRouteListsSpecsDataGrid = ({ mainRowRN }) => {
     //Собственное состояние - таблица данных
-    const [costRouteListsOrd, setCostRouteListsOrd] = useState({
+    const [costRouteListsSpecs, setCostRouteListsSpecs] = useState({
         dataLoaded: false,
         columnsDef: [],
         orders: null,
@@ -49,19 +49,19 @@ const CostRouteListsOrdDataGrid = ({ mainRowRN }) => {
 
     //Загрузка данных таблицы с сервера
     const loadData = useCallback(async () => {
-        if (costRouteListsOrd.reload) {
+        if (costRouteListsSpecs.reload) {
             const data = await executeStored({
-                stored: "PKG_P8PANELS_MECHREC.FCROUTLSTORD_DEPT_DG_GET",
+                stored: "PKG_P8PANELS_MECHREC.FCROUTLSTSP_DEPT_DG_GET",
                 args: {
                     NFCROUTLST: mainRowRN,
-                    CORDERS: { VALUE: object2Base64XML(costRouteListsOrd.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
-                    NPAGE_NUMBER: costRouteListsOrd.pageNumber,
+                    CORDERS: { VALUE: object2Base64XML(costRouteListsSpecs.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
+                    NPAGE_NUMBER: costRouteListsSpecs.pageNumber,
                     NPAGE_SIZE: DATA_GRID_PAGE_SIZE,
-                    NINCLUDE_DEF: costRouteListsOrd.dataLoaded ? 0 : 1
+                    NINCLUDE_DEF: costRouteListsSpecs.dataLoaded ? 0 : 1
                 },
                 respArg: "COUT"
             });
-            setCostRouteListsOrd(pv => ({
+            setCostRouteListsSpecs(pv => ({
                 ...pv,
                 columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
                 rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
@@ -72,11 +72,11 @@ const CostRouteListsOrdDataGrid = ({ mainRowRN }) => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
-        costRouteListsOrd.reload,
-        costRouteListsOrd.filters,
-        costRouteListsOrd.orders,
-        costRouteListsOrd.dataLoaded,
-        costRouteListsOrd.pageNumber,
+        costRouteListsSpecs.reload,
+        costRouteListsSpecs.filters,
+        costRouteListsSpecs.orders,
+        costRouteListsSpecs.dataLoaded,
+        costRouteListsSpecs.pageNumber,
         executeStored,
         SERV_DATA_TYPE_CLOB
     ]);
@@ -84,26 +84,26 @@ const CostRouteListsOrdDataGrid = ({ mainRowRN }) => {
     //При необходимости обновить данные таблицы
     useEffect(() => {
         loadData();
-    }, [costRouteListsOrd.reload, loadData]);
+    }, [costRouteListsSpecs.reload, loadData]);
 
     //При изменении состояния сортировки
-    const handleOrderChanged = ({ orders }) => setCostRouteListsOrd(pv => ({ ...pv, orders: [...orders], pageNumber: 1, reload: true }));
+    const handleOrderChanged = ({ orders }) => setCostRouteListsSpecs(pv => ({ ...pv, orders: [...orders], pageNumber: 1, reload: true }));
 
     //При изменении количества отображаемых страниц
-    const handlePagesCountChanged = () => setCostRouteListsOrd(pv => ({ ...pv, pageNumber: pv.pageNumber + 1, reload: true }));
+    const handlePagesCountChanged = () => setCostRouteListsSpecs(pv => ({ ...pv, pageNumber: pv.pageNumber + 1, reload: true }));
 
     //Генерация содержимого
     return (
         <div style={STYLES.CONTAINER}>
-            <Typography variant={"subtitle2"}>Заказы</Typography>
-            {costRouteListsOrd.dataLoaded ? (
+            <Typography variant={"subtitle2"}>Операции</Typography>
+            {costRouteListsSpecs.dataLoaded ? (
                 <P8PDataGrid
                     {...P8P_DATA_GRID_CONFIG_PROPS}
-                    columnsDef={costRouteListsOrd.columnsDef}
-                    rows={costRouteListsOrd.rows}
+                    columnsDef={costRouteListsSpecs.columnsDef}
+                    rows={costRouteListsSpecs.rows}
                     size={P8P_DATA_GRID_SIZE.SMALL}
-                    morePages={costRouteListsOrd.morePages}
-                    reloading={costRouteListsOrd.reload}
+                    morePages={costRouteListsSpecs.morePages}
+                    reloading={costRouteListsSpecs.reload}
                     onOrderChanged={handleOrderChanged}
                     onPagesCountChanged={handlePagesCountChanged}
                 />
@@ -112,8 +112,8 @@ const CostRouteListsOrdDataGrid = ({ mainRowRN }) => {
     );
 };
 
-//Контроль свойств - Таблица заказов маршрутного листа
-CostRouteListsOrdDataGrid.propTypes = {
+//Контроль свойств - Таблица строк маршрутного листа
+CostRouteListsSpecsDataGrid.propTypes = {
     mainRowRN: PropTypes.number.isRequired
 };
 
@@ -121,4 +121,4 @@ CostRouteListsOrdDataGrid.propTypes = {
 //Интерфейс модуля
 //----------------
 
-export { CostRouteListsOrdDataGrid };
+export { CostRouteListsSpecsDataGrid };
