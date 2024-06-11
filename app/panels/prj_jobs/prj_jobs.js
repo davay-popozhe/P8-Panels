@@ -9,13 +9,34 @@
 
 import React, { useContext, useState, useCallback, useEffect } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Drawer, Fab, Box, Grid, List, ListItemButton, ListItemText, ListItemIcon, Icon, Typography } from "@mui/material"; //Интерфейсные элементы
+import {
+    Drawer,
+    Fab,
+    Box,
+    Grid,
+    List,
+    ListItemButton,
+    ListItemText,
+    ListItemIcon,
+    Icon,
+    Typography,
+    Divider,
+    ListItem,
+    Button,
+    Dialog,
+    DialogContent,
+    DialogActions,
+    TextField,
+    DialogTitle
+} from "@mui/material"; //Интерфейсные элементы
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
 import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { P8PGantt } from "../../components/p8p_gantt"; //Диаграмма Ганта
+import { formatDateRF } from "../../core/utils"; //Вспомогательные функции
+import { BUTTONS } from "../../../app.text"; //Текстовые ресурсы и константы
 import { ResMon } from "./res_mon"; //Монитор ресурсов
 import { taskAttributeRenderer } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
 
@@ -31,7 +52,6 @@ const GANTT_WIDTH = "98vw";
 
 //Стили
 const STYLES = {
-    PROJECTS_LIST_SAVE_BUTTON: { backgroundColor: "orange" },
     PROJECTS_LIST_ITEM_NOJOBS: { backgroundColor: "#ff000045" },
     PROJECTS_LIST_ITEM_PRIMARY: { wordWrap: "break-word" },
     PROJECTS_LIST_ITEM_SECONDARY: { wordWrap: "break-word", fontSize: "0.5rem", textTransform: "uppercase" },
@@ -49,6 +69,122 @@ const STYLES = {
 //------------------------------------
 //Вспомогательные функции и компоненты
 //------------------------------------
+
+//Диалог параметров инициализации панели
+const InitPrmsDialog = ({ dateBegin, dateFact, onOk, onCancel }) => {
+    //Собственное состояние - значения с-по
+    const [values, setValues] = useState({ dateBegin: formatDateJSONDateOnly(dateBegin), dateFact: formatDateJSONDateOnly(dateFact) });
+
+    //Отработка воода значения в фильтр
+    const handleValueTextFieldChanged = e => setValues(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    //Генерация содержимого
+    return (
+        <Dialog
+            open={true}
+            aria-labelledby="init-dialog-title"
+            aria-describedby="init-dialog-description"
+            onClose={() => (onCancel ? onCancel() : null)}
+        >
+            <DialogTitle>Параметры инициализации</DialogTitle>
+            <DialogContent>
+                <TextField
+                    style={{ padding: "10px" }}
+                    name="dateBegin"
+                    type="date"
+                    value={values.dateBegin}
+                    onChange={handleValueTextFieldChanged}
+                    label="Начало (будет использован первый день месяца)"
+                    variant="standard"
+                    fullWidth
+                />
+                <TextField
+                    style={{ padding: "10px" }}
+                    name="dateFact"
+                    type="date"
+                    value={values.dateFact}
+                    onChange={handleValueTextFieldChanged}
+                    label="Факт на (будет использован последний день месяца)"
+                    variant="standard"
+                    fullWidth
+                />
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => (onOk ? onOk({ dateBegin: new Date(values.dateBegin), dateFact: new Date(values.dateFact) }) : null)}>
+                    {BUTTONS.OK}
+                </Button>
+                <Button onClick={() => (onCancel ? onCancel() : null)}>{BUTTONS.CANCEL}</Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
+
+//Контроль свойств - Диалог параметров инициализации панели
+InitPrmsDialog.propTypes = {
+    dateBegin: PropTypes.instanceOf(Date).isRequired,
+    dateFact: PropTypes.instanceOf(Date).isRequired,
+    onOk: PropTypes.func,
+    onCancel: PropTypes.func
+};
+
+//Область параметров инициализации панели
+const InitPrmsArea = ({ dateBegin, dateFact, durationMeasCode, labMeasCode, onClick }) => {
+    return (
+        <List>
+            <ListItem>
+                <ListItemText
+                    secondary={
+                        <>
+                            <b>Начало: </b>
+                            {formatDateRF(dateBegin)}
+                            <br />
+                            <b>Факт на: </b>
+                            {formatDateRF(dateFact)}
+                            <br />
+                            <b>Длительность: </b>
+                            {durationMeasCode}
+                            <br />
+                            <b>Трудоёмкость: </b>
+                            {labMeasCode}
+                        </>
+                    }
+                />
+            </ListItem>
+            <ListItem>
+                <Button fullWidth variant="contained" startIcon={<Icon>refresh</Icon>} onClick={onClick ? onClick : null}>
+                    Переформировать...
+                </Button>
+            </ListItem>
+        </List>
+    );
+};
+
+//Контроль свойств - Область параметров инициализации панели
+InitPrmsArea.propTypes = {
+    dateBegin: PropTypes.instanceOf(Date),
+    dateFact: PropTypes.instanceOf(Date),
+    durationMeasCode: PropTypes.string,
+    labMeasCode: PropTypes.string,
+    onClick: PropTypes.func
+};
+
+//Область сохранения изменений
+const SaveChangesArea = ({ onClick }) => {
+    return (
+        <List>
+            <ListItem>
+                <Button fullWidth color="warning" variant="contained" startIcon={<Icon>save</Icon>} onClick={onClick}>
+                    Сохранить
+                </Button>
+            </ListItem>
+        </List>
+    );
+};
+
+//Контроль свойств - Область сохранения изменений
+SaveChangesArea.propTypes = {
+    onClick: PropTypes.func
+};
 
 //Список проектов
 const ProjectsList = ({ projects = [], selectedProject, onClick } = {}) => {
@@ -123,7 +259,9 @@ const PrjJobs = () => {
         dateBegin: null,
         dateFact: null,
         durationMeas: null,
+        durationMeasCode: null,
         labMeas: null,
+        labMeasCode: null,
         resourceStatus: null,
         ident: null,
         projects: [],
@@ -132,7 +270,8 @@ const PrjJobs = () => {
         selectedProject: null,
         selectedProjectDocRn: null,
         selectedProjectGanttDef: {},
-        selectedProjectTasks: []
+        selectedProjectTasks: [],
+        showInitDialog: false
     });
 
     //Подключение к контексту приложения
@@ -182,12 +321,12 @@ const PrjJobs = () => {
 
     //Изменение работы в графике
     const modifyJob = useCallback(
-        async (job, dateFrom, dateTo, dateBegin, dateFact, durationMeas) => {
+        async (job, dateFrom, dateTo) => {
             let data = null;
             try {
                 data = await executeStored({
                     stored: "PKG_P8PANELS_PROJECTS.JB_JOBS_MODIFY_PERIOD",
-                    args: { NJB_JOBS: job, DDATE_FROM: dateFrom, DDATE_TO: dateTo, DBEGIN: dateBegin, DFACT: dateFact, NDURATION_MEAS: durationMeas }
+                    args: { NJB_JOBS: job, DDATE_FROM: dateFrom, DDATE_TO: dateTo }
                 });
                 if (data?.NRESOURCE_STATUS != -1) {
                     setState(pv => ({ ...pv, resourceStatus: data.NRESOURCE_STATUS, needSave: true }));
@@ -216,25 +355,26 @@ const PrjJobs = () => {
             const data = await executeStored({
                 stored: "PKG_P8PANELS_PROJECTS.JB_INIT",
                 args: {
-                    DBEGIN: state.dateBegin ? new Date(state.dateBegin) : null,
-                    DFACT: state.dateFact ? new Date(state.dateFact) : null,
-                    NDURATION_MEAS: state.durationMeas,
-                    SLAB_MEAS: state.labMeas,
+                    DBEGIN: state.dateBegin ? state.dateBegin : null,
+                    DFACT: state.dateFact ? state.dateFact : null,
                     NIDENT: state.ident
                 }
             });
             setState(pv => ({
                 ...pv,
                 init: true,
-                dateBegin: data.DBEGIN,
-                dateFact: data.DFACT,
+                reInit: false,
+                dateBegin: new Date(data.DBEGIN),
+                dateFact: new Date(data.DFACT),
                 durationMeas: data.NDURATION_MEAS,
-                labMeas: data.SLAB_MEAS,
+                durationMeasCode: data.SDURATION_MEAS,
+                labMeas: data.NLAB_MEAS,
+                labMeasCode: data.SLAB_MEAS,
                 resourceStatus: data.NRESOURCE_STATUS,
                 ident: data.NIDENT
             }));
         }
-    }, [state.init, state.dateBegin, state.dateFact, state.durationMeas, state.labMeas, state.ident, executeStored]);
+    }, [state.init, state.dateBegin, state.dateFact, state.ident, executeStored]);
 
     //Грузим список проектов при смене идентификатора процесса
     useEffect(() => {
@@ -246,11 +386,10 @@ const PrjJobs = () => {
         if (state.selectedProject) loadProjectJobs(false);
     }, [state.selectedProject, loadProjectJobs]);
 
-    //При подключении компонента к странице
+    //При изменении флага инициализации
     useEffect(() => {
         initJobs();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [state.init, initJobs]);
 
     //Выбор проекта
     const selectPoject = (project, projectDocRn) => {
@@ -289,8 +428,18 @@ const PrjJobs = () => {
 
     //Обработка измненения сроков задачи в диаграмме Гантта
     const handleTaskDatesChange = ({ task, start, end, isMain }) => {
-        if (isMain) modifyJob(task.rn, new Date(start), new Date(end), new Date(state.dateBegin), new Date(state.dateFact), state.durationMeas);
+        if (isMain) modifyJob(task.rn, new Date(start), new Date(end));
     };
+
+    //Отработка нажатия на отображения диалога параметров инициализации панели
+    const handleShowInitDialogClick = () => setState(pv => ({ ...pv, showInitDialog: true }));
+
+    //Отработка нажатия на "ОК" в диалоге параметров инициализации панели
+    const handleOKInitDialogClick = values =>
+        setState(pv => ({ ...pv, dateBegin: values.dateBegin, dateFact: values.dateFact, showInitDialog: false, init: false }));
+
+    //Отработка нажатия на "Отмена" в диалоге параметров инициализации панели
+    const handleCancelInitDialogClick = () => setState(pv => ({ ...pv, showInitDialog: false }));
 
     //Обработка нажатия на сохранение данных в проект
     const handleSaveToProjectsClick = () => saveProjects();
@@ -304,6 +453,14 @@ const PrjJobs = () => {
     //Генерация содержимого
     return (
         <Box p={2}>
+            {state.showInitDialog ? (
+                <InitPrmsDialog
+                    dateBegin={state.dateBegin}
+                    dateFact={state.dateFact}
+                    onOk={handleOKInitDialogClick}
+                    onCancel={handleCancelInitDialogClick}
+                />
+            ) : null}
             <Fab variant="extended" sx={STYLES.PROJECTS_BUTTON} onClick={() => setState(pv => ({ ...pv, showProjectsList: !pv.showProjectsList }))}>
                 Проекты
                 {state.needSave ? (
@@ -321,15 +478,19 @@ const PrjJobs = () => {
             >
                 {state.projectsLoaded ? (
                     <>
+                        <InitPrmsArea
+                            dateBegin={state.dateBegin}
+                            dateFact={state.dateFact}
+                            durationMeasCode={state.durationMeasCode}
+                            labMeasCode={state.labMeasCode}
+                            onClick={handleShowInitDialogClick}
+                        />
+                        <Divider />
                         {state.needSave ? (
-                            <List>
-                                <ListItemButton sx={STYLES.PROJECTS_LIST_SAVE_BUTTON} onClick={handleSaveToProjectsClick}>
-                                    <ListItemIcon>
-                                        <Icon>save</Icon>
-                                    </ListItemIcon>
-                                    <ListItemText primary="Сохранить" secondary="Перенсти изменения в проекты" />
-                                </ListItemButton>
-                            </List>
+                            <>
+                                <SaveChangesArea onClick={handleSaveToProjectsClick} />
+                                <Divider />
+                            </>
                         ) : null}
                         <ProjectsList projects={state.projects} selectedProject={state.selectedProject} onClick={handleProjectClick} />
                     </>

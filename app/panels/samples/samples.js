@@ -17,6 +17,7 @@ import { Loader } from "./loader"; //Пример: Индикатор проце
 import { DataGrid } from "./data_grid"; //Пример: Таблица данных "P8PDataGrid"
 import { Chart } from "./chart"; //Пример: Графики "P8PChart"
 import { Gantt } from "./gantt"; //Пример: Диаграмма Ганта "P8PGantt"
+import { Svg } from "./svg"; //Пример: Интерактивные изображения "P8PSVG"
 
 //---------
 //Константы
@@ -30,7 +31,8 @@ const MODES = {
     LOADER: { name: "LOADER", caption: "Индикатор процесса", component: Loader },
     DATAGRID: { name: "DATAGRID", caption: 'Таблица данных "P8PDataGrid"', component: DataGrid },
     CHART: { name: "CHART", caption: 'Графики "P8PChart"', component: Chart },
-    GANTT: { name: "GANTT", caption: 'Диаграмма Ганта "P8PGantt"', component: Gantt }
+    GANTT: { name: "GANTT", caption: 'Диаграмма Ганта "P8PGantt"', component: Gantt },
+    SVG: { name: "SVG", caption: 'Интерактивные изображения "P8PSVG"', component: Svg }
 };
 
 //Стили

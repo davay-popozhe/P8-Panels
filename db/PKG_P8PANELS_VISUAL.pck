@@ -54,7 +54,8 @@ create or replace package PKG_P8PANELS_VISUAL as
     SHINT                   PKG_STD.TSTRING, -- Текст всплывающей подсказки
     SPARENT                 PKG_STD.TSTRING, -- Наименование родительской колонки
     BEXPANDABLE             boolean,         -- Разрешить сокрытие/отображение дочерних колонок
-    BEXPANDED               boolean          -- Отобразить/скрыть дочерние колонки
+    BEXPANDED               boolean,         -- Отобразить/скрыть дочерние колонки
+    NWIDTH                  PKG_STD.TNUMBER  -- Ширина колонки (обязательно для фиксированных)
   );
   
   /* Типы данных - коллекция описателей колонок таблицы данных */
@@ -95,9 +96,11 @@ create or replace package PKG_P8PANELS_VISUAL as
   /* Типы данных - таблица данных */
   type TDATA_GRID is record
   (
-    RCOL_DEFS               TCOL_DEFS,  -- Описание колонок
-    RGROUPS                 TGROUPS,    -- Описание групп
-    RROWS                   TROWS       -- Данные строк
+    BFIXED_HEADER           boolean,         -- Зафиксировать заголовок
+    NFIXED_COLUMNS          PKG_STD.TNUMBER, -- Количество фиксированных колонок
+    RCOL_DEFS               TCOL_DEFS,       -- Описание колонок
+    RGROUPS                 TGROUPS,         -- Описание групп
+    RROWS                   TROWS            -- Данные строк
   );
   
   /* Типы данных - фильтр */
@@ -319,7 +322,10 @@ create or replace package PKG_P8PANELS_VISUAL as
   
   /* Формирование таблицы данных */
   function TDATA_GRID_MAKE
-  return                    TDATA_GRID; -- Результат работы
+  (
+    BFIXED_HEADER           in boolean := false, -- Зафиксировать заголовок
+    NFIXED_COLUMNS          in number := 0       -- Количество фиксированных колонок
+  ) return                  TDATA_GRID;          -- Результат работы
   
   /* Поиск описания колонки в таблице данных по наименованию */
   function TDATA_GRID_FIND_COL_DEF
@@ -345,6 +351,7 @@ create or replace package PKG_P8PANELS_VISUAL as
     SPARENT                 in varchar2 := null,           -- Наименование родительской колонки
     BEXPANDABLE             in boolean := false,           -- Разрешить сокрытие/отображение дочерних колонок
     BEXPANDED               in boolean := true,            -- Отобразить/скрыть дочерние колонки
+    NWIDTH                  in number := null,             -- Ширина колонки (обязательно для фиксированных)
     BCLEAR                  in boolean := false            -- Флаг очистки коллекции описаний колонок таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
   );
   
@@ -595,27 +602,31 @@ text="Формат data_grid и gant как в chart"
   SRESP_TAG_XGANTT_DEF        constant PKG_STD.TSTRING := 'XGANTT_DEF';   -- Тэг для описания заголовка диаграммы Ганта
   SRESP_TAG_XGANTT_TASKS      constant PKG_STD.TSTRING := 'XGANTT_TASKS'; -- Тэг для описания коллекции задач диаграммы Ганта
   SRESP_TAG_XCHART            constant PKG_STD.TSTRING := 'XCHART';       -- Тэг для описания графика
+  SRESP_TAG_XDATA_GRID        constant PKG_STD.TSTRING := 'XDATA_GRID';   -- Тэг для описания таблицы данных
   
   /* Константы - атрибуты ответов (универсальные) */
-  SRESP_ATTR_NAME             constant PKG_STD.TSTRING := 'name';       -- Атрибут для наименования
-  SRESP_ATTR_CAPTION          constant PKG_STD.TSTRING := 'caption';    -- Атрибут для подписи
-  SRESP_ATTR_DATA_TYPE        constant PKG_STD.TSTRING := 'dataType';   -- Атрибут для типа данных
-  SRESP_ATTR_VISIBLE          constant PKG_STD.TSTRING := 'visible';    -- Атрибут для флага видимости
-  SRESP_ATTR_TITLE            constant PKG_STD.TSTRING := 'title';      -- Атрибут для заголовка
-  SRESP_ATTR_ZOOM             constant PKG_STD.TSTRING := 'zoom';       -- Атрибут для масштаба
-  SRESP_ATTR_ID               constant PKG_STD.TSTRING := 'id';         -- Атрибут для идентификатора
-  SRESP_ATTR_START            constant PKG_STD.TSTRING := 'start';      -- Атрибут для даты начала
-  SRESP_ATTR_END              constant PKG_STD.TSTRING := 'end';        -- Атрибут для даты окончания
-  SRESP_ATTR_RN               constant PKG_STD.TSTRING := 'rn';         -- Атрибут для рег. номера
-  SRESP_ATTR_NUMB             constant PKG_STD.TSTRING := 'numb';       -- Атрибут для номера
-  SRESP_ATTR_FULL_NAME        constant PKG_STD.TSTRING := 'fullName';   -- Атрибут для полного наименования
-  SRESP_ATTR_DESC             constant PKG_STD.TSTRING := 'desc';       -- Атрибут для описания
-  SRESP_ATTR_TYPE             constant PKG_STD.TSTRING := 'type';       -- Атрибут для типа
-  SRESP_ATTR_HINT             constant PKG_STD.TSTRING := 'hint';       -- Атрибут для подсказки
-  SRESP_ATTR_GROUP_NAME       constant PKG_STD.TSTRING := 'groupName';  -- Атрибут для наименования группы
-  SRESP_ATTR_PARENT           constant PKG_STD.TSTRING := 'parent';     -- Атрибут для ссылки на родителя
-  SRESP_ATTR_EXPANDABLE       constant PKG_STD.TSTRING := 'expandable'; -- Атрибут для доступности действия сокрытия/отображения
-  SRESP_ATTR_EXPANDED         constant PKG_STD.TSTRING := 'expanded';   -- Атрибут для флага сокрытия/отображения
+  SRESP_ATTR_NAME             constant PKG_STD.TSTRING := 'name';         -- Атрибут для наименования
+  SRESP_ATTR_CAPTION          constant PKG_STD.TSTRING := 'caption';      -- Атрибут для подписи
+  SRESP_ATTR_DATA_TYPE        constant PKG_STD.TSTRING := 'dataType';     -- Атрибут для типа данных
+  SRESP_ATTR_VISIBLE          constant PKG_STD.TSTRING := 'visible';      -- Атрибут для флага видимости
+  SRESP_ATTR_TITLE            constant PKG_STD.TSTRING := 'title';        -- Атрибут для заголовка
+  SRESP_ATTR_ZOOM             constant PKG_STD.TSTRING := 'zoom';         -- Атрибут для масштаба
+  SRESP_ATTR_ID               constant PKG_STD.TSTRING := 'id';           -- Атрибут для идентификатора
+  SRESP_ATTR_START            constant PKG_STD.TSTRING := 'start';        -- Атрибут для даты начала
+  SRESP_ATTR_END              constant PKG_STD.TSTRING := 'end';          -- Атрибут для даты окончания
+  SRESP_ATTR_RN               constant PKG_STD.TSTRING := 'rn';           -- Атрибут для рег. номера
+  SRESP_ATTR_NUMB             constant PKG_STD.TSTRING := 'numb';         -- Атрибут для номера
+  SRESP_ATTR_FULL_NAME        constant PKG_STD.TSTRING := 'fullName';     -- Атрибут для полного наименования
+  SRESP_ATTR_DESC             constant PKG_STD.TSTRING := 'desc';         -- Атрибут для описания
+  SRESP_ATTR_TYPE             constant PKG_STD.TSTRING := 'type';         -- Атрибут для типа
+  SRESP_ATTR_HINT             constant PKG_STD.TSTRING := 'hint';         -- Атрибут для подсказки
+  SRESP_ATTR_GROUP_NAME       constant PKG_STD.TSTRING := 'groupName';    -- Атрибут для наименования группы
+  SRESP_ATTR_PARENT           constant PKG_STD.TSTRING := 'parent';       -- Атрибут для ссылки на родителя
+  SRESP_ATTR_EXPANDABLE       constant PKG_STD.TSTRING := 'expandable';   -- Атрибут для доступности действия сокрытия/отображения
+  SRESP_ATTR_EXPANDED         constant PKG_STD.TSTRING := 'expanded';     -- Атрибут для флага сокрытия/отображения
+  SRESP_ATTR_FIXED_HEADER     constant PKG_STD.TSTRING := 'fixedHeader';  -- Атрибут для флага фиксации заголовка
+  SRESP_ATTR_FIXED_COLUMNS    constant PKG_STD.TSTRING := 'fixedColumns'; -- Атрибут для количества фиксированных колонок
+  SRESP_ATTR_WIDTH            constant PKG_STD.TSTRING := 'width';        -- Атрибут для ширины
 
   /* Константы - атрибуты ответов (таблица данных) */
   SRESP_ATTR_DT_ORDER         constant PKG_STD.TSTRING := 'order';  -- Атрибут для флага сортировки
@@ -743,7 +754,8 @@ text="Формат data_grid и gant как в chart"
     SHINT                   in varchar2 := null,           -- Текст всплывающей подсказки
     SPARENT                 in varchar2 := null,           -- Наименование родительской колонки
     BEXPANDABLE             in boolean := false,           -- Разрешить сокрытие/отображение дочерних колонок
-    BEXPANDED               in boolean := true             -- Отобразить/скрыть дочерние колонки
+    BEXPANDED               in boolean := true,            -- Отобразить/скрыть дочерние колонки
+    NWIDTH                  in number := null              -- Ширина колонки (обязательно для фиксированных)
   ) return                  TCOL_DEF                       -- Результат работы
   is
     RRES                    TCOL_DEF;                      -- Буфер для результата
@@ -762,6 +774,7 @@ text="Формат data_grid и gant как в chart"
     RRES.SPARENT     := SPARENT;
     RRES.BEXPANDABLE := COALESCE(BEXPANDABLE, false);
     RRES.BEXPANDED   := COALESCE(BEXPANDED, true);
+    RRES.NWIDTH      := NWIDTH;
     /* Возвращаем результат */
     return RRES;
   end TCOL_DEF_MAKE;
@@ -783,6 +796,7 @@ text="Формат data_grid и gant как в chart"
     SPARENT                 in varchar2 := null,           -- Наименование родительской колонки
     BEXPANDABLE             in boolean := false,           -- Разрешить сокрытие/отображение дочерних колонок
     BEXPANDED               in boolean := true,            -- Отобразить/скрыть дочерние колонки
+    NWIDTH                  in number := null,             -- Ширина колонки (обязательно для фиксированных)
     BCLEAR                  in boolean := false            -- Флаг очистки коллекции (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
@@ -805,7 +819,8 @@ text="Формат data_grid и gant как в chart"
                                                SHINT       => SHINT,
                                                SPARENT     => SPARENT,
                                                BEXPANDABLE => BEXPANDABLE,
-                                               BEXPANDED   => BEXPANDED);
+                                               BEXPANDED   => BEXPANDED,
+                                               NWIDTH      => NWIDTH);
   end TCOL_DEFS_ADD;
   
   /* Поиск описания колонки по наименованию */
@@ -853,6 +868,9 @@ text="Формат data_grid и gant как в chart"
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_PARENT, SVALUE => RCOL_DEFS(I).SPARENT);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_EXPANDABLE, BVALUE => RCOL_DEFS(I).BEXPANDABLE);
         PKG_XFAST.ATTR(SNAME => SRESP_ATTR_EXPANDED, BVALUE => RCOL_DEFS(I).BEXPANDED);
+        if (RCOL_DEFS(I).NWIDTH is not null) then
+          PKG_XFAST.ATTR(SNAME => SRESP_ATTR_WIDTH, NVALUE => RCOL_DEFS(I).NWIDTH);
+        end if;
         /* Предопределённые значения */
         if (RCOL_DEFS(I).RCOL_VALS is not null) and (RCOL_DEFS(I).RCOL_VALS.COUNT > 0) then
           for V in RCOL_DEFS(I).RCOL_VALS.FIRST .. RCOL_DEFS(I).RCOL_VALS.LAST
@@ -1148,14 +1166,19 @@ text="Формат data_grid и gant как в chart"
   
   /* Формирование таблицы данных */
   function TDATA_GRID_MAKE
-  return                    TDATA_GRID  -- Результат работы
+  (
+    BFIXED_HEADER           in boolean := false, -- Зафиксировать заголовок
+    NFIXED_COLUMNS          in number := 0       -- Количество фиксированных колонок
+  ) return                  TDATA_GRID           -- Результат работы
   is
-    RRES                    TDATA_GRID; -- Буфер для результата
+    RRES                    TDATA_GRID;          -- Буфер для результата
   begin
     /* Формируем объект */
-    RRES.RCOL_DEFS := TCOL_DEFS();
-    RRES.RGROUPS   := TGROUPS();
-    RRES.RROWS     := TROWS();
+    RRES.BFIXED_HEADER  := COALESCE(BFIXED_HEADER, false);
+    RRES.NFIXED_COLUMNS := COALESCE(NFIXED_COLUMNS, 0);
+    RRES.RCOL_DEFS      := TCOL_DEFS();
+    RRES.RGROUPS        := TGROUPS();
+    RRES.RROWS          := TROWS();
     /* Возвращаем результат */
     return RRES;
   end TDATA_GRID_MAKE;
@@ -1188,6 +1211,7 @@ text="Формат data_grid и gant как в chart"
     SPARENT                 in varchar2 := null,           -- Наименование родительской колонки
     BEXPANDABLE             in boolean := false,           -- Разрешить сокрытие/отображение дочерних колонок
     BEXPANDED               in boolean := true,            -- Отобразить/скрыть дочерние колонки
+    NWIDTH                  in number := null,             -- Ширина колонки (обязательно для фиксированных)    
     BCLEAR                  in boolean := false            -- Флаг очистки коллекции описаний колонок таблицы данных (false - не очищать, true - очистить коллекцию перед добавлением)
   )
   is
@@ -1207,6 +1231,7 @@ text="Формат data_grid и gant как в chart"
                   SPARENT     => SPARENT,
                   BEXPANDABLE => BEXPANDABLE,
                   BEXPANDED   => BEXPANDED,
+                  NWIDTH      => NWIDTH,
                   BCLEAR      => BCLEAR);
   end TDATA_GRID_ADD_COL_DEF;
   
@@ -1249,6 +1274,18 @@ text="Формат data_grid и gant как в chart"
     RDATA_GRID.RROWS(RDATA_GRID.RROWS.LAST) := RROW;
   end TDATA_GRID_ADD_ROW;
   
+  /* Сериализация описания таблицы данных */
+  procedure TDATA_GRID_DEF_TO_XML
+  (
+    RDATA_GRID                  in TDATA_GRID   -- Описание таблицы данных
+  )
+  is    
+  begin
+    /* Cтатические атрибуты заголовка */
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_FIXED_HEADER, BVALUE => RDATA_GRID.BFIXED_HEADER);
+    PKG_XFAST.ATTR(SNAME => SRESP_ATTR_FIXED_COLUMNS, NVALUE => RDATA_GRID.NFIXED_COLUMNS);
+  end TDATA_GRID_DEF_TO_XML;
+  
   /* Сериализация таблицы данных */
   function TDATA_GRID_TO_XML
   (
@@ -1262,6 +1299,12 @@ text="Формат data_grid и gant как в chart"
     PKG_XFAST.PROLOGUE(ITYPE => PKG_XFAST.CONTENT_);
     /* Открываем корень */
     PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XDATA);
+    /* Открываем таблицу данных */
+    PKG_XFAST.DOWN_NODE(SNAME => SRESP_TAG_XDATA_GRID);
+    /* Формируем описание таблицы данных */
+    TDATA_GRID_DEF_TO_XML(RDATA_GRID => RDATA_GRID);
+    /* Закрываем таблицу данных */
+    PKG_XFAST.UP();
     /* Если необходимо включить описание колонок */
     if (NINCLUDE_DEF = 1) then
       TCOL_DEFS_TO_XML(RCOL_DEFS => RDATA_GRID.RCOL_DEFS);

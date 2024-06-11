@@ -9,11 +9,12 @@
 
 import React, { useState, useContext, useCallback, useEffect } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Typography, Grid, Stack, Icon, Box } from "@mui/material"; //Интерфейсные элементы
+import { Typography, Grid, Stack, Icon, Box, Button } from "@mui/material"; //Интерфейсные элементы
 import { object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
+import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 
 //---------
 //Константы
@@ -25,7 +26,8 @@ const DATA_GRID_PAGE_SIZE = 5;
 //Стили
 const STYLES = {
     CONTAINER: { textAlign: "center", paddingTop: "20px" },
-    TITLE: { paddingBottom: "15px" }
+    TITLE: { paddingBottom: "15px" },
+    DATA_GRID_CONTAINER: { maxWidth: 700, maxHeight: 500, minHeight: 500 }
 };
 
 //---------------------------------------------
@@ -93,11 +95,16 @@ const DataGrid = ({ title }) => {
         rows: [],
         reload: true,
         pageNumber: 1,
-        morePages: true
+        morePages: true,
+        fixedHeader: false,
+        fixedColumns: 0
     });
 
     //Подключение к контексту взаимодействия с сервером
     const { executeStored, SERV_DATA_TYPE_CLOB } = useContext(BackEndСtx);
+
+    //Подключение к контексту приложения
+    const { pOnlineShowDocument } = useContext(ApplicationСtx);
 
     //Загрузка данных таблицы с сервера
     const loadData = useCallback(async () => {
@@ -115,6 +122,8 @@ const DataGrid = ({ title }) => {
             });
             setdataGrid(pv => ({
                 ...pv,
+                fixedHeader: data.XDATA_GRID.fixedHeader,
+                fixedColumns: data.XDATA_GRID.fixedColumns,
                 columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
                 rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
                 groups: data.XGROUPS
@@ -138,6 +147,9 @@ const DataGrid = ({ title }) => {
     //При изменении количества отображаемых страниц
     const handlePagesCountChanged = () => setdataGrid(pv => ({ ...pv, pageNumber: pv.pageNumber + 1, reload: true }));
 
+    //При нажатии на копку контрагента
+    const handleAgnButtonClicked = agnCode => pOnlineShowDocument({ unitCode: "AGNLIST", document: agnCode, inRnParameter: "in_AGNABBR" });
+
     //При необходимости обновить данные таблицы
     useEffect(() => {
         loadData();
@@ -151,14 +163,17 @@ const DataGrid = ({ title }) => {
             </Typography>
             <Grid container spacing={1} pt={5}>
                 <Grid item xs={12}>
-                    <Box p={5}>
+                    <Box p={5} display="flex" justifyContent="center" alignItems="center">
                         {dataGrid.dataLoaded ? (
                             <P8PDataGrid
                                 {...P8P_DATA_GRID_CONFIG_PROPS}
+                                containerComponentProps={{ elevation: 6, style: STYLES.DATA_GRID_CONTAINER }}
                                 columnsDef={dataGrid.columnsDef}
                                 groups={dataGrid.groups}
                                 rows={dataGrid.rows}
                                 size={P8P_DATA_GRID_SIZE.LARGE}
+                                fixedHeader={dataGrid.fixedHeader}
+                                fixedColumns={dataGrid.fixedColumns}
                                 filtersInitial={dataGrid.filters}
                                 morePages={dataGrid.morePages}
                                 reloading={dataGrid.reload}
@@ -169,6 +184,10 @@ const DataGrid = ({ title }) => {
                                 onOrderChanged={handleOrderChanged}
                                 onFilterChanged={handleFilterChanged}
                                 onPagesCountChanged={handlePagesCountChanged}
+                                expandable={true}
+                                rowExpandRender={({ row }) => (
+                                    <Button onClick={() => handleAgnButtonClicked(row.SAGNABBR)}>Показать в разделе</Button>
+                                )}
                             />
                         ) : null}
                     </Box>

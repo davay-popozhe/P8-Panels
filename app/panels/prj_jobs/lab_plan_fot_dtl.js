@@ -44,7 +44,7 @@ const LabPlanFOTDtl = ({ periodId, title, onHide }) => {
     const loadPlanFOTDtl = useCallback(async () => {
         if (planFOTDtl.reload) {
             const data = await executeStored({
-                stored: "PKG_P8PANELS_PROJECTS.JB_PERIODS_LIST_PLAN_FOT",
+                stored: "PKG_P8PANELS_PROJECTS.JB_PERIODS_PLAN_FOT_LIST",
                 args: {
                     NJB_PERIODS: periodId,
                     CORDERS: { VALUE: object2Base64XML(planFOTDtl.orders, { arrayNodeName: "orders" }), SDATA_TYPE: SERV_DATA_TYPE_CLOB },
