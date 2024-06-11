@@ -1,5 +1,5 @@
 /*
-    Парус 8 - 
+    Парус 8 - Панели мониторинга - ТОиР - Выполнение работ
     Дополнительная разметка и вёрстка клиентских элементов
 */
 
@@ -19,6 +19,17 @@ export const DIGITS_REG_EXP = /\d+,?\d*/g;
 export const MONTH_NAME_REG_EXP = /_\d{4}_\d{1,2}/;
 export const DAY_NAME_REG_EXP = /_\d{4}_\d{1,2}_\d{1,2}/;
 
+export const STYLES = {
+    HIDE_CELL_STYLE: { display: "none" },
+    HCR_MAIN_STYLE: { border: "1px solid rgba(0, 0, 0)", textAlign: "center" },
+    HCR_DATE_STYLE: { padding: "5px", minWidth: "25px", maxWidth: "25px" },
+    DCR_MAIN_STYLE: { padding: "2px", border: "1px solid rgba(0, 0, 0) !important", textAlign: "center" },
+    DCR_OBJECT_INFO_STYLE: { textAlign: "right", fontWeight: "bold" },
+    DCR_PLAN_CELL_STYLE: { cursor: "pointer", backgroundColor: "lightblue", border: "1px solid rgba(0, 0, 0) !important" },
+    DCR_FACT_RELATED_CELL_STYLE: { cursor: "pointer", backgroundColor: "green", border: "1px solid rgba(0, 0, 0) !important" },
+    DCR_FACT_NOT_REALATED_CELL_STYLE: { cursor: "pointer", backgroundColor: "crimson", border: "1px solid rgba(0, 0, 0) !important" }
+};
+
 let curParent = "";
 let x = 0;
 
@@ -34,13 +45,11 @@ const formatDate = date => {
     return nd;
 };
 
-// eslint-disable-next-line no-unused-vars
-export const headCellRender = ({ columnDef }, hClick, podr, cntP, sumP, cntF, sumF) => {
-    let cellStyle = { border: "1px solid rgba(0, 0, 0)", textAlign: "center" };
+export const headCellRender = ({ columnDef }, hClick) => {
+    let cellStyle = STYLES.HCR_MAIN_STYLE; //{ border: "1px solid rgba(0, 0, 0)", textAlign: "center" };
     let cellProps = {};
     let stackStyle = {};
     let data = columnDef.caption;
-
     if (columnDef.expandable) {
         const ref = createRef();
         cellStyle = { ...cellStyle, padding: "5px" };
@@ -51,40 +60,35 @@ export const headCellRender = ({ columnDef }, hClick, podr, cntP, sumP, cntF, su
                 hClick(e, ref);
             }
         };
-
         stackStyle = { flexDirection: "column" };
     }
-    if (columnDef.name == "SOBJINFO") cellStyle = { display: "none" };
+    if (columnDef.name == "SOBJINFO" || columnDef.name == "SWRKTYPE") cellStyle = STYLES.HIDE_CELL_STYLE; //{ display: "none" };
     if (columnDef.name == "SINFO" || columnDef.name == "SWRKTYPE") {
         cellProps = { colSpan: 2 };
         if (columnDef.name == "SINFO") cellProps = { ...cellProps, rowSpan: 2 };
     }
-
-    if (columnDef.name == "SWRKTYPE") cellStyle = { display: "none" };
-
+    //if (columnDef.name == "SWRKTYPE") cellStyle = STYLES.HIDE_CELL_STYLE; //{ display: "none" };
     if (columnDef.visible && DAY_NAME_REG_EXP.test(columnDef.name)) {
-        cellStyle = { ...cellStyle, padding: "5px", minWidth: "25px", maxWidth: "25px" };
+        cellStyle = { ...cellStyle, ...STYLES.HCR_DATE_STYLE }; //{ ...cellStyle, padding: "5px", minWidth: "25px", maxWidth: "25px" };
         stackStyle = { justifyContent: "center" };
     }
-
     return { cellStyle, cellProps, stackStyle, data };
 };
 
 export const dataCellRender = ({ row, columnDef }, showEquipSrv) => {
-    let cellStyle = {
+    let cellStyle = STYLES.DCR_MAIN_STYLE; /*{
         padding: "2px",
         border: "1px solid rgba(0, 0, 0) !important",
         textAlign: "center"
-    };
+    };*/
     let cellProps = {};
     let data = " ";
-
     if (row["SWRKTYPE"] == undefined) {
         if (columnDef.name == "SOBJINFO") {
             cellProps = { colSpan: 2 };
-            cellStyle = { ...cellStyle, textAlign: "right", fontWeight: "bold" };
+            cellStyle = { ...cellStyle, ...STYLES.DCR_OBJECT_INFO_STYLE }; //{ ...cellStyle, textAlign: "right", fontWeight: "bold" };
         }
-        if (columnDef.name == "SWRKTYPE") cellStyle = { display: "none" };
+        if (columnDef.name == "SWRKTYPE") cellStyle = STYLES.HIDE_CELL_STYLE; //{ display: "none" };
         if (columnDef.parent == "" && columnDef.expandable == true && columnDef.expanded == false) {
             curParent = columnDef.name;
             return { cellStyle: { ...cellStyle, height: "25px" }, data };
@@ -108,10 +112,9 @@ export const dataCellRender = ({ row, columnDef }, showEquipSrv) => {
     if (columnDef.name == "SOBJINFO" && row["SWRKTYPE"] == "Факт") {
         cellStyle = { display: "none" };
     }
-
     switch (row[columnDef.name]) {
         case "blue":
-            cellStyle = { ...cellStyle, cursor: "pointer", backgroundColor: "lightblue", border: "1px solid rgba(0, 0, 0) !important" };
+            cellStyle = { ...cellStyle, ...STYLES.DCR_PLAN_CELL_STYLE }; //{ ...cellStyle, cursor: "pointer", backgroundColor: "lightblue", border: "1px solid rgba(0, 0, 0) !important" };
             cellProps = {
                 title: formatDate(columnDef.name),
                 onClick: () => {
@@ -120,7 +123,7 @@ export const dataCellRender = ({ row, columnDef }, showEquipSrv) => {
             };
             return { cellStyle, cellProps, data };
         case "green":
-            cellStyle = { ...cellStyle, cursor: "pointer", backgroundColor: "green", border: "1px solid rgba(0, 0, 0) !important" };
+            cellStyle = { ...cellStyle, ...STYLES.DCR_FACT_RELATED_CELL_STYLE }; //{ ...cellStyle, cursor: "pointer", backgroundColor: "green", border: "1px solid rgba(0, 0, 0) !important" };
             cellProps = {
                 title: formatDate(columnDef.name),
                 onClick: () => {
@@ -129,7 +132,7 @@ export const dataCellRender = ({ row, columnDef }, showEquipSrv) => {
             };
             return { cellStyle, cellProps, data };
         case "red":
-            cellStyle = { ...cellStyle, cursor: "pointer", backgroundColor: "crimson", border: "1px solid rgba(0, 0, 0) !important" };
+            cellStyle = { ...cellStyle, ...STYLES.DCR_FACT_NOT_RELATED_CELL_STYLE }; //{ ...cellStyle, cursor: "pointer", backgroundColor: "crimson", border: "1px solid rgba(0, 0, 0) !important" };
             cellProps = {
                 title: formatDate(columnDef.name),
                 onClick: () => {
@@ -168,6 +171,6 @@ export const dataCellRender = ({ row, columnDef }, showEquipSrv) => {
 };
 
 export const groupCellRender = () => {
-    let cellStyle = { display: "none" };
+    let cellStyle = STYLES.HIDE_CELL_STYLE; //{ display: "none" };
     return { cellStyle };
 };

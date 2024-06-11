@@ -51,9 +51,6 @@ const EqsPrfrm = () => {
         reload: false
     });
 
-    // Состояние информации о трудоёмкости
-    const [info, setInfo] = useState({ cntP: 0, sumP: 0, cntF: 0, sumF: 0 });
-
     // Состояние фильтра
     const [filter, setFilter] = useState({
         belong: "",
@@ -65,17 +62,22 @@ const EqsPrfrm = () => {
         toMonth: 1,
         toYear: 1990
     });
+
     // Состояние открытия фильтра
     const [filterOpen, setFilterOpen] = useState(true);
+
     // Состояние данных по умолчанию для фильтра
     const [defaultLoaded, setDefaultLoaded] = useState(false);
+
     // Состояние хранения копии фильтра
     const [filterCopy, setFilterCopy] = useState({ ...filter });
+
     // Состояние ограничения редактирования фильтра
     const [filterLock, setFilterLock] = useState(false);
 
     // Состояние ячейки заголовка даты (по раскрытию/скрытию)
     const [activeRef, setActiveRef] = useState();
+
     // Состояние актуальности ссылки на ячейку
     const [refIsDeprecated, setRidFlag] = useState(true);
 
@@ -146,7 +148,6 @@ const EqsPrfrm = () => {
                     }
                 });
             }
-            setInfo({ cntP: cP, sumP: sP, cntF: cF, sumF: sF });
             setDataGrid(pv => ({
                 ...pv,
                 columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
@@ -164,7 +165,6 @@ const EqsPrfrm = () => {
             stored: "PKG_P8PANELS_EQUIPSRV.GET_DEFAULT_FP",
             respArg: "COUT"
         });
-
         setFilter(pv => ({ ...pv, belong: data.JURPERS, fromMonth: 1, fromYear: data.YEAR, toMonth: 12, toYear: data.YEAR }));
         setDefaultLoaded(true);
     }, [executeStored]);
@@ -173,14 +173,9 @@ const EqsPrfrm = () => {
     const showEquipSrv = async ({ date, workType, info }) => {
         const [techName, servKind] = info.split("_");
         let type;
-
         if (workType == "План") type = 0;
         else type = 1;
-
         let [year, month, day] = date.substring(1).split("_");
-
-        //if (day == undefined) day = null;
-
         const data = await executeStored({
             stored: "PKG_P8PANELS_EQUIPSRV.SELECT_EQUIPSRV",
             args: {
@@ -544,7 +539,6 @@ const EqsPrfrm = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button
-                        variant="contained"
                         disabled={
                             filter.belong && filter.prodObj && filter.fromMonth && filter.fromYear && filter.toMonth && filter.toYear ? false : true
                         }
@@ -556,11 +550,8 @@ const EqsPrfrm = () => {
                     >
                         Сформировать
                     </Button>
-                    <Button variant="contained" onClick={clearFilter}>
-                        Очистить
-                    </Button>
+                    <Button onClick={clearFilter}>Очистить</Button>
                     <Button
-                        variant="contained"
                         onClick={() => {
                             setFilter(filterCopy);
                         }}
@@ -592,9 +583,7 @@ const EqsPrfrm = () => {
                                     rows={dataGrid.rows}
                                     size={P8P_DATA_GRID_SIZE.LARGE}
                                     reloading={dataGrid.reload}
-                                    headCellRender={prms =>
-                                        headCellRender({ ...prms }, handleClick, filter.techServ, info.cntP, info.sumP, info.cntF, info.sumF)
-                                    }
+                                    headCellRender={prms => headCellRender({ ...prms }, handleClick)}
                                     dataCellRender={prms => dataCellRender({ ...prms }, showEquipSrv)}
                                     groupCellRender={prms => groupCellRender({ ...prms })}
                                     showCellRightBorder={true}
