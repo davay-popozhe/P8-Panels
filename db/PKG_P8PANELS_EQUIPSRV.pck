@@ -226,9 +226,9 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
     SPRJ_GROUP_NAME         PKG_STD.TSTRING;                       -- Наименование группы для проекта
     BEXPANDED               boolean;                               -- Флаг раскрытости уровня
     RDG                     PKG_P8PANELS_VISUAL.TDATA_GRID;        -- Описание таблицы
-    RDG_ROW0                PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы0
-    RDG_ROW                 PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы
-    RDG_ROW2                PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы2
+    RDG_ROW_INFO            PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы с информацией по объекту ремонта
+    RDG_ROW_PLAN            PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы с планом по объекту ремонта
+    RDG_ROW_FACT            PKG_P8PANELS_VISUAL.TROW;              -- Строка таблицы с фактом по объекту ремонта
     NCURYEAR                PKG_STD.TNUMBER;                       -- Текущий год
     NCURMONTH               PKG_STD.TNUMBER;                       -- Текущий месяц
     NTOTALDAYS              PKG_STD.TNUMBER;                       -- Дней в текущем месяце
@@ -270,7 +270,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                   TT.DDATEPRD_BEG DDATEPLANBEG,
                   TT.DDATEPRD_END DDATEPLANEND,
                   EQJ.DATEFACT_BEG DDATEFACTBEG,
-                  COALESCE(EQJ.DATEFACT_END, EQJ.DATEFACT_BEG) DDATEFACTEND, --
+                  COALESCE(EQJ.DATEFACT_END, EQJ.DATEFACT_BEG) DDATEFACTEND,
                   EK.CODE STECSRVKINDCODE,
                   EK.NAME STECSRVKINDNAME,
                   COALESCE(EW.NSUM, (TT.DDATEPRD_END - TT.DDATEPRD_BEG) * 24) NSUMWORKPLAN,
@@ -554,7 +554,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
       /* Если новый объект ремонта */
       if ((SCURTECHOBJ != QQ.STECHOBJNAME) or (SCURTECHOBJ is null)) then
         /* Если строка с трудоёмкостью по объекту ремонта сформирована */
-        if (RDG_ROW0.RCOLS is not null) then
+        if (RDG_ROW_INFO.RCOLS is not null) then
           /* Цикл по годам периода */
           for Y in NFROMYEAR .. NTOYEAR
           loop
@@ -562,7 +562,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
             if (NFROMYEAR = NTOYEAR) then
               NMS := NFROMMONTH;
               NME := NTOMONTH;
-              /* Иначе вычисляем кол-во месяцев в каждом году периода отчёта*/
+            /* Иначе вычисляем кол-во месяцев в каждом году периода отчёта */
             else
               if (Y = NFROMYEAR) then
                 NMS := NFROMMONTH;
@@ -579,7 +579,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
             for M in NMS .. NME
             loop
               SPERIODNAME := '_' || TO_CHAR(Y) || '_' || TO_CHAR(M);
-              PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW0,
+              PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW_INFO,
                                                SNAME  => SPERIODNAME,
                                                SVALUE => 'план: ' || HOURS_STR(NHOURS => TRUNC(PKG_CONTVALLOC1S.GETN(RCONTAINER => YM,
                                                                                                                      SROWID     => SPERIODNAME || '_P'),
@@ -594,7 +594,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
             end loop;
           end loop;
           /* Добавление строки с трудоёмкостью */
-          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW0);
+          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW_INFO);
         end if;
         /* Добавление группы с объектом ремонта */
         SCURTECHOBJ     := QQ.STECHOBJNAME;
@@ -603,29 +603,29 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                                                  SNAME       => SPRJ_GROUP_NAME,
                                                  SCAPTION    => QQ.STECHOBJNAME,
                                                  BEXPANDABLE => false);
-        RDG_ROW0 := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SPRJ_GROUP_NAME);
-        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW0, SNAME => 'SOBJINFO', SVALUE => SCURTECHOBJ);
+        RDG_ROW_INFO := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SPRJ_GROUP_NAME);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW_INFO, SNAME => 'SOBJINFO', SVALUE => SCURTECHOBJ);
       end if;
       /* Формируем имя группы для вида ремонта */
       SCURTSKCODE := SCURTECHOBJ || '_' || QQ.STECSRVKINDCODE;
       /* Если по данной группе еще нет строк плана и факта */
       if (PKG_CONTVALLOC1S.EXISTS_(RCONTAINER => GF, SROWID => SCURTSKCODE) = false) then
         /* Добавляем строку плана */
-        if (RDG_ROW.RCOLS is not null) then
-          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
+        if (RDG_ROW_PLAN.RCOLS is not null) then
+          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW_PLAN);
         end if;
         /* Добавляем строку факта */
-        if (RDG_ROW2.RCOLS is not null) then
+        if (RDG_ROW_FACT.RCOLS is not null) then
           CR := PKG_CONTVALLOC1S.FIRST_(RCONTAINER => MCLR);
           /* Цикл по коллекции для закрашивания месяцев */
           for Z in 1 .. PKG_CONTVALLOC1S.COUNT_(RCONTAINER => MCLR)
           loop
-            PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW2,
+            PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW_FACT,
                                              SNAME  => CR,
                                              SVALUE => PKG_CONTVALLOC1S.GETS(RCONTAINER => MCLR, SROWID => CR));
             CR := PKG_CONTVALLOC1S.NEXT_(RCONTAINER => MCLR, SROWID => CR);
           end loop;
-          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW2);
+          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW_FACT);
         end if;
         PKG_CONTVALLOC1S.PURGE(RCONTAINER => MCLR);
         /* Добвим группу для вида ремонта */
@@ -635,12 +635,12 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                                                  SCAPTION    => QQ.STECSRVKINDCODE,
                                                  BEXPANDABLE => false);
         /* Строка плана */
-        RDG_ROW := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SPRJ_GROUP_NAME);
-        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SOBJINFO', SVALUE => QQ.STECSRVKINDCODE);
-        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SWRKTYPE', SVALUE => 'План');
+        RDG_ROW_PLAN := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SPRJ_GROUP_NAME);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW_PLAN, SNAME => 'SOBJINFO', SVALUE => QQ.STECSRVKINDCODE);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW_PLAN, SNAME => 'SWRKTYPE', SVALUE => 'План');
         /* Строка факта */
-        RDG_ROW2 := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SPRJ_GROUP_NAME);
-        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW2, SNAME => 'SWRKTYPE', SVALUE => 'Факт');
+        RDG_ROW_FACT := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SPRJ_GROUP_NAME);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW_FACT, SNAME => 'SWRKTYPE', SVALUE => 'Факт');
         /* Добавляем в заполненные группы */
         PKG_CONTVALLOC1S.PUTS(RCONTAINER => GF, SROWID => SPRJ_GROUP_NAME, SVALUE => '');
       end if;
@@ -665,7 +665,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
             /* Закрашивание месяца плана синим */
             if (PKG_CONTVALLOC1S.EXISTS_(RCONTAINER => COLS, SROWID => SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN') =
                false) then
-              PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => SPERIODNAME, SVALUE => 'blue');
+              PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW_PLAN, SNAME => SPERIODNAME, SVALUE => 'blue');
               PKG_CONTVALLOC1S.PUTS(RCONTAINER => COLS,
                                     SROWID     => SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN',
                                     SVALUE     => '');
@@ -675,7 +675,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
           /* Закрашивание дня плана синим */
           if (PKG_CONTVALLOC1S.EXISTS_(RCONTAINER => COLS, SROWID => SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN') =
              false) then
-            PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => SPERIODNAME, SVALUE => 'blue');
+            PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW_PLAN, SNAME => SPERIODNAME, SVALUE => 'blue');
             PKG_CONTVALLOC1S.PUTS(RCONTAINER => COLS,
                                   SROWID     => SPRJ_GROUP_NAME || ' ' || SPERIODNAME || ' PLAN',
                                   SVALUE     => '');
@@ -749,7 +749,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
           end if;
         end loop;
       end if;
-      if ((RDG_ROW0.RCOLS is not null) and (NROWS = 0)) then
+      if ((RDG_ROW_INFO.RCOLS is not null) and (NROWS = 0)) then
         /* Цикл по годам периода */
         for Y in NFROMYEAR .. NTOYEAR
         loop
@@ -772,7 +772,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
           for M in NMS .. NME
           loop
             SPERIODNAME := '_' || TO_CHAR(Y) || '_' || TO_CHAR(M);
-            PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW0,
+            PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW_INFO,
                                              SNAME  => SPERIODNAME,
                                              SVALUE => 'план: ' || HOURS_STR(NHOURS => TRUNC(PKG_CONTVALLOC1S.GETN(RCONTAINER => YM,
                                                                                                                    SROWID     => SPERIODNAME || '_P'),
@@ -782,23 +782,23 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                                                                                  1)));
           end loop;
         end loop;
-        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW0);
+        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW_INFO);
       end if;
       /* План для последней записи */
-      if ((RDG_ROW.RCOLS is not null) and (NROWS = 0)) then
-        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
+      if ((RDG_ROW_PLAN.RCOLS is not null) and (NROWS = 0)) then
+        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW_PLAN);
       end if;
       /* Факт для последней записи */
-      if ((RDG_ROW2.RCOLS is not null) and (NROWS = 0)) then
+      if ((RDG_ROW_FACT.RCOLS is not null) and (NROWS = 0)) then
         CR := PKG_CONTVALLOC1S.FIRST_(RCONTAINER => MCLR);
         for Z in 1 .. PKG_CONTVALLOC1S.COUNT_(RCONTAINER => MCLR)
         loop
-          PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW2,
+          PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW   => RDG_ROW_FACT,
                                            SNAME  => CR,
                                            SVALUE => PKG_CONTVALLOC1S.GETS(RCONTAINER => MCLR, SROWID => CR));
           CR := PKG_CONTVALLOC1S.NEXT_(RCONTAINER => MCLR, SROWID => CR);
         end loop;
-        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW2);
+        PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW_FACT);
       end if;
     end loop;
     /* Сериализуем описание */
