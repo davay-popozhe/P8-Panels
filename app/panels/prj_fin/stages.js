@@ -106,7 +106,7 @@ const Stages = ({ project, projectName, filters }) => {
             stored: "PKG_P8PANELS_PROJECTS.STAGES_SELECT_COST_FACT",
             args: { NRN: sender.NRN }
         });
-        if (data.NIDENT) pOnlineShowUnit({ unitCode: "CostNotes", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+        if (data.NIDENT) pOnlineShowUnit({ unitCode: "CostNotes", inputParameters: [{ name: "in_IDENT", value: data.NIDENT }] });
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 
@@ -116,8 +116,7 @@ const Stages = ({ project, projectName, filters }) => {
             stored: "PKG_P8PANELS_PROJECTS.STAGES_SELECT_SUMM_REALIZ",
             args: { NRN: sender.NRN }
         });
-        if (data.NIDENT)
-            pOnlineShowUnit({ unitCode: "GoodsTransInvoicesToConsumers", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+        if (data.NIDENT) pOnlineShowUnit({ unitCode: "GoodsTransInvoicesToConsumers", inputParameters: [{ name: "in_IDENT", value: data.NIDENT }] });
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 

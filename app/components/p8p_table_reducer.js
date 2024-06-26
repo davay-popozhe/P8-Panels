@@ -19,7 +19,8 @@ const HEADER_INITIAL_STATE = () => ({
     displayLevels: [],
     displayLevelsColumns: {},
     displayDataColumnsCount: 0,
-    displayDataColumns: []
+    displayDataColumns: [],
+    displayFixedColumnsCount: 0
 });
 
 //Состояние описания ячейки заголовка таблицы по умолчанию
@@ -28,6 +29,8 @@ const HEADER_COLUMN_INITIAL_STATE = ({ columnDef, objectsCopier }) => {
     if (!hasValue(tmp.parent)) tmp.parent = "";
     if (!hasValue(tmp.expandable)) tmp.expandable = false;
     if (!hasValue(tmp.expanded)) tmp.expanded = true;
+    if (!hasValue(tmp.fixed)) tmp.fixed = false;
+    if (!hasValue(tmp.fixedLeft)) tmp.fixedLeft = 0;
     return tmp;
 };
 
@@ -55,8 +58,23 @@ const getDisplayColumnColSpan = (displayTree, columnDef) => {
     } else return 1;
 };
 
+//Определения признака зафиксированности колонки
+const getFixedColumns = (displayTree, parentFixed, parentLeft, fixedColumns) => {
+    if (fixedColumns) {
+        let left = parentLeft;
+        displayTree.forEach((columnDef, i) => {
+            left += columnDef.width;
+            if ((columnDef.level == 1 && i + 1 <= fixedColumns) || (columnDef.level > 1 && parentFixed)) {
+                columnDef.fixed = true;
+                columnDef.fixedLeft = left - columnDef.width;
+            } else columnDef.fixed = false;
+            if (columnDef.hasChild) getFixedColumns(columnDef.child, columnDef.fixed, columnDef.fixedLeft, fixedColumns);
+        });
+    }
+};
+
 //Формирование дерева отображаемых элементов заголовка
-const buildDisplayTree = (columnsDef, parent, level) => {
+const buildDisplayTree = (columnsDef, parent, level, expandable, fixedColumns) => {
     const baseBuild = (columnsDef, parent, level) => {
         let maxLevel = level - 1;
         const res = columnsDef
@@ -77,6 +95,7 @@ const buildDisplayTree = (columnsDef, parent, level) => {
     };
     const [displayTree, maxLevel] = baseBuild(columnsDef, parent, level);
     getDisplayColumnRowSpan(displayTree, maxLevel);
+    getFixedColumns(displayTree, false, expandable ? 60 : 0, fixedColumns);
     return [displayTree, maxLevel];
 };
 
@@ -106,35 +125,42 @@ const buildDisplayDataColumns = (displayTree, expandable) => {
     return [displayDataColumns, displayDataColumns.length + (expandable === true ? 1 : 0)];
 };
 
+//Подсчёт количества отображаемых фиксированных колонок
+const getDisplayFixedColumnsCount = displayTree => {
+    let res = 0;
+    const traverseTree = displayTree => {
+        displayTree.forEach(columnDef => (columnDef.hasChild ? traverseTree(columnDef.child) : columnDef.fixed ? res++ : null));
+    };
+    traverseTree(displayTree);
+    return res;
+};
+
 //Формирование описания отображаемых колонок
-const buildDisplay = ({ columnsDef, expandable }) => {
+const buildDisplay = ({ columnsDef, expandable, fixedColumns }) => {
     //Сформируем дерево отображаемых колонок заголовка
-    const [displayTree, maxLevel] = buildDisplayTree(columnsDef, "", 1);
+    const [displayTree, maxLevel] = buildDisplayTree(columnsDef, "", 1, expandable, fixedColumns);
     //Вытянем дерево в удобные для рендеринга структуры
     const [displayLevels, displayLevelsColumns] = buildDisplayLevelsColumns(displayTree, maxLevel);
     //Сформируем отображаемые колонки данных
     const [displayDataColumns, displayDataColumnsCount] = buildDisplayDataColumns(displayTree, expandable);
+    //Подсчитаем количество отображаемых фиксированных колонок
+    const displayFixedColumnsCount = getDisplayFixedColumnsCount(displayTree);
     //Вернём результат
-    return [displayLevels, displayLevelsColumns, displayDataColumns, displayDataColumnsCount];
+    return [displayLevels, displayLevelsColumns, displayDataColumns, displayDataColumnsCount, displayFixedColumnsCount];
 };
 
 //Формирование описания заголовка
-const buildHeaderDef = ({ columnsDef, expandable, objectsCopier }) => {
+const buildHeaderDef = ({ columnsDef, expandable, fixedColumns, objectsCopier }) => {
     //Инициализируем результат
     const res = HEADER_INITIAL_STATE();
     //Инициализируем внутренне описание колонок и поместим его в результат
     columnsDef.forEach(columnDef => res.columnsDef.push(HEADER_COLUMN_INITIAL_STATE({ columnDef, objectsCopier })));
     //Добавим в результат сведения об отображаемых данных
-    [res.displayLevels, res.displayLevelsColumns, res.displayDataColumns, res.displayDataColumnsCount] = buildDisplay({
+    [res.displayLevels, res.displayLevelsColumns, res.displayDataColumns, res.displayDataColumnsCount, res.displayFixedColumnsCount] = buildDisplay({
         columnsDef: res.columnsDef,
-        expandable
+        expandable,
+        fixedColumns
     });
-    //Сформируем дерево отображаемых колонок заголовка
-    //const [displayTree, maxLevel] = buildDisplayTree(res.columnsDef, "", 1);
-    //Вытянем дерево в удобные для рендеринга структуры
-    //[res.displayLevels, res.displayLevelsColumns] = buildDisplayLevelsColumns(displayTree, maxLevel);
-    //Сформируем отображаемые колонки данных
-    //[res.displayDataColumns, res.displayDataColumnsCount] = buildDisplayDataColumns(displayTree, expandable);
     //Вернём результат
     return res;
 };
@@ -147,30 +173,29 @@ const buildHeaderDef = ({ columnsDef, expandable, objectsCopier }) => {
 const handlers = {
     //Формирование заголовка
     [P8P_TABLE_AT.SET_HEADER]: (state, { payload }) => {
-        const { columnsDef, expandable, objectsCopier } = payload;
+        const { columnsDef, expandable, fixedColumns, objectsCopier } = payload;
         return {
             ...state,
-            ...buildHeaderDef({ columnsDef, expandable, objectsCopier })
+            ...buildHeaderDef({ columnsDef, expandable, fixedColumns, objectsCopier })
         };
     },
     [P8P_TABLE_AT.TOGGLE_HEADER_EXPAND]: (state, { payload }) => {
-        const { columnName, expandable, objectsCopier } = payload;
+        const { columnName, expandable, fixedColumns, objectsCopier } = payload;
         const columnsDef = objectsCopier(state.columnsDef);
         columnsDef.forEach(columnDef => (columnDef.name == columnName ? (columnDef.expanded = !columnDef.expanded) : null));
-        const [displayLevels, displayLevelsColumns, displayDataColumns, displayDataColumnsCount] = buildDisplay({
+        const [displayLevels, displayLevelsColumns, displayDataColumns, displayDataColumnsCount, displayFixedColumnsCount] = buildDisplay({
             columnsDef,
-            expandable
+            expandable,
+            fixedColumns
         });
-        //const [displayTree, maxLevel] = buildDisplayTree(columnsDef, "", 1);
-        //const [displayLevels, displayLevelsColumns] = buildDisplayLevelsColumns(displayTree, maxLevel);
-        //const [displayDataColumns, displayDataColumnsCount] = buildDisplayDataColumns(displayTree, expandable);
         return {
             ...state,
             columnsDef,
             displayLevels,
             displayLevelsColumns,
             displayDataColumns,
-            displayDataColumnsCount
+            displayDataColumnsCount,
+            displayFixedColumnsCount
         };
     },
     //Обработчик по умолчанию

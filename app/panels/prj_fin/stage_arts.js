@@ -71,7 +71,7 @@ const StageArts = ({ stage, filters }) => {
             stored: "PKG_P8PANELS_PROJECTS.STAGE_ARTS_SELECT_COST_FACT",
             args: { NSTAGE: stage, NFPDARTCL: sender.NRN }
         });
-        if (data.NIDENT) pOnlineShowUnit({ unitCode: "CostNotes", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+        if (data.NIDENT) pOnlineShowUnit({ unitCode: "CostNotes", inputParameters: [{ name: "in_IDENT", value: data.NIDENT }] });
         else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 

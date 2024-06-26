@@ -257,7 +257,7 @@ const MechRecCostProdPlans = () => {
     const initPlanCtlgs = useCallback(async () => {
         if (!state.init) {
             const data = await executeStored({
-                stored: "PKG_P8PANELS_MECHREC.ACATALOG_INIT",
+                stored: "PKG_P8PANELS_MECHREC.FCPRODPLAN_PP_CTLG_INIT",
                 args: {},
                 respArg: "COUT",
                 isArray: name => name === "XFCPRODPLAN_CRNS"

@@ -33,6 +33,7 @@ import {
     Container,
     Link
 } from "@mui/material"; //Интерфейсные компоненты
+import { useTheme } from "@mui/material/styles"; //Взаимодействие со стилями MUI
 import { P8PAppInlineError } from "./p8p_app_message"; //Встраиваемое сообщение об ошибке
 import { P8P_TABLE_AT, HEADER_INITIAL_STATE, hasValue, p8pTableReducer } from "./p8p_table_reducer"; //Редьюсер состояния
 
@@ -85,8 +86,29 @@ const STYLES = {
     TABLE: {
         with: "100%"
     },
+    TABLE_HEAD_STICKY: {
+        position: "sticky",
+        top: 0,
+        zIndex: 1000
+    },
+    TABLE_HEAD_CELL_STICKY: (theme, left) => ({
+        position: "sticky",
+        left,
+        backgroundColor: theme.palette.background.default,
+        zIndex: 1000
+    }),
     TABLE_ROW: {
         "&:last-child td, &:last-child th": { border: 0 }
+    },
+    TABLE_CELL_STICKY: (theme, left) => ({
+        position: "sticky",
+        left,
+        backgroundColor: theme.palette.background.default,
+        zIndex: 500
+    }),
+    TABLE_CELL_EXPAND_CONTROL: {
+        minWidth: "60px",
+        maxWidth: "60px"
     },
     TABLE_CELL_EXPAND_CONTAINER: {
         paddingBottom: 0,
@@ -94,6 +116,10 @@ const STYLES = {
     },
     TABLE_CELL_GROUP_HEADER: {
         backgroundColor: "lightgray"
+    },
+    TABLE_CELL_GROUP_HEADER_STICKY: {
+        position: "sticky",
+        left: 0
     },
     TABLE_COLUMN_STACK: {
         alignItems: "center"
@@ -460,6 +486,8 @@ const P8PTable = ({
     orders,
     filters,
     size,
+    fixedHeader = false,
+    fixedColumns = 0,
     morePages = false,
     reloading,
     expandable,
@@ -473,6 +501,7 @@ const P8PTable = ({
     clearFilterBtnCaption,
     cancelFilterBtnCaption,
     morePagesBtnCaption,
+    morePagesBtnProps,
     noDataFoundText,
     headCellRender,
     dataCellRender,
@@ -501,6 +530,9 @@ const P8PTable = ({
     //Собственное состояние - колонка с отображаемой подсказкой
     const [displayHintColumn, setDisplayHintColumn] = useState(null);
 
+    //Стили
+    const theme = useTheme();
+
     //Описание фильтруемой колонки
     const filterColumnDef = filterColumn ? columnsDef.find(columnDef => columnDef.name == filterColumn) || null : null;
 
@@ -516,12 +548,12 @@ const P8PTable = ({
         : ["", ""];
 
     //Формирование заголовка таблицы
-    const setHeader = ({ columnsDef, expandable, objectsCopier }) =>
-        dispatchHeaderAction({ type: P8P_TABLE_AT.SET_HEADER, payload: { columnsDef, expandable, objectsCopier } });
+    const setHeader = ({ columnsDef, expandable, fixedColumns, objectsCopier }) =>
+        dispatchHeaderAction({ type: P8P_TABLE_AT.SET_HEADER, payload: { columnsDef, expandable, fixedColumns, objectsCopier } });
 
     //Сворачивание/разворачивание уровня заголовка таблицы
     const toggleHeaderExpand = ({ columnName, objectsCopier }) =>
-        dispatchHeaderAction({ type: P8P_TABLE_AT.TOGGLE_HEADER_EXPAND, payload: { columnName, expandable, objectsCopier } });
+        dispatchHeaderAction({ type: P8P_TABLE_AT.TOGGLE_HEADER_EXPAND, payload: { columnName, expandable, fixedColumns, objectsCopier } });
 
     //Выравнивание в зависимости от типа данных
     const getAlignByDataType = ({ dataType, hasChild }) =>
@@ -621,38 +653,46 @@ const P8PTable = ({
 
     //При изменении описания колонок
     useEffect(() => {
-        setHeader({ columnsDef, expandable, objectsCopier });
-    }, [columnsDef, expandable, objectsCopier]);
+        setHeader({ columnsDef, expandable, fixedColumns, objectsCopier });
+    }, [columnsDef, expandable, fixedColumns, objectsCopier]);
 
     //Генерация заголовка группы
     const renderGroupCell = group => {
         let customRender = {};
         if (groupCellRender) customRender = groupCellRender({ columnsDef: header.columnsDef, group }) || {};
-        return (
+        return header.displayDataColumns.map((columnDef, i) => (
             <TableCell
-                colSpan={header.displayDataColumnsCount}
-                sx={{ ...STYLES.TABLE_CELL_GROUP_HEADER, ...customRender.cellStyle }}
+                key={`group-header-cell-${i}`}
                 {...customRender.cellProps}
+                sx={{
+                    ...STYLES.TABLE_CELL_GROUP_HEADER,
+                    ...customRender.cellStyle,
+                    ...(columnDef.width ? { minWidth: columnDef.width, maxWidth: columnDef.width } : {}),
+                    ...(i == 0 && fixedColumns ? STYLES.TABLE_CELL_GROUP_HEADER_STICKY : {})
+                }}
+                colSpan={expandable && rowExpandRender ? 2 : 1}
             >
-                <Stack direction="row" sx={STYLES.TABLE_COLUMN_STACK}>
-                    {group.expandable ? (
-                        <IconButton
-                            onClick={() => {
-                                setExpandedGroups(pv => ({ ...pv, ...{ [group.name]: !pv[group.name] } }));
-                            }}
-                        >
-                            <Icon>{expandedGroups[group.name] ? "indeterminate_check_box" : "add_box"}</Icon>
-                        </IconButton>
-                    ) : null}
-                    {customRender.data ? customRender.data : group.caption}
-                </Stack>
+                {i == 0 ? (
+                    <Stack direction="row" sx={STYLES.TABLE_COLUMN_STACK}>
+                        {group.expandable ? (
+                            <IconButton
+                                onClick={() => {
+                                    setExpandedGroups(pv => ({ ...pv, ...{ [group.name]: !pv[group.name] } }));
+                                }}
+                            >
+                                <Icon>{expandedGroups[group.name] ? "indeterminate_check_box" : "add_box"}</Icon>
+                            </IconButton>
+                        ) : null}
+                        {customRender.data ? customRender.data : group.caption}
+                    </Stack>
+                ) : null}
             </TableCell>
-        );
+        ));
     };
 
     //Генерация содержимого
     return (
-        <>
+        <div>
             {displayHintColumn ? (
                 <P8PTableColumnHintDialog columnDef={displayHintColumnDef} okBtnCaption={okFilterBtnCaption} onOk={handleHintOk} />
             ) : null}
@@ -684,13 +724,22 @@ const P8PTable = ({
                     valueFormatter={valueFormatter}
                 />
             ) : null}
-
             <TableContainer component={containerComponent ? containerComponent : Paper} {...(containerComponentProps ? containerComponentProps : {})}>
-                <Table sx={STYLES.TABLE} size={size || P8P_TABLE_SIZE.MEDIUM}>
-                    <TableHead>
-                        {header.displayLevels.map(level => (
+                <Table stickyHeader={fixedHeader} sx={STYLES.TABLE} size={size || P8P_TABLE_SIZE.MEDIUM}>
+                    <TableHead sx={fixedHeader ? STYLES.TABLE_HEAD_STICKY : {}}>
+                        {header.displayLevels.map((level, i) => (
                             <TableRow key={level}>
-                                {expandable && rowExpandRender ? <TableCell key="head-cell-expand-control" align="center"></TableCell> : null}
+                                {expandable && rowExpandRender && i == 0 ? (
+                                    <TableCell
+                                        key="head-cell-expand-control"
+                                        align="center"
+                                        sx={{
+                                            ...STYLES.TABLE_CELL_EXPAND_CONTROL,
+                                            ...(fixedColumns ? STYLES.TABLE_HEAD_CELL_STICKY(theme, 0) : {})
+                                        }}
+                                        rowSpan={header.displayLevelsColumns[level][0].rowSpan}
+                                    ></TableCell>
+                                ) : null}
                                 {header.displayLevelsColumns[level].map((columnDef, j) => {
                                     let customRender = {};
                                     if (headCellRender) customRender = headCellRender({ columnDef }) || {};
@@ -698,7 +747,11 @@ const P8PTable = ({
                                         <TableCell
                                             key={`head-cell-${j}`}
                                             align={getAlignByDataType(columnDef)}
-                                            sx={{ ...customRender.cellStyle }}
+                                            sx={{
+                                                ...(columnDef.width ? { minWidth: columnDef.width, maxWidth: columnDef.width } : {}),
+                                                ...(columnDef.fixed ? STYLES.TABLE_HEAD_CELL_STICKY(theme, columnDef.fixedLeft) : {}),
+                                                ...customRender.cellStyle
+                                            }}
                                             rowSpan={columnDef.rowSpan}
                                             colSpan={columnDef.colSpan}
                                             {...customRender.cellProps}
@@ -746,73 +799,92 @@ const P8PTable = ({
                         ))}
                     </TableHead>
                     <TableBody>
-                        {rows.length > 0
-                            ? (Array.isArray(groups) && groups.length > 0 ? groups : [{}]).map((group, g) => {
-                                  const rowsView = rows.map((row, i) =>
-                                      !group?.name || group?.name == row.groupName ? (
-                                          <React.Fragment key={`data-${i}`}>
-                                              <TableRow key={`data-row-${i}`} sx={STYLES.TABLE_ROW}>
-                                                  {expandable && rowExpandRender ? (
-                                                      <TableCell key={`data-cell-expand-control-${i}`} align="center">
-                                                          <IconButton onClick={() => handleExpandClick(i)}>
-                                                              <Icon>{expanded[i] === true ? "keyboard_arrow_down" : "keyboard_arrow_right"}</Icon>
-                                                          </IconButton>
-                                                      </TableCell>
-                                                  ) : null}
-                                                  {header.displayDataColumns.map((columnDef, j) => {
-                                                      let customRender = {};
-                                                      if (dataCellRender) customRender = dataCellRender({ row, columnDef }) || {};
-                                                      return (
-                                                          <TableCell
-                                                              key={`data-cell-${j}`}
-                                                              align={getAlignByDataType(columnDef)}
-                                                              sx={{ ...customRender.cellStyle }}
-                                                              {...customRender.cellProps}
-                                                          >
-                                                              {customRender.data
-                                                                  ? customRender.data
-                                                                  : valueFormatter
-                                                                  ? valueFormatter({ value: row[columnDef.name], columnDef })
-                                                                  : row[columnDef.name]}
-                                                          </TableCell>
-                                                      );
-                                                  })}
-                                              </TableRow>
-                                              {expandable && rowExpandRender && expanded[i] === true ? (
-                                                  <TableRow key={`data-row-expand-${i}`}>
-                                                      <TableCell sx={STYLES.TABLE_CELL_EXPAND_CONTAINER} colSpan={header.displayDataColumnsCount}>
-                                                          {rowExpandRender({ columnsDef, row })}
-                                                      </TableCell>
-                                                  </TableRow>
-                                              ) : null}
-                                          </React.Fragment>
-                                      ) : null
-                                  );
-                                  return !group?.name ? (
-                                      rowsView
-                                  ) : (
-                                      <React.Fragment key={`group-${g}`}>
-                                          <TableRow key={`group-header-${g}`}>{renderGroupCell(group)}</TableRow>
-                                          {!group.expandable || expandedGroups[group.name] === true ? rowsView : null}
-                                      </React.Fragment>
-                                  );
-                              })
-                            : null}
+                        {rows.length > 0 ? (
+                            (Array.isArray(groups) && groups.length > 0 ? groups : [{}]).map((group, g) => {
+                                const rowsView = rows.map((row, i) =>
+                                    !group?.name || group?.name == row.groupName ? (
+                                        <React.Fragment key={`data-${i}`}>
+                                            <TableRow key={`data-row-${i}`} sx={STYLES.TABLE_ROW}>
+                                                {expandable && rowExpandRender ? (
+                                                    <TableCell
+                                                        key={`data-cell-expand-control-${i}`}
+                                                        align="center"
+                                                        sx={{
+                                                            ...STYLES.TABLE_CELL_EXPAND_CONTROL,
+                                                            ...(fixedColumns ? STYLES.TABLE_CELL_STICKY(theme, 0) : {})
+                                                        }}
+                                                    >
+                                                        <IconButton onClick={() => handleExpandClick(i)}>
+                                                            <Icon>{expanded[i] === true ? "keyboard_arrow_down" : "keyboard_arrow_right"}</Icon>
+                                                        </IconButton>
+                                                    </TableCell>
+                                                ) : null}
+                                                {header.displayDataColumns.map((columnDef, j) => {
+                                                    let customRender = {};
+                                                    if (dataCellRender) customRender = dataCellRender({ row, columnDef }) || {};
+                                                    return (
+                                                        <TableCell
+                                                            key={`data-cell-${j}`}
+                                                            align={getAlignByDataType(columnDef)}
+                                                            sx={{
+                                                                ...(columnDef.width ? { minWidth: columnDef.width, maxWidth: columnDef.width } : {}),
+                                                                ...(columnDef.fixed ? STYLES.TABLE_CELL_STICKY(theme, columnDef.fixedLeft) : {}),
+                                                                ...customRender.cellStyle
+                                                            }}
+                                                            {...customRender.cellProps}
+                                                        >
+                                                            {customRender.data
+                                                                ? customRender.data
+                                                                : valueFormatter
+                                                                ? valueFormatter({ value: row[columnDef.name], columnDef })
+                                                                : row[columnDef.name]}
+                                                        </TableCell>
+                                                    );
+                                                })}
+                                            </TableRow>
+                                            {expandable && rowExpandRender && expanded[i] === true ? (
+                                                <TableRow key={`data-row-expand-${i}`}>
+                                                    <TableCell
+                                                        sx={{
+                                                            ...STYLES.TABLE_CELL_EXPAND_CONTAINER,
+                                                            ...(fixedColumns ? STYLES.TABLE_CELL_STICKY(theme, 0) : {})
+                                                        }}
+                                                        colSpan={fixedColumns ? header.displayFixedColumnsCount + 1 : header.displayDataColumnsCount}
+                                                    >
+                                                        {rowExpandRender({ columnsDef, row })}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : null}
+                                        </React.Fragment>
+                                    ) : null
+                                );
+                                return !group?.name ? (
+                                    rowsView
+                                ) : (
+                                    <React.Fragment key={`group-${g}`}>
+                                        <TableRow key={`group-header-${g}`}>{renderGroupCell(group)}</TableRow>
+                                        {!group.expandable || expandedGroups[group.name] === true ? rowsView : null}
+                                    </React.Fragment>
+                                );
+                            })
+                        ) : noDataFoundText && !reloading ? (
+                            <TableRow>
+                                <TableCell colSpan={header.displayDataColumnsCount}>
+                                    <P8PAppInlineError text={noDataFoundText} />
+                                </TableCell>
+                            </TableRow>
+                        ) : null}
                     </TableBody>
                 </Table>
-                {rows.length == 0 ? (
-                    noDataFoundText && !reloading ? (
-                        <P8PAppInlineError text={noDataFoundText} />
-                    ) : null
-                ) : morePages ? (
-                    <Container style={STYLES.MORE_BUTTON_CONTAINER}>
-                        <Button fullWidth onClick={handleMorePagesBtnClick}>
-                            {morePagesBtnCaption}
-                        </Button>
-                    </Container>
-                ) : null}
             </TableContainer>
-        </>
+            {morePages ? (
+                <Container style={STYLES.MORE_BUTTON_CONTAINER}>
+                    <Button fullWidth onClick={handleMorePagesBtnClick} {...(morePagesBtnProps ? morePagesBtnProps : {})}>
+                        {morePagesBtnCaption}
+                    </Button>
+                </Container>
+            ) : null}
+        </div>
     );
 };
 
@@ -829,7 +901,8 @@ P8PTable.propTypes = {
             values: PropTypes.array,
             parent: PropTypes.string,
             expandable: PropTypes.bool.isRequired,
-            expanded: PropTypes.bool.isRequired
+            expanded: PropTypes.bool.isRequired,
+            width: PropTypes.number
         })
     ).isRequired,
     groups: PropTypes.arrayOf(
@@ -849,6 +922,8 @@ P8PTable.propTypes = {
     ).isRequired,
     filters: PropTypes.arrayOf(P8P_TABLE_FILTER_SHAPE).isRequired,
     size: PropTypes.string,
+    fixedHeader: PropTypes.bool,
+    fixedColumns: PropTypes.number,
     morePages: PropTypes.bool,
     reloading: PropTypes.bool.isRequired,
     expandable: PropTypes.bool,
@@ -862,6 +937,7 @@ P8PTable.propTypes = {
     clearFilterBtnCaption: PropTypes.string.isRequired,
     cancelFilterBtnCaption: PropTypes.string.isRequired,
     morePagesBtnCaption: PropTypes.string.isRequired,
+    morePagesBtnProps: PropTypes.object,
     noDataFoundText: PropTypes.string,
     headCellRender: PropTypes.func,
     dataCellRender: PropTypes.func,

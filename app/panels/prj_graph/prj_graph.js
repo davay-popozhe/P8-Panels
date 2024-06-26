@@ -15,6 +15,15 @@ import { ApplicationСtx } from "../../context/application"; //Контекст 
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { dataCellRender, groupCellRender } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
 
+//---------
+//Константы
+//---------
+
+//Стили
+const STYLES = {
+    DATA_GRID_CONTAINER: { minWidth: "95vw", maxWidth: "95vw", minHeight: "87vh", maxHeight: "87vh" }
+};
+
 //-----------
 //Тело модуля
 //-----------
@@ -27,7 +36,9 @@ const PrjGraph = () => {
         columnsDef: [],
         groups: [],
         rows: [],
-        reload: true
+        reload: true,
+        fixedHeader: false,
+        fixedColumns: 0
     });
 
     //Подключение к контексту приложения
@@ -42,6 +53,8 @@ const PrjGraph = () => {
             const data = await executeStored({ stored: "PKG_P8PANELS_PROJECTS.GRAPH", args: {}, respArg: "COUT" });
             setdataGrid(pv => ({
                 ...pv,
+                fixedHeader: data.XDATA_GRID.fixedHeader,
+                fixedColumns: data.XDATA_GRID.fixedColumns,
                 columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
                 rows: [...(data.XROWS || [])],
                 groups: [...(data.XGROUPS || [])],
@@ -61,7 +74,7 @@ const PrjGraph = () => {
         <div>
             <Grid container spacing={1}>
                 <Grid item xs={12}>
-                    <Box p={5}>
+                    <Box pt={1} display="flex" justifyContent="center" alignItems="center">
                         {dataGrid.dataLoaded ? (
                             <P8PDataGrid
                                 {...P8P_DATA_GRID_CONFIG_PROPS}
@@ -70,9 +83,14 @@ const PrjGraph = () => {
                                 rows={dataGrid.rows}
                                 size={P8P_DATA_GRID_SIZE.LARGE}
                                 reloading={dataGrid.reload}
+                                fixedHeader={dataGrid.fixedHeader}
+                                fixedColumns={dataGrid.fixedColumns}
                                 dataCellRender={prms => dataCellRender({ ...prms, pOnlineShowDocument })}
                                 groupCellRender={prms => groupCellRender({ ...prms, pOnlineShowDocument })}
-                                containerComponentProps={{ elevation: 6, sx: { overflowX: "visible" } }}
+                                containerComponentProps={{
+                                    elevation: 3,
+                                    sx: STYLES.DATA_GRID_CONTAINER
+                                }}
                             />
                         ) : null}
                     </Box>

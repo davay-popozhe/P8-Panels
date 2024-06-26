@@ -97,6 +97,16 @@ git clone https://github.com/CITKParus/P8-Panels.git
 
 7. Перезапустите сервер приложений "ПАРУС 8 Онлайн"
 
+> **Внимание:** при установке учитывайте следующее:
+>
+> -   **Для Linux/Unix**
+>
+>     -   Чувствительность к регистру - обращайте внимание на регистр в именах каталогов и файлов операционной системы и регистр в котором упоминаете их в конфигурационных файлах, несовпадение приводит к неработоспособности настроек
+>     -   Права доступа - файлы конфигурации и файлы дистрибутива фреймворка должны быть доступны процессу WEB-сервера
+>
+> -   **Для Windows 7 и прочих устаревших версий Windows**
+>     -   Версия IIS, доступная для этих ОС, зачастую не имеет автоматической поддержки шрифтов в формате "WOFF2", применяемых фреймворком. Это может вызывать некорректное отображение панелей, иконок, некоторых элементов пользовательского интерфейса. Добавте в файл "web.config", сервера приложений "ПАРУС 8 Онлайн", строку для определения формата: `<mimeMap fileExtension=".woff2" mimeType="application/font-woff2" />`. Путь для добавления данной настройки в файл "web.config": `configuration/system.webServer/staticContent/<mimeMap fileExtension=".woff2" mimeType="application/font-woff2" />`
+
 ## V. Подключение панелей
 
 ### Интеграция в приложение, главное меню, галерею и меню панелей
@@ -224,6 +234,44 @@ WEB-приложение "ПАРУС 8 Онлайн" поддерживает в
 ...
 </Desktop>
 ```
+
+### Интеграция в разделы - вызов из действия
+
+Панель может быть вызвана из действия раздела Системы (только для WEB-клиента). Для это необходимо зарегистрировать в разделе метод с кодом "P8PANELS_OPEN", при этом метод обязательно должен иметь "Тип метода" - "Встроенный", а "Доступность" - "Клиентский". Для метода необходимо настроить параметры:
+
+-   `SPANEL` - строка, обязательный, уникальное имя (`name`) той панели из "p8panels.config", которая должна быть открыта действием
+-   `SCAPTION` - строка, необязательный, заголовок вкладки WEB-приложения "ПАРУС 8 Онлайн", в которой будет открыта панель, если не задан - будет использовано видимое наименование панели (`caption`) из "p8panels.config"
+-   `NIDENT` - число, необязательный, но требуется если предполагается, что панель должна работать со списком отмеченных документов, параметр следует привязать к контексту "Идентификатор отмеченных записей"
+
+Указанные параметры - зарезервированы и могут выполнять только указанную функцию. Тем не менее, метод может иметь произвольный набор прочих параметров, необходимых для работы панели. Все параметры (кроме `SPANEL` и `SCAPTION` - они системные и требуется непосредственно для корректного откытия панели, но не для её работы) будут переданы в панель в виде GET-запроса. Получить их значения в коде панели можно применив специальный API фреймворка, реализованный в `NavigationCtx`:
+
+```
+import { NavigationCtx } from "../../context/navigation"; //Контекст навигации
+
+const MyPanel = () => {
+    //Подключение к контексту навигации
+    const { getNavigationSearch } = useContext(NavigationCtx);
+
+    //Считаем параметры, переданные из действия
+    const actionPrms = getNavigationSearch();
+
+    return (
+        <div>
+            {JSON.stringify(actionPrms)}
+        </div>
+    );
+}
+```
+
+Далее настройка в разделе выполняется стандартно - регистрируется действие раздела, в качестве реализующего метода действия указывается "P8PANELS_OPEN". Действие может иметь визуализируемый диалог ввода параметров.
+
+Панель открывается в виде новой вкладки WEB-приложения "ПАРУС 8 Онлайн" после ввода пользователем значений визуализируемых параметров в диалоге (если таковой отображался).
+
+В настоящий момент в Системе можно зарегистрировать сколь угодно много методов с кодом "P8PANELS_OPEN", но не более одного в каждом разделе. Если есть необходимость открытия из одного раздела нескольких различных панелей, то рекомендуется:
+
+-   Реализовать дополнительную навигацию в открываемой панели
+-   Реализовать в КОР-действии параметр с выпадающим списком (или иным интерфейсным элементом), позволяющим пользователю выбрать какую именно панель ему необходимо открыть сейчас
+-   Определять значение параметра `SPANEL` КОР-метода "P8PANELS_OPEN" из контекста (документа, атрибута, каталога и т.п.), таким образом автоматически определяя открываемую панель
 
 ## VI. Разработка панелей
 
@@ -1081,11 +1129,19 @@ const Loader = ({ title }) => {
 -   состоят из значительного числа интерфейсных примитивов
 -   имеют специальный API на стороне сервера БД Системы для управления их содержимым
 
-Необходимо понимать, что с одной стороны, наличие серверно API в БД значительно упрощает взаимодействие с компонентом, с другой стороны - ограничивает возможности его примерения только теми прикладными задачами и функциональными возможностями, которые заложены в него. При этом "примитивы" HTML и MUI, хоть и сложнее в применении, но позволяют "собирать" практически любые интерфейсные решения на вкус разработчика.
+Необходимо понимать, что с одной стороны, наличие серверного API в БД значительно упрощает взаимодействие с компонентом, с другой стороны - ограничивает возможности его примерения только теми прикладными задачами и функциональными возможностями, которые заложены в него. При этом "примитивы" HTML и MUI, хоть и сложнее в применении, но позволяют "собирать" практически любые интерфейсные решения на вкус разработчика.
 
 ##### Таблица данных "P8PDataGrid"
 
-Предназначена для формирования табличных представлений данных с поддержкой постраничного вывода данных, сортировки и отбора данных по колонкам на строне сервера БД.
+Предназначена для формирования табличных представлений данных с поддержкой:
+
+-   постраничного вывода данных
+-   сортировки и отбора данных по колонкам на строне сервера БД
+-   сложных заголовков с возможностью отображения/сокрытия уровней
+-   разворачивающихся строк (accordion)
+-   группировки строк с возможностью отображения/сокрытия содержимого группы
+-   фиксации заголовка
+-   фиксацией колонок слева
 
 ![Пример P8PDataGrid](docs/img/66.png)
 
@@ -1107,10 +1163,13 @@ const MyPanel = () => {
 
 **Свойства**
 
-`columnsDef` - обязательный, массив, описание колонок таблицы, содержит объекты вида `{caption: <ЗАГОЛОВОК_КОЛОНКИ>, dataType: <ТИП_ДАННЫХ - NUMB|STR|DATE>, filter: <ПРИЗНАК_ВОЗМОЖНОСТИ_ОТБОРА - trut|false>, hint: <ОПИСАНИЕ_КОЛОНКИ_МОЖЕТ_СОДЕРЖАТЬ_HTML_РАЗМЕТКУ>, name: <НАИМЕНОВАНИЕ_КОЛОНКИ>, order: <ПРИЗНАК_ВОЗМОЖНОСТИ_СОРТИРОВКИ - trut|false>, values: <МАССИВ_ПРЕДОПРЕДЕЛЁННЫХ_ЗНАЧЕНИЙ>, visible: <ПРИЗНАК_ВИДИМОСТИ_КОЛОНКИ - true|false>}`\
+`columnsDef` - обязательный, массив, описание колонок таблицы, содержит объекты вида `{caption: <ЗАГОЛОВОК_КОЛОНКИ>, dataType: <ТИП_ДАННЫХ - NUMB|STR|DATE>, filter: <ПРИЗНАК_ВОЗМОЖНОСТИ_ОТБОРА - true|false>, hint: <ОПИСАНИЕ_КОЛОНКИ_МОЖЕТ_СОДЕРЖАТЬ_HTML_РАЗМЕТКУ>, name: <НАИМЕНОВАНИЕ_КОЛОНКИ>, order: <ПРИЗНАК_ВОЗМОЖНОСТИ_СОРТИРОВКИ - true|false>, values: <МАССИВ_ПРЕДОПРЕДЕЛЁННЫХ_ЗНАЧЕНИЙ>, visible: <ПРИЗНАК_ВИДИМОСТИ_КОЛОНКИ - true|false>,expandable: <ПРИЗНАК_РАЗВОРАЧИВАЕМОСТИ_ГРУППОВОГО_ЗАГОЛОВКА - true|false>, expanded: <ПРИЗНАК_РАЗВЕРНУТОСТИ_ГРУППОВОГО_ЗАГОЛОВКА - true|false>, parent: <НАИМЕНОВАНИЕ_РОДИТЕЛЬСКОЙ_КОЛОНКИ_В_ГРУППОВОМ_ЗАГОЛОВКЕ>, width: <ШИРИНА_КОЛОНКИ>}`\
 `filtersInitial` - необязательныей, массив, начальное состояние фильтров таблицы, содержит объекты вида `{name: <НАИМЕНОВАНИЕ_КОЛОНКИ>, from: <НАЧАЛО_ДИАПАЗОНА_ЗНАЧЕНИЙ_ФИЛЬТРА>, to: <ОКОНЧАНИЕ_ДИАПАЗОНА_ЗНАЧЕНИЙ_ФИЛЬТРА>}`\
-`rows` - обязательный, массив, отображаемые таблицой строки данных, содержит объекты вида `{<ИМЯ_КОЛОНКИ>: <ЗНАЧЕНИЕ>}`\
+`groups` - необязательный, массив групп данных, содержит объекты вида `{name: <ИМЯ_ГРУППЫ>, caption: <ЗАГОЛОВОК_ГРУППЫ>, expandable: <ПРИЗНАК_РАЗВОРАЧИВАЕМОСТИ_ГРУППЫ - true|false>, expanded: <ПРИЗНАК_РАЗВЕРНУТОСТИ_ГРУППЫ - true|false>}`\
+`rows` - обязательный, массив, отображаемые таблицой строки данных, содержит объекты вида `{groupName: <ИМЯ_ГРУППЫ_СОДЕРЖАЩЕЙ_СТРОКУ>, <ИМЯ_КОЛОНКИ>: <ЗНАЧЕНИЕ>}`\
 `size` - необязательный, строка, размер отступов при вёрстке таблицы, `small|medium` (см. константу `P8P_DATA_GRID_SIZE` в исходном коде компонента)\
+`fixedHeader` - необязательный, логический, признак фиксации заголовка таблицы\
+`fixedColumns` - необязательный, число, количество фиксированных колонок слева
 `morePages` - обязательный, логический, признак отображения кнопки догрузки данных\
 `reloading` - обязательный, логический, признак выполнения обновления данных таблицы (служит для корректной выдачи сообщения об отсуствии данных и корректного отображения "разворачивающихся" строк)\
 `expandable` - необязательный, логический, признак необходимости формирования "разворачивающихся" строк, по умолчанию - `false`\
@@ -1124,11 +1183,15 @@ const MyPanel = () => {
 `clearFilterBtnCaption` - обязательный, строка, текст кнопки очистки введённого значения фильтра\
 `cancelFilterBtnCaption` - обязательный, строка, текст кнопки отмены ввода значения фильтра\
 `morePagesBtnCaption` - обязательный, строка, текст кнопки догрузки данных\
+`morePagesBtnProps` - необязательный, объект, содержит свойства, которые будут переданы компоненту `Button` - кнопке догрузки данных таблицы\
 `noDataFoundText` - необязательный, строка, текст ошибки об отсутствии данных в таблице (если не указн - ошибка не отображается)\
 `headCellRender` - необязательный, функция формирования представления заголовка колонки (если не указана - отображение по умолчанию, согласно `columnsDef`). Сигнатура функции: `f({columnDef})`. Будет вызвана для каждой колонки таблицы, в функцию будет передан объект, поле `columnDef` которого будет содержать описание текущей генерируемой колонки. Должна возвращать объект вида `{cellStyle: <СТИЛИ_ДЛЯ_TableCell>, cellProps: <СВОЙСТВА_ДЛЯ_TableCell>, stackStyle: <СТИЛИ_ДЛЯ_КОНТЕЙНЕРА_Stack>, stackProps: <СВОЙСТВА_ДЛЯ_КОНТЕЙНЕРА_Stack>, data: <ЗНАЧЕНИЕ_ИЛИ_КОМПОНЕТ_Ract_ДЛЯ_СОДЕРЖИМОГО_ЗАГОЛОВКА_КОЛОНКИ>}` или `undefined`, если для заголовка колонки не предполагается специального представления.\
 `dataCellRender` - необязательный, функция формирования представления ячейки (если не указана - отображение по умолчанию, согласно `columnsDef` и текущему элементу `rows`). Сигнатура функции `f({row, columnDef})`. Будет вызвана для каждой ячейки таблицы, в функцию будет передан объект, поле `row` которого будет содержать данные текущей генерируемой строки таблицы, а поле `columnDef` - текущей генерируемой колонки. Должна возвращать объект вида `{cellStyle: <СТИЛИ_ДЛЯ_TableCell>, cellProps: <СВОЙСТВА_ДЛЯ_TableCell>, data: <ЗНАЧЕНИЕ_ИЛИ_КОМПОНЕТ_Ract_ДЛЯ_СОДЕРЖИМОГО_ЯЧЕЙКИ>}` или `undefined`, если для ячейки не предполагается специального представления.\
+`groupCellRender` - необязательный, функция формирования представления заголовка группы (если не указана - отображение заголовка группы по умолчанию). Сигнатура функции `f({columnsDef, group})`. Будет вызвана для каждого элемента из `groups` при генерации представления группы. В функцию будет передан объект, поле `columnsDef` которого будет содержать полное описание колонок таблицы, а поле `group` - описание группы, представление заголовка которой сейчас формируется. Должна возвращать объект вида `{cellStyle: <СТИЛИ_ДЛЯ_TableCell>, cellProps: <СВОЙСТВА_ДЛЯ_TableCell>, data: <ЗНАЧЕНИЕ_ИЛИ_КОМПОНЕТ_Ract_ДЛЯ_СОДЕРЖИМОГО_ЯЧЕЙКИ>}` или `undefined`, если для ячейки заголовка группы не предполагается специального представления.\
 `rowExpandRender` - необязательный, функция формирования представления развёрнутой строки таблицы (если не указана - интерфейсный элемент для "разворачивания" строки не будет отображён, даже при `expandable=true`). Сигнатура функции `f({row, columnsDef})`. Будет вызвана в момент "развёртывания" строки таблицы пользователем, в функцию будет передан объект, поле `row` которого будет содержать данные текущей "разворачиваемой" строки таблицы, а поле `columnsDef` - описание колонок таблицы. Должна возвращать представление "развёрнутой" строки таблицы в виде значения или Rect-компонента.\
 `valueFormatter` - необязательный, функция форматирования значений колонки (если не указана - форматирование согласно `columnsDef`). Сигнатура функции `f({value, columnDef})`. Будет вызвана в момент формирования ячейки таблицы (если ранее для ячейки `dataCellRender` не вернул специального представления) и в моммент формирования фильтра для ячейки. Должна возвращать отформатированное значение ячейки или React-компонент для её представления.\
+`containerComponent` - необязательный, функциональный React-компонент или строка с именем HTML-тэга, будет применён для формирования в иерархии DOM элемента-обёртки (контейнера) таблицы (по умолчанию используется компонет библиотеки MUI - Paper)\
+`containerComponentProps` - необязательный, объект, содержит свойства, которые будут переданы компоненту-контейнеру таблицы\
 `onOrderChanged` - необязательный, функция, будет вызвана при изменении пользователем состояния сортировок таблицы. Сигнатура функции `f({orders})`, результат функции не интерпретируется. В функцию передаётся объект, поле `orders` которого, содержит текущее состояние сортировок таблицы. Объект `orders` - массив, содержащий элементы вида `{name: <НАИМЕНОВАНИЕ_КОЛОНКИ>, direction: <ASC|DESC>}`. Функция применяется для инициации обновления данных в таблице.\
 `onFilterChanged` - необязательный, функция, будет вызвана при изменении пользователем состояния фильтров таблицы. Сигнатура функции `f({filters})`, результат функции не интерпретируется. В функцию передаётся объект, поле `filters` которого, содержит текущее состояние фильтров таблицы. Объект `filters` - массив, содержащий элементы вида `{name: <НАИМЕНОВАНИЕ_КОЛОНКИ>, from: <ЗНАЧЕНИЕ_НАЧАЛА_ДИАПАЗОНА_ОТБОРА>, to: <ЗНАЧЕНИЕ_ОКОНЧАНИЯ_ДИАПАЗОНА_ОТБОРА>}`. Функция применяется для инициации обновления данных в таблице.\
 `onPagesCountChanged` - необязательный, функция, будет вызвана при изменении пользователем количества отображаемых страниц данных таблицы. Сигнатура функции `f()`, результат функции не интерпретируется. Функция применяется для инициации обновления данных в таблице.\
@@ -1151,21 +1214,22 @@ const MyPanel = () => {
 
 **API на сервере БД**
 
-Такие свойства как `columnsDef` и `rows` компонента `P8PDataGrid` требуют от разработчика передачи данных в определённом формате. Это не обязательно должна быть информация из БД Системы, можно, например, просто объявить переменные в коде панели, задать им соответствующие значения и передать в компонент. Но изначально, таблица данных задумывалась для отображения сведений, полученных их учётных регистров Системы. Такие сведения, как правило, собираются хранимым объектом БД, исполняемым из панели посредством вызова `executeStored`. С целью снижения трудозатрат на приведение собранных хранимым объектом данных к форматам, потребляемым `P8PDataGrid`, реализован специальный API на стороне сервера БД.
+Такие свойства как `columnsDef`, `groups`, `rows` компонента `P8PDataGrid` требуют от разработчика передачи данных в определённом формате. Это не обязательно должна быть информация из БД Системы, можно, например, просто объявить переменные в коде панели, задать им соответствующие значения и передать в компонент. Но изначально, таблица данных задумывалась для отображения сведений, полученных их учётных регистров Системы. Такие сведения, как правило, собираются хранимым объектом БД, исполняемым из панели посредством вызова `executeStored`. С целью снижения трудозатрат на приведение собранных хранимым объектом данных к форматам, потребляемым `P8PDataGrid`, реализован специальный API на стороне сервера БД.
 
 Для таблицы данных это (см. детальные описания программных интерфейсов в пакете `PKG_P8PANELS_VISUAL`):
 `PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE` - функция, инициализация таблицы данных, возвращает объект для хранения описания таблицы\
 `PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF` - процедура, добавление описания колонки в таблицу, принимает на вход объект с описанием таблицы и параметры, описывающие добавляемую колонку (её имя, заголовок, тип данных, видимость, доступность отбора и сортировки, набор предопределённых значений и т.д.)\
 `PKG_P8PANELS_VISUAL.TCOL_VALS_ADD` - процедура, служит для формирования коллекции предопределённых значений колонки таблицы (подготовленная коллекция передаётся в `RCOL_VALS` вызова `TDATA_GRID_ADD_COL_DEF`, если необходимо)\
+`PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_GROUP` - процедура, служит для добавления описания группы в таблицу данных, на вход принимает объект для хранения описания таблицы и параметры добавляемой группы\
 `PKG_P8PANELS_VISUAL.TROW_ADD_COL` - процедура, добавляет значение колонки к строке таблицы (значение указывается явно в `[S|N|D]VALUE`)\
 `PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COL[S|N|D]` - процедура, добавляет значение колонки к строке таблицы (значение указывается через ссылку на номер колонки `NPOSITION` в курсоре `ICURSOR` динамического SQL)\
-`PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW` - процедура, добавляет сформированную строку со значениями колонок в таблицу данных, на вход принимает объект для хранения описания таблицы и описание строки, сформированное вызовами `TROW_ADD_COL` и `TROW_ADD_CUR_COL[S|N|D]`\
+`PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW` - процедура, добавляет сформированную строку со значениями колонок в таблицу данных, на вход принимает объект для хранения описания таблицы и описание строки, сформированное вызовами `TROW_ADD_COL` и `TROW_ADD_CUR_COL[S|N|D]`, а так же год группы, в которую должна быть включена строка\
 `PKG_P8PANELS_VISUAL.TDATA_GRID_TO_XML` - функция, производит сериализацию объекта, описывающего таблицу данных, в специальный XML-формат, корректно интерпретируемый клиентским компонентом `P8PDataGrid` при передаче в WEB-приложение\
 `PKG_P8PANELS_VISUAL.TORDERS_FROM_XML` - функция, служит для десериализации (как правило, полученного от клиентского приложения) состояния сортировок в коллекцию формата `TORDERS`, на вход принимает `CLOB` с сериализованным состоянием сортировок таблицы в виде `BASE64(<orders><name>ИМЯ</name><direction>ASC|DESC</direction></orders>...)` (клиентское приложение должно обеспечить передачу состояния сортировок в этом формате, см. пример ниже)\
 `PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY` - процедура, вспомогательная утилита, производит в тексте SQL-запроса, поданного на вход, замену указанного шаблона на конструкцию `order by`, сформированную с учётом переданной коллекции `RORDERS`\
 `PKG_P8PANELS_VISUAL.TFILTERS_FROM_XML` - функция, служит для десериализации (как правило, полученного от клиентского приложения) состояния фильтров в коллекцию формата `TFILTERS`, на вход принимает `CLOB` с сериализованным состоянием фильтров таблицы в виде `BASE64(<filters><name>ИМЯ</name><from>ЗНАЧЕНИЕ</from><to>ЗНАЧЕНИЕ</to></filters>...)` (клиентское приложение должно обеспечить передачу состояния фильтров в этом формате, см. пример ниже)\
 `PKG_P8PANELS_VISUAL.TFILTERS_SET_QUERY` - процедура, вспомогательная утилита, производит вызов указанной серверной процедуры отбора с учётом переданных переменных окружения и значений в `RFILTERS`\
-`PKG_P8PANELS_VISUAL.UTL_ROWS_LIMITS_CALC` - процедура, вспомогательная утилита, служит для конвертации номера страницы данных и размера страницы данных в границы диапазона строк выборки (как правило, клиентскому приложению удобнее прислать на сервер текущий номер страницы и её размер, в то время к в запросах, для выборки, удобнее применять границы диапазонов строк)\
+`PKG_P8PANELS_VISUAL.UTL_ROWS_LIMITS_CALC` - процедура, вспомогательная утилита, служит для конвертации номера страницы данных и размера страницы данных в границы диапазона строк выборки (как правило, клиентскому приложению удобнее прислать на сервер текущий номер страницы и её размер, в то время к в запросах, для выборки, удобнее применять границы диапазонов строк)
 
 **Пример**
 
@@ -1193,6 +1257,10 @@ const MyPanel = () => {
     NROW_TO                 PKG_STD.TREF;                          -- Номер строки по
     CSQL                    clob;                                  -- Буфер для запроса
     ICURSOR                 integer;                               -- Курсор для исполнения запроса
+    SGROUP                  PKG_STD.TSTRING;                       -- Буфер для группы
+    SAGNINFO                PKG_STD.TSTRING;                       -- Буфер для "Сведений"
+    SAGNNAME                PKG_STD.TSTRING;                       -- Буфер для "Наименования"
+    NAGNTYPE                PKG_STD.TREF;                          -- Буфер для "Типа"
   begin
     /* Читаем фильтры */
     RF := PKG_P8PANELS_VISUAL.TFILTERS_FROM_XML(CFILTERS => CFILTERS);
@@ -1204,7 +1272,7 @@ const MyPanel = () => {
                                              NROW_FROM    => NROW_FROM,
                                              NROW_TO      => NROW_TO);
     /* Инициализируем таблицу данных */
-    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE();
+    RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE(BFIXED_HEADER => true, NFIXED_COLUMNS => 2);
     /* Описываем колонки таблицы данных */
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'SAGNABBR',
@@ -1213,7 +1281,17 @@ const MyPanel = () => {
                                                SCOND_FROM => 'AgentAbbr',
                                                BVISIBLE   => true,
                                                BORDER     => true,
-                                               BFILTER    => true);
+                                               BFILTER    => true,
+                                               NWIDTH     => 150);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID  => RDG,
+                                               SNAME       => 'SAGNINFO',
+                                               SCAPTION    => 'Сведения',
+                                               SDATA_TYPE  => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                               BVISIBLE    => true,
+                                               BORDER      => false,
+                                               BFILTER     => false,
+                                               BEXPANDABLE => true,
+                                               NWIDTH      => 300);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                SNAME      => 'SAGNNAME',
                                                SCAPTION   => 'Наименование',
@@ -1221,7 +1299,9 @@ const MyPanel = () => {
                                                SCOND_FROM => 'AgentName',
                                                BVISIBLE   => true,
                                                BORDER     => true,
-                                               BFILTER    => true);
+                                               BFILTER    => true,
+                                               SPARENT    => 'SAGNINFO',
+                                               NWIDTH     => 200);
     PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RAGN_TYPES, NVALUE => 0);
     PKG_P8PANELS_VISUAL.TCOL_VALS_ADD(RCOL_VALS => RAGN_TYPES, NVALUE => 1);
     PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
@@ -1232,27 +1312,46 @@ const MyPanel = () => {
                                                BVISIBLE   => true,
                                                BORDER     => true,
                                                BFILTER    => true,
+                                               SPARENT    => 'SAGNINFO',
+                                               NWIDTH     => 100,
                                                RCOL_VALS  => RAGN_TYPES,
                                                SHINT      => 'В Системе бывают контрагенты двух типов:<br>' ||
                                                              '<b style="color:blue">Юридическое лицо</b> - организация, которая имеет в собственности, хозяйственном ведении ' ||
                                                              'или оперативном управлении обособленное имущество, отвечает по своим обязательствам этим имуществом, может от своего ' ||
                                                              'имени приобретать и осуществлять имущественные и личные неимущественные права, отвечать по своим обязанностям.<br>' ||
                                                              '<b style="color:green">Физическое лицо</b> - субъект правовых отношений, представляющий собой одного человека.');
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SFULLNAME',
+                                               SCAPTION   => 'Полное наименование',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR);
+    PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
+                                               SNAME      => 'SAGNIDNUMB',
+                                               SCAPTION   => 'ИНН',
+                                               SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR);
     /* Обходим данные */
     begin
-      /* Собираем запрос */
-      CSQL := 'select *
-            from (select D.*,
-                         ROWNUM NROW
-                    from (select AG.AGNABBR SAGNABBR,
-                                 AG.AGNNAME SAGNNAME,
-                                 AG.AGNTYPE NAGNTYPE
-                            from AGNLIST AG
-                           where exists (select /*+ INDEX(UP I_USERPRIV_CATALOG_ROLEID) */ null from USERPRIV UP where UP.CATALOG = AG.CRN and UP.ROLEID in (select /*+ INDEX(UR I_USERROLES_AUTHID_FK) */ UR.ROLEID from USERROLES UR where UR.AUTHID = UTILIZER)
-                                         union all
-                                         select /*+ INDEX(UP I_USERPRIV_CATALOG_AUTHID) */ null from USERPRIV UP where UP.CATALOG = AG.CRN and UP.AUTHID = UTILIZER)
-                             and AG.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F
-           where F.NROW between :NROW_FROM and :NROW_TO';
+      /* Добавляем подсказку совместимости */
+      CSQL := PKG_SQL_BUILD.COMPATIBLE(SSQL => CSQL);
+      /* Формируем запрос */
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => 'select *');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '  from (select D.*,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => PKG_SQL_BUILD.SQLROWNUM() || ' NROW');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '          from (select AG.AGNABBR SAGNABBR,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       AG.AGNNAME SAGNNAME,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       AG.AGNTYPE NAGNTYPE,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       AG.FULLNAME SFULLNAME,');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                       AG.AGNIDNUMB SAGNIDNUMB');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  from AGNLIST AG');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                where exists (select ' || PKG_SQL_BUILD.SET_HINT(SHINT => 'INDEX(UP I_USERPRIV_CATALOG_ROLEID)') || ' null');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                from USERPRIV UP');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                               where UP."CATALOG" = AG.CRN');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                 and UP.ROLEID in (select ' || PKG_SQL_BUILD.SET_HINT(SHINT => 'INDEX(UR I_USERROLES_AUTHID_FK)') || ' UR.ROLEID');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                     from USERROLES UR where UR.AUTHID = UTILIZER())');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                    union all');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                   select ' || PKG_SQL_BUILD.SET_HINT(SHINT => 'INDEX(UP I_USERPRIV_CATALOG_AUTHID)') || ' null');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                                                     from USERPRIV UP where UP."CATALOG" = AG.CRN and UP.AUTHID = UTILIZER())');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => '                  and AG.RN in (select ID from COND_BROKER_IDSMART where IDENT = :NIDENT) %ORDER_BY%) D) F');
+      PKG_SQL_BUILD.APPEND(SSQL => CSQL, SELEMENT1 => ' where F.NROW between :NROW_FROM and :NROW_TO');
       /* Учтём сортировки */
       PKG_P8PANELS_VISUAL.TORDERS_SET_QUERY(RDATA_GRID => RDG, RORDERS => RO, SPATTERN => '%ORDER_BY%', CSQL => CSQL);
       /* Учтём фильтры */
@@ -1273,6 +1372,9 @@ const MyPanel = () => {
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 1);
       PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 2);
       PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 3);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 4);
+      PKG_SQL_DML.DEFINE_COLUMN_STR(ICURSOR => ICURSOR, IPOSITION => 5);
+      PKG_SQL_DML.DEFINE_COLUMN_NUM(ICURSOR => ICURSOR, IPOSITION => 6);
       /* Делаем выборку */
       if (PKG_SQL_DML.EXECUTE(ICURSOR => ICURSOR) = 0) then
         null;
@@ -1281,9 +1383,32 @@ const MyPanel = () => {
       while (PKG_SQL_DML.FETCH_ROWS(ICURSOR => ICURSOR) > 0)
       loop
         /* Добавляем колонки с данными */
-        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SAGNABBR', ICURSOR => ICURSOR, NPOSITION => 1, BCLEAR => true);
-        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SAGNNAME', ICURSOR => ICURSOR, NPOSITION => 2);
-        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLN(RROW => RDG_ROW, SNAME => 'NAGNTYPE', ICURSOR => ICURSOR, NPOSITION => 3);
+        PKG_SQL_DML.COLUMN_VALUE_STR(ICURSOR => ICURSOR, IPOSITION => 2, SVALUE => SAGNNAME);
+        PKG_SQL_DML.COLUMN_VALUE_NUM(ICURSOR => ICURSOR, IPOSITION => 3, NVALUE => NAGNTYPE);
+        if (NAGNTYPE = 0) then
+          SGROUP   := 'JUR';
+          SAGNINFO := SAGNNAME || ', ЮЛ';
+          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_GROUP(RDATA_GRID  => RDG,
+                                                   SNAME       => SGROUP,
+                                                   SCAPTION    => 'Юридические лица',
+                                                   BEXPANDABLE => true,
+                                                   BEXPANDED   => false);
+        else
+          SGROUP   := 'PERS';
+          SAGNINFO := SAGNNAME || ', ФЛ';
+          PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_GROUP(RDATA_GRID  => RDG,
+                                                   SNAME       => SGROUP,
+                                                   SCAPTION    => 'Физические лица',
+                                                   BEXPANDABLE => true,
+                                                   BEXPANDED   => false);
+        end if;
+        RDG_ROW := PKG_P8PANELS_VISUAL.TROW_MAKE(SGROUP => SGROUP);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SAGNABBR', ICURSOR => ICURSOR, NPOSITION => 1);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SAGNINFO', SVALUE => SAGNINFO);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'SAGNNAME', SVALUE => SAGNNAME);
+        PKG_P8PANELS_VISUAL.TROW_ADD_COL(RROW => RDG_ROW, SNAME => 'NAGNTYPE', NVALUE => NAGNTYPE);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SFULLNAME', ICURSOR => ICURSOR, NPOSITION => 4);
+        PKG_P8PANELS_VISUAL.TROW_ADD_CUR_COLS(RROW => RDG_ROW, SNAME => 'SAGNIDNUMB', ICURSOR => ICURSOR, NPOSITION => 5);
         /* Добавляем строку в таблицу */
         PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_ROW(RDATA_GRID => RDG, RROW => RDG_ROW);
       end loop;
@@ -1303,11 +1428,12 @@ const MyPanel = () => {
 
 ```
 import React, { useState, useContext, useCallback, useEffect } from "react"; //Классы React
-import { Typography, Grid, Stack, Icon, Box } from "@mui/material"; //Интерфейсные элементы
+import { Typography, Grid, Stack, Icon, Box, Button } from "@mui/material"; //Интерфейсные элементы
 import { object2Base64XML } from "../../core/utils"; //Вспомогательные процедуры и функции
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
+import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 
 //Размер страницы данных
 const DATA_GRID_PAGE_SIZE = 5;
@@ -1315,7 +1441,8 @@ const DATA_GRID_PAGE_SIZE = 5;
 //Стили
 const STYLES = {
     CONTAINER: { textAlign: "center", paddingTop: "20px" },
-    TITLE: { paddingBottom: "15px" }
+    TITLE: { paddingBottom: "15px" },
+    DATA_GRID_CONTAINER: { maxWidth: 700, maxHeight: 500, minHeight: 500 }
 };
 
 //Формирование значения для колонки "Тип контрагента"
@@ -1360,6 +1487,9 @@ const headCellRender = ({ columnDef }) => {
     }
 };
 
+//Генерация представления ячейки заголовка группы
+export const groupCellRender = () => ({ cellStyle: { padding: "2px" } });
+
 //Пример: Таблица данных "P8PDataGrid"
 const DataGrid = ({ title }) => {
     //Собственное состояние - таблица данных
@@ -1368,14 +1498,20 @@ const DataGrid = ({ title }) => {
         columnsDef: [],
         filters: null,
         orders: null,
+        groups: [],
         rows: [],
         reload: true,
         pageNumber: 1,
-        morePages: true
+        morePages: true,
+        fixedHeader: false,
+        fixedColumns: 0
     });
 
     //Подключение к контексту взаимодействия с сервером
     const { executeStored, SERV_DATA_TYPE_CLOB } = useContext(BackEndСtx);
+
+    //Подключение к контексту приложения
+    const { pOnlineShowDocument } = useContext(ApplicationСtx);
 
     //Загрузка данных таблицы с сервера
     const loadData = useCallback(async () => {
@@ -1393,8 +1529,15 @@ const DataGrid = ({ title }) => {
             });
             setdataGrid(pv => ({
                 ...pv,
+                fixedHeader: data.XDATA_GRID.fixedHeader,
+                fixedColumns: data.XDATA_GRID.fixedColumns,
                 columnsDef: data.XCOLUMNS_DEF ? [...data.XCOLUMNS_DEF] : pv.columnsDef,
                 rows: pv.pageNumber == 1 ? [...(data.XROWS || [])] : [...pv.rows, ...(data.XROWS || [])],
+                groups: data.XGROUPS
+                    ? pv.pageNumber == 1
+                        ? [...data.XGROUPS]
+                        : [...pv.groups, ...data.XGROUPS.filter(g => !pv.groups.find(pg => pg.name == g.name))]
+                    : [...pv.groups],
                 dataLoaded: true,
                 reload: false,
                 morePages: (data.XROWS || []).length >= DATA_GRID_PAGE_SIZE
@@ -1411,6 +1554,9 @@ const DataGrid = ({ title }) => {
     //При изменении количества отображаемых страниц
     const handlePagesCountChanged = () => setdataGrid(pv => ({ ...pv, pageNumber: pv.pageNumber + 1, reload: true }));
 
+    //При нажатии на копку контрагента
+    const handleAgnButtonClicked = agnCode => pOnlineShowDocument({ unitCode: "AGNLIST", document: agnCode, inRnParameter: "in_AGNABBR" });
+
     //При необходимости обновить данные таблицы
     useEffect(() => {
         loadData();
@@ -1424,22 +1570,31 @@ const DataGrid = ({ title }) => {
             </Typography>
             <Grid container spacing={1} pt={5}>
                 <Grid item xs={12}>
-                    <Box p={5}>
+                    <Box p={5} display="flex" justifyContent="center" alignItems="center">
                         {dataGrid.dataLoaded ? (
                             <P8PDataGrid
                                 {...P8P_DATA_GRID_CONFIG_PROPS}
+                                containerComponentProps={{ elevation: 6, style: STYLES.DATA_GRID_CONTAINER }}
                                 columnsDef={dataGrid.columnsDef}
+                                groups={dataGrid.groups}
                                 rows={dataGrid.rows}
                                 size={P8P_DATA_GRID_SIZE.LARGE}
+                                fixedHeader={dataGrid.fixedHeader}
+                                fixedColumns={dataGrid.fixedColumns}
                                 filtersInitial={dataGrid.filters}
                                 morePages={dataGrid.morePages}
                                 reloading={dataGrid.reload}
                                 valueFormatter={valueFormatter}
                                 headCellRender={headCellRender}
                                 dataCellRender={dataCellRender}
+                                groupCellRender={groupCellRender}
                                 onOrderChanged={handleOrderChanged}
                                 onFilterChanged={handleFilterChanged}
                                 onPagesCountChanged={handlePagesCountChanged}
+                                expandable={true}
+                                rowExpandRender={({ row }) => (
+                                    <Button onClick={() => handleAgnButtonClicked(row.SAGNABBR)}>Показать в разделе</Button>
+                                )}
                             />
                         ) : null}
                     </Box>
@@ -1631,9 +1786,11 @@ const Chart = ({ title }) => {
 -   Дополнение задачи произвольными учётными атрибутами
 -   Диалоговый редактор задачи, отображающий её дополнительные атрибуты с возможностью настройки их форматирования
 -   Отображение связей между задачами
+-   Отображение произвольного пользовательского диалога в качестве карточки задачи/редактора задачи
 
 ![Пример P8PGantt](docs/img/68.png)
 ![Пример P8PGantt (редактор)](docs/img/69.png)
+![Пример P8PGantt (пользовательский диалог задачи)](docs/img/70.png)
 
 **Подключение**
 
@@ -1662,12 +1819,13 @@ const MyPanel = () => {
 `readOnlyDates` - необязательный, логический, признак возможности редактирования дат элементов диаграммы (по умолчанию - редактирование возможно)\
 `readOnlyProgress` - необязательный, логический, признак возможности редактирования прогресса исполнения элементов диаграммы (по умолчанию - редактирование возможно)\
 `zoom` - необязательный, число, масштаб диаграммы\
-`tasks` - обязательный, массив, задачи, отображаемые на диаграмме, должен состоять из объектов вида `{id: <УНИКАЛЬНЫЙ_ИДЕНТИФИКАТОР>, rn: <ССЫЛКА_НА_ЗАПИСЬ_В_СИСТЕМЕ>, numb: <НОМЕР>, name: <НАИМЕНОВАНИЕ>, fullName: <ПОЛНОЕ_НАИМЕНОВАНИЕ>, start: <ДАТА_НАЧАЛА_В_JSON_ФОРМАТЕ_ДАТЫ>, end: <ДАТА_ОКОНЧАНИЯ_В_JSON_ФОРМАТЕ_ДАТЫ>, progress: <ПРОГРЕСС_ИСПОЛНЕНИЯ>, dependencies: <МАССИВ_ИДЕНТИФИКАТОРОВ_ЗАВИСИМЫХ_ЗАДАЧ>, readOnly: <ДОСТУПНОСТЬ_РЕДАКТИРОВАНИЯ>, readOnlyDates: <ДОСТУПНОСТЬ_РЕДАКТИРОВАНИЯ_СРОКОВ>, readOnlyProgress: <ДОСТУПНОСТЬ_РЕДАКТИРОВАНИЯ_ПРОГРЕССА_ИСПОЛНЕНИЯ>, bgColor: <ЦВЕТ_ЗАЛИВКИ>, textColor: <ЦВЕТ_ТЕКСТА>[, <ИМЯ_ДОПОЛНИТЕЛЬНОГО_АТРИБУТА1>:<ЗНАЧЕНИЕ1>, <ИМЯ_ДОПОЛНИТЕЛЬНОГО_АТРИБУТА2>:<ЗНАЧЕНИЕ2>,...]}` (см. константу `P8P_GANTT_TASK_SHAPE` в коде компонента)\
-`taskAttributes` - необязательный, массив, состав (не значения) дополнительных атрибутутов задач, должен состоять из объектов вида `{name: <ИМЯ_ДОПОЛНИТЕЛЬНОГО_АТРИБУТА>, caption: <ЗАГОЛОВОК_ДОПОЛНИТЕЛЬНОГО_АТРИБУТА>}` (см. константу `P8P_GANTT_TASK_ATTRIBUTE_SHAPE` в коде компонента)\
-`taskColors` - необязательный, массив, описания цветов заливки и текста элементов диаграммы, для построения легенды, должен состоять из объектов вида `{bgColor: <ЦВЕТ_ЗАЛИВКИ_В_ФОРМАТЕ_CSS>, textColor: <ЦВЕТ_ТЕКСТА_В_ФОРМАТЕ_CSS>, desc: <ОПИСАНИЕ>}` (см. константу `P8P_GANTT_TASK_COLOR_SHAPE` в коде компонента)\
+`tasks` - обязательный, массив, задачи, отображаемые на диаграмме, должен состоять из объектов вида `{id: <УНИКАЛЬНЫЙ_ИДЕНТИФИКАТОР>, rn: <ССЫЛКА_НА_ЗАПИСЬ_В_СИСТЕМЕ>, numb: <НОМЕР>, name: <НАИМЕНОВАНИЕ>, fullName: <ПОЛНОЕ_НАИМЕНОВАНИЕ>, start: <ДАТА_НАЧАЛА_В_JSON_ФОРМАТЕ_ДАТЫ>, end: <ДАТА_ОКОНЧАНИЯ_В_JSON_ФОРМАТЕ_ДАТЫ>, progress: <ПРОГРЕСС_ИСПОЛНЕНИЯ>, dependencies: <МАССИВ_ИДЕНТИФИКАТОРОВ_ЗАВИСИМЫХ_ЗАДАЧ>, readOnly: <ДОСТУПНОСТЬ_РЕДАКТИРОВАНИЯ>, readOnlyDates: <ДОСТУПНОСТЬ_РЕДАКТИРОВАНИЯ_СРОКОВ>, readOnlyProgress: <ДОСТУПНОСТЬ_РЕДАКТИРОВАНИЯ_ПРОГРЕССА_ИСПОЛНЕНИЯ>, bgColor: <ЦВЕТ_ЗАЛИВКИ>, textColor: <ЦВЕТ_ТЕКСТА>, bgProgressColor: <ЦВЕТ_ЗАЛИВКИ_ПРОГРЕССА_ИСПОЛНЕНИЯ_ЗАДАЧИ>[, <ИМЯ_ДОПОЛНИТЕЛЬНОГО_АТРИБУТА1>:<ЗНАЧЕНИЕ1>, <ИМЯ_ДОПОЛНИТЕЛЬНОГО_АТРИБУТА2>:<ЗНАЧЕНИЕ2>,...]}` (см. константу `P8P_GANTT_TASK_SHAPE` в коде компонента)\
+`taskAttributes` - необязательный, массив, состав (не значения) дополнительных атрибутутов задач, должен состоять из объектов вида `{name: <ИМЯ_ДОПОЛНИТЕЛЬНОГО_АТРИБУТА>, caption: <ЗАГОЛОВОК_ДОПОЛНИТЕЛЬНОГО_АТРИБУТА>, visible: <ПРИЗНАК_ОТОБРАЖЕНИЯ_ДОПОЛНИТЕЛЬНОГО_АТРИБУТА - true|false>}` (см. константу `P8P_GANTT_TASK_ATTRIBUTE_SHAPE` в коде компонента)\
+`taskColors` - необязательный, массив, описания цветов заливки и текста элементов диаграммы, для построения легенды, должен состоять из объектов вида `{bgColor: <ЦВЕТ_ЗАЛИВКИ_В_ФОРМАТЕ_CSS>, textColor: <ЦВЕТ_ТЕКСТА_В_ФОРМАТЕ_CSS>, bgProgressColor: <ЦВЕТ_ЗАЛИВКИ_ПРОГРЕССА_ИСПОЛНЕНИЯ_ЗАДАЧИ>, desc: <ОПИСАНИЕ>}` (см. константу `P8P_GANTT_TASK_COLOR_SHAPE` в коде компонента)\
 `onTaskDatesChange` - необязательный, функция, если указана - будет вызвана при изменении (перетаскиванием или через редактор) дат элемента диаграммы, сигнатура функции `f({task, start, end, isMain})`, результат функции не интерпретируется. В функцию будет передан объект в поле `task`, которого, будет содержаться описание изменённой задачи (элемент массива `tasks`, см. выше описание полей), в поле `start` - новая дата начала задачи, в поле `end` - новая дата окончания задачи, в поле `isMain` - флаг изменения родительской задачи (`true` - `onTaskDatesChange` вызана для обработки изменения основной задачи, `false` - `onTaskDatesChange` вызвана для обработки изменения одной из зависимых задач).\
 `onTaskProgressChange` - необязательный, функция, если указана - будет вызвана при изменении прогресса исполнения элемента диаграммы, сигнатура функции `f({task, progress})`, результат функции не интерпретируется. В функцию будет передан объект в поле `task`, которого, будет содержаться описание изменённой задачи (элемент массива `tasks`, см. выше описание полей), в поле `progress` - новое значение прогресса исполнения задачи.\
 `taskAttributeRenderer` - необязательный, функция, если указана - будет вызвана при отображении диалога редактора здачи, результат функции будет применён для отображения области дополнительных атрибутов задачи в диалоге редактора, если не указана - дополнительные атрибуты будут отображены с форматированием по умолчанию. Сигнатура функции - `f({task, attribute})`, в функцию будет передан объект в поле `task`, которого, будет содержаться описание задачи для которой отображается редактор (элемент массива `tasks`, см. выше описание полей), в поле `attribute` - описание дополнительного атрибута формируемого в диалоге редактора (элемент массива `taskAttributes`, см. выше описание полей). Должна возвращать значение или React-компонент.\
+`taskDialogRenderer` - необязательный, функция, если указана - будет вызвана до отображения диалога редактора задачи. Результат функции будет показан в качестве содержимого диалога редактора, вместо типовой формы. Сигнатура функции - `f({task, taskAttributes, taskColors, close})`, в функцию будет передан объект в поле `task`, которого, будет содержаться описание задачи для которой отображается редактор (элемент массива `tasks`, см. выше описание полей), в поле `taskAttributes` - массив `taskAttributes` (см. выше описание полей), описывающий состав полей задачи, в поле `taskColors` - массив `taskColors` (см. выше описание полей), описывающий цвета заливки, определённые для задачи, в поле `close` - функция закрытия диалога задачи, может быть вызвана возвращаемым Reac-компонентом для сокрытия диалога. Должна возвращать значение или React-компонент.\
 `noDataFoundText` - обязательный, строка, текст для отображения ошибки об отсутствии данных\
 `numbTaskEditorCaption` - обязательный, строка, подпись стандартного атрибута `numb` в диалоге редактора задачи\
 `nameTaskEditorCaption` - обязательный, строка, подпись стандартного атрибута `name` в диалоге редактора задачи\
@@ -1705,7 +1863,7 @@ const MyPanel = () => {
 `PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_ATTR_VAL` - процедура, добавляет, к указанному объекту описания задачи, значение дополнительного атриабута\
 `PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_DEPENDENCY` - процедура, добавляет, к указанному объекту описания задачи, ссылку на предшествующую задачу\
 `PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK` - процедура, добавляет, к указанному объекту описания диаграммы Ганта, новую задачу, ранее описанную через `TGANTT_TASK_MAKE`\
-`PKG_P8PANELS_VISUAL.TGANTT_TO_XML` - функция, производит сериализацию объекта, описывающего диаграмму Ганта, в специальный XML-формат, корректно интерпретируемый клиентским компонентом `P8PGantt` при передаче в WEB-приложение\
+`PKG_P8PANELS_VISUAL.TGANTT_TO_XML` - функция, производит сериализацию объекта, описывающего диаграмму Ганта, в специальный XML-формат, корректно интерпретируемый клиентским компонентом `P8PGantt` при передаче в WEB-приложение
 
 **Пример**
 
@@ -1730,7 +1888,11 @@ const MyPanel = () => {
     RG := PKG_P8PANELS_VISUAL.TGANTT_MAKE(STITLE => 'Задачи на ' || TO_CHAR(EXTRACT(year from sysdate)) || ' год',
                                           NZOOM  => PKG_P8PANELS_VISUAL.NGANTT_ZOOM_MONTH);
     /* Добавим динамические атрибуты к задачам */
-    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'type', SCAPTION => 'Тип');
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT => RG, SNAME => 'type', SCAPTION => 'Тип', BVISIBLE => true);
+    PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_ATTR(RGANTT   => RG,
+                                             SNAME    => 'state',
+                                             SCAPTION => 'Состояние',
+                                             BVISIBLE => false);
     /* Добавим описание цветов задач */
     PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK_COLOR(RGANTT    => RG,
                                               SBG_COLOR => SBG_COLOR_JOB,
@@ -1760,6 +1922,7 @@ const MyPanel = () => {
                                                    SNAME  => 'type',
                                                    SVALUE => C.TYPE,
                                                    BCLEAR => true);
+      PKG_P8PANELS_VISUAL.TGANTT_TASK_ADD_ATTR_VAL(RGANTT => RG, RTASK => RGT, SNAME => 'state', SVALUE => C.STATE);
       /* Добавляем задачу в диаграмму */
       PKG_P8PANELS_VISUAL.TGANTT_ADD_TASK(RGANTT => RG, RTASK => RGT);
     end loop;
@@ -1772,14 +1935,14 @@ const MyPanel = () => {
 
 ```
 import React, { useState, useContext, useCallback, useEffect } from "react"; //Классы React
-import { Typography, Grid, Stack, Icon, Box } from "@mui/material"; //Интерфейсные элементы
-import { formatDateJSONDateOnly } from "../../core/utils"; //Вспомогательные функции
+import {Typography, Grid, Stack, Icon, Box, FormControlLabel, Checkbox, Card, CardHeader, CardActions, Avatar, CardContent, Button} from "@mui/material"; //Интерфейсные элементы
+import { formatDateJSONDateOnly, formatDateRF } from "../../core/utils"; //Вспомогательные функции
 import { P8PGantt } from "../../components/p8p_gantt"; //Диаграмма Ганта
 import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 
 //Высота диаграммы Ганта
-const GANTT_HEIGHT = "600px";
+const GANTT_HEIGHT = "70vh";
 
 //Ширина диаграммы Ганта
 const GANTT_WIDTH = "98vw";
@@ -1812,6 +1975,30 @@ const taskAttributeRenderer = ({ task, attribute }) => {
     }
 };
 
+//Генерация кастомного диалога задачи
+const taskDialogRenderer = ({ task, close }) => {
+    return (
+        <Card>
+            <CardHeader
+                avatar={<Avatar sx={{ bgcolor: task.bgColor }}>{task.type == 0 ? "Эт" : "Ра"}</Avatar>}
+                title={task.name}
+                subheader={`с ${formatDateRF(task.start)} по ${formatDateRF(task.end)}`}
+            />
+            <CardContent>
+                <Typography variant="body2" color="text.secondary">
+                    Это пользовательский диалог с данными о задаче. Вы можете формировать такие указав свой функциональный компонент в качестве
+                    свойства &quot;taskDialogRenderer&quot; компонента &quot;P8PGantt&quot;.
+                </Typography>
+            </CardContent>
+            <CardActions disableSpacing>
+                <Button size="small" onClick={close}>
+                    Закрыть
+                </Button>
+            </CardActions>
+        </Card>
+    );
+};
+
 //Пример: Диаграмма Ганта "P8Gantt"
 const Gantt = ({ title }) => {
     //Собственное состояние
@@ -1820,7 +2007,8 @@ const Gantt = ({ title }) => {
         dataLoaded: false,
         ident: null,
         ganttDef: {},
-        ganttTasks: []
+        ganttTasks: [],
+        useCustomTaskDialog: false
     });
 
     //Подключение к контексту взаимодействия с сервером
@@ -1883,6 +2071,10 @@ const Gantt = ({ title }) => {
             <Typography sx={STYLES.TITLE} variant={"h6"}>
                 {title}
             </Typography>
+            <FormControlLabel
+                control={<Checkbox onChange={() => setState(pv => ({ ...pv, useCustomTaskDialog: !pv.useCustomTaskDialog }))} />}
+                label="Отображать пользовательский диалог задачи"
+            />
             <Grid container spacing={0} direction="column" alignItems="center">
                 <Grid item xs={12}>
                     {state.dataLoaded ? (
@@ -1894,6 +2086,7 @@ const Gantt = ({ title }) => {
                                 tasks={state.ganttTasks}
                                 onTaskDatesChange={handleTaskDatesChange}
                                 taskAttributeRenderer={taskAttributeRenderer}
+                                taskDialogRenderer={state.useCustomTaskDialog ? taskDialogRenderer : null}
                             />
                         </Box>
                     ) : null}
@@ -1905,3 +2098,157 @@ const Gantt = ({ title }) => {
 ```
 
 Полные актуальные исходные коды примеров можно увидеть в "db/PKG_P8PANELS_SAMPLES.pck" и "app/panels/samples/gantt.js" данного репозитория соответственно.
+
+##### Интерактивное изображение "P8PSVG"
+
+Компонент предназначен для отображения изображений в формате SVG. Поддерживается:
+
+-   Режим галереи с зацикленным переключением между несколькими переданными компоненту изображениями
+-   Обработка событий `onClick` для изображения в целом и `onItemClick` для отдельных замкнутых контуров и групп, имеющих атрибут `id`
+-   Управление цветом и прозрачностью заливки отдельных замкнутых контуров и их групп
+
+![Пример P8PSVG](docs/img/71.png)
+
+**Подключение**
+
+Клиентская часть реализована в компоненте `P8PSVG`, объявленном в "app/components/p8p_svg". Для использования компонента на панели его необходимо импортировать:
+
+```
+import { P8PSVG } from "../../components/p8p_svg";
+
+const MyPanel = () => {
+    return (
+        <div>
+            <P8PSVG .../>
+        </div>
+    );
+}
+```
+
+**Свойства**
+
+`data` - обязательный, строка, данные в формате SVG (`<svg>...ДАННЫЕ_ИЗОБРАЖЕНИЯ...</svg>`), при необходимости передать несколько изображений они должны просто идти подряд, разделённые закрывающим тегом `</svg>`: `<svg>...ДАННЫЕ_ИЗОБРАЖЕНИЯ_1...</svg><svg>...ДАННЫЕ_ИЗОБРАЖЕНИЯ_N...</svg>`, вложенные теги `<svg>` не допускаются (`<svg><svg></svg></svg>` - нельзя)\
+`items` - необязательный, массив, интерактивные элементы изображения, должен состоять из объектов вида `{id: <УНИКАЛЬНЫЙ_ИДЕНТИФИКАТОР>, title: <ТЕКСТ_ВСПЛЫВАЮЩЕЙ_ПОДСКАЗКИ>, backgroundColor: <ЦВЕТ_ЗАЛИВКИ>}`\
+`onClick` - необязательный, функция, будет вызвана при нажатии пользователем на изображение, сигнатура функции `f(event)`, результат функции не интерпретируется. В функцию будет передан типовой JS-объект `MouseEvent` с описанием события. Функция не будет вызвана, если произошло нажатие на интерактивный элемент и была вызвана функция `onItemClick` (см. ниже).\
+`onItemClick` - необязательный, функция, будет вызвана при нажатии пользователем на интерактивный элемент изображения, сигнатура функции `f({item})`, результат функции не интерпретируется. В функцию будет передан объект в поле `item`, которого, будет содержаться элемент массива `items`, описывающий интерактивный элемент изображения, на котором произошло событие. Если функция была вызвана, то вызов функции `onClick` (см. выше) не происходит.\
+`canvasStyle` - необязательный, объект, будет применён в качестве значения атрибута `style` контейнера `div` изображения\
+`fillOpacity` - необязательный, строка, прозрачность заливки интерактивных элементов, где "0" - 100% прозрачность, "0.5" - 50% прозрачность, "1" - 100% непрозрачность и т.п.
+
+**API на сервере БД**
+
+Компонент компонент не имеет специального серверного API.
+
+**Пример**
+
+Код панели на стороне клиента (WEB-приложения):
+
+```
+import React, { useState, useEffect } from "react"; //Классы React
+import { Typography, Grid, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio } from "@mui/material"; //Интерфейсные элементы
+import { P8PSVG } from "../../components/p8p_svg"; //Интерактивные изображения
+
+//Адрес тестового изображения
+const SAMPLE_URL = "img/sample.svg";
+
+//Стили
+const STYLES = {
+    CONTAINER: { textAlign: "center", paddingTop: "20px" },
+    TITLE: { paddingBottom: "15px" },
+    FORM: { justifyContent: "center", alignItems: "center" },
+    SVG: { height: "30vw", display: "flex", justifyContent: "center" }
+};
+
+//Пример: Интерактивные изображения "P8PSVG"
+const Svg = ({ title }) => {
+    //Собственное состояние - SVG-изображение
+    const [svg, setSVG] = useState({
+        loaded: false,
+        data: null,
+        mode: "items1",
+        items1: [
+            { id: "1", backgroundColor: "red", desc: "Цифра на флюзеляже", title: "Цифра на флюзеляже" },
+            { id: "2", backgroundColor: "magenta", desc: "Ребро флюзеляжа", title: "Ребро флюзеляжа" },
+            { id: "3", backgroundColor: "yellow", desc: "Люк", title: "Люк" }
+        ],
+        items2: [
+            { id: "4", backgroundColor: "green", desc: "Хвост", title: "Хвост" },
+            { id: "5", backgroundColor: "blue", desc: "Хвостовой руль", title: "Хвостовой руль" },
+            { id: "6", backgroundColor: "aquamarine", desc: "Ребро жесткости хвоста", title: "Ребро жесткости хвоста" }
+        ],
+        items3: [
+            { id: "7", backgroundColor: "blueviolet", desc: "Крыло левое", title: "Крыло левое" },
+            { id: "8", backgroundColor: "orange", desc: "Двигатель левый", title: "Двигатель левый" },
+            { id: "9", backgroundColor: "springgreen", desc: "Крыло правое", title: "Крыло правое" }
+        ],
+        selectedItemDesc: ""
+    });
+
+    //Загрузка изображения
+    const loadSVG = async () => {
+        const resp = await fetch(SAMPLE_URL);
+        const data = await resp.text();
+        setSVG(pv => ({ ...pv, loaded: true, data }));
+    };
+
+    //Отработка нажатия на изображение
+    const handleSVGClick = () => {
+        setSVG(pv => ({ ...pv, selectedItemDesc: "Выбрано изображение целиком" }));
+    };
+
+    //Отработка нажатия на элемент изображения
+    const handleSVGItemClick = ({ item }) => {
+        setSVG(pv => ({ ...pv, selectedItemDesc: item?.desc ? `Выбран элемент: ${item.desc}` : "Для выбранного элемента не задано описание" }));
+    };
+
+    //При подключении к странице
+    useEffect(() => {
+        loadSVG();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    //Генерация содержимого
+    return (
+        <div style={STYLES.CONTAINER}>
+            <Typography sx={STYLES.TITLE} variant={"h6"}>
+                {title}
+            </Typography>
+            <FormControl sx={STYLES.FORM}>
+                <FormLabel>Группа элементов</FormLabel>
+                <RadioGroup row value={svg.mode} onChange={e => setSVG(pv => ({ ...pv, mode: e.target.value, selectedItemDesc: "" }))}>
+                    <FormControlLabel value="items1" control={<Radio />} label="Первая" />
+                    <FormControlLabel value="items2" control={<Radio />} label="Вторая" />
+                    <FormControlLabel value="items3" control={<Radio />} label="Третья" />
+                </RadioGroup>
+                <FormLabel>{svg.selectedItemDesc ? svg.selectedItemDesc : "Нажмите на элемент изображения для получения его описания"}</FormLabel>
+            </FormControl>
+            <Grid container spacing={0} pt={5} direction="column" alignItems="center">
+                <Grid item xs={12}>
+                    {svg.loaded ? (
+                        <P8PSVG
+                            data={svg.data}
+                            items={svg[svg.mode]}
+                            onClick={handleSVGClick}
+                            onItemClick={handleSVGItemClick}
+                            canvasStyle={STYLES.SVG}
+                            fillOpacity={"0.4"}
+                        />
+                    ) : null}
+                </Grid>
+            </Grid>
+        </div>
+    );
+};
+```
+
+Полные актуальные исходные коды примера можно увидеть в "app/panels/samples/svg.js" данного репозитория соответственно.
+
+### Ограничения дизайна пользовательского интерфейса
+
+Фреймворк позволяет реализовать любые пользовательские интерфейсы, вёрстка которых не противоречит возможностям современного HTML. Тем не менее, при разработке пользовательских интерфейсов панелей важно придерживаться предложенных ниже правил. Это позволит создавать их в едином ключе и упростит работу конечного пользователя при их освоении.
+
+-   Избегайте нестандартных реакций элементов пользовательского интерфейса на действия пользователя. Например, выпадающий список, при активации, должен отображать состав своих элементов, а не вызывать бизнес-функцию отработки документа.
+-   Избегайте прямого применения HTML-тэгов. В библиотеке [MUI](https://mui.com/), включенной в состав фреймворка, есть всё необходимое для сборки интерфейса.
+-   Старайтесь не применять `<div>` для всёрстки - для этого в [MUI](https://mui.com/) есть группа компонентов разметки ("Layout"), используйте их (`Grid`, `Box`, `Container`, `Stack`, `Paper` и пр.).
+-   Старайтесь не использовать, без острой необходимости, атрибуты `sx` и `style` - всё необходимое для стилизации как правило есть в типовых атрибутах компонента [MUI](https://mui.com/), изучите его документацию. Если применение собственного стиля неизбежно - старайтесь выносить стили в единое место в коде, переиспользовать их, и импортировать там, где это необходимо.
+-   Придерживайтесь единой цветовой гаммы при реализации всех панелей (в идеале) или, если не удаётся, панелей, отнесённых к одному прикладному участку (ПУДП, УЗСР, БУ, ПУП и т.п.).
+-   Изучите и применяйте `ThemeProvider` из состава инструментов стилизации библиотеки [MUI](https://mui.com/) для придания индивидуальности панелям и их компонентам.
