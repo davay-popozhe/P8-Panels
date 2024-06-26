@@ -1,5 +1,6 @@
 /*
-    Кастомный Tab
+    Парус 8 - Панели мониторинга - РО - Редактор настройки регламентированного отчёта
+    Панель мониторинга: Компонент вкладки раздела 
 */
 
 //---------------------
@@ -10,11 +11,11 @@ import React from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Box, Typography } from "@mui/material"; //Интерфейсные компоненты
 
-//-----------
-//Тело модуля
-//-----------
+//---------------
+//Тело компонента
+//---------------
 
-const CustomTabPanel = props => {
+const SectionTabPanel = props => {
     const { children, value, index, ...other } = props;
 
     return (
@@ -28,14 +29,15 @@ const CustomTabPanel = props => {
     );
 };
 
-CustomTabPanel.propTypes = {
+//Контроль свойств - Вкладка раздела
+SectionTabPanel.propTypes = {
     children: PropTypes.node,
     index: PropTypes.number.isRequired,
     value: PropTypes.number.isRequired
 };
 
-//----------------
-//Интерфейс модуля
-//----------------
+//--------------------
+//Интерфейс компонента
+//--------------------
 
-export { CustomTabPanel };
+export { SectionTabPanel };

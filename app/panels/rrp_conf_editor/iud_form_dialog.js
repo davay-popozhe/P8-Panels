@@ -1,5 +1,6 @@
 /*
-    Кастомный Dialog
+    Парус 8 - Панели мониторинга - РО - Редактор настройки регламентированного отчёта
+    Панель мониторинга: Диалог добавления/исправления/удаления компонентов настройки регламентированного отчёта
 */
 
 //---------------------
@@ -9,14 +10,16 @@
 import React from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Dialog, DialogTitle, IconButton, Icon, DialogContent, Typography, DialogActions, Button } from "@mui/material"; //Интерфейсные компоненты
-import { CustomFormControl } from "./custom_form_control"; //Кастомные строки ввода
-import { Statuses, STYLES } from "./layouts"; //Статусы и стили диалогового окна
+//import { MessagingСtx } from "../../context/messaging";
+import { IUDFormTextField } from "./iud_form_text_filed"; //Кастомные строки ввода
+import { STATUSES, STYLES } from "./layouts"; //Статусы и стили диалогового окна
 
-//-----------
-//Тело модуля
-//-----------
+//---------------
+//Тело компонента
+//---------------
 
-const CustomDialog = props => {
+const IUDFormDialog = props => {
+    //Свойства компонента
     const {
         formOpen,
         closeForm,
@@ -32,20 +35,23 @@ const CustomDialog = props => {
         dictRowClick
     } = props;
 
+    //Подключение к контексту сообщений
+    //const { showMsgWarn } = useContext(MessagingСtx);
+
     //Формирование заголовка диалогового окна
     const formTitle = () => {
         switch (curStatus) {
-            case Statuses.CREATE:
+            case STATUSES.CREATE:
                 return "Добавление раздела";
-            case Statuses.EDIT:
+            case STATUSES.EDIT:
                 return "Исправление раздела";
-            case Statuses.DELETE:
+            case STATUSES.DELETE:
                 return "Удаление раздела";
-            case Statuses.COLUMNROW_CREATE:
+            case STATUSES.COLUMNROW_CREATE:
                 return "Добавление показателя раздела";
-            case Statuses.COLUMNROW_EDIT:
+            case STATUSES.COLUMNROW_EDIT:
                 return "Исправление показателя раздела";
-            case Statuses.COLUMNROW_DELETE:
+            case STATUSES.COLUMNROW_DELETE:
                 return "Удаление показателя раздела";
         }
     };
@@ -54,24 +60,20 @@ const CustomDialog = props => {
     const renderSwitch = () => {
         var btnText = "";
         switch (curStatus) {
-            case Statuses.CREATE:
-            case Statuses.COLUMNROW_CREATE:
+            case STATUSES.CREATE:
+            case STATUSES.COLUMNROW_CREATE:
                 btnText = "Добавить";
                 break;
-            case Statuses.EDIT:
-            case Statuses.COLUMNROW_EDIT:
+            case STATUSES.EDIT:
+            case STATUSES.COLUMNROW_EDIT:
                 btnText = "Исправить";
                 break;
-            case Statuses.DELETE:
-            case Statuses.COLUMNROW_DELETE:
+            case STATUSES.DELETE:
+            case STATUSES.COLUMNROW_DELETE:
                 btnText = "Удалить";
                 break;
         }
-        return (
-            <Button variant="contained" onClick={btnOkClick}>
-                {btnText}
-            </Button>
-        );
+        return <Button onClick={btnOkClick}>{btnText}</Button>;
     };
 
     return (
@@ -90,32 +92,32 @@ const CustomDialog = props => {
                 <Icon>close</Icon>
             </IconButton>
             <DialogContent>
-                {curStatus == Statuses.DELETE || curStatus == Statuses.COLUMNROW_DELETE ? (
-                    curStatus == Statuses.DELETE ? (
+                {curStatus == STATUSES.DELETE || curStatus == STATUSES.COLUMNROW_DELETE ? (
+                    curStatus == STATUSES.DELETE ? (
                         <Typography>Вы хотите удалить раздел {curName}?</Typography>
                     ) : (
                         <Typography>Вы хотите удалить показатель раздела {curName}?</Typography>
                     )
                 ) : (
                     <div>
-                        {curStatus != Statuses.COLUMNROW_EDIT ? (
-                            <CustomFormControl elementCode="code" elementValue={curCode} labelText="Мнемокод" changeFunc={codeOnChange} />
+                        {curStatus != STATUSES.COLUMNROW_EDIT ? (
+                            <IUDFormTextField elementCode="code" elementValue={curCode} labelText="Мнемокод" changeFunc={codeOnChange} />
                         ) : null}
-                        <CustomFormControl elementCode="name" elementValue={curName} labelText="Наименование" changeFunc={nameOnChange} />
-                        {curStatus == Statuses.COLUMNROW_CREATE ? (
+                        <IUDFormTextField elementCode="name" elementValue={curName} labelText="Наименование" changeFunc={nameOnChange} />
+                        {curStatus == STATUSES.COLUMNROW_CREATE ? (
                             <div>
-                                <CustomFormControl
-                                    elementCode="column"
-                                    elementValue={curColCode}
-                                    labelText="Графа"
-                                    changeFunc={dictColumnClick}
-                                    withDictionary={true}
-                                />
-                                <CustomFormControl
+                                <IUDFormTextField
                                     elementCode="row"
                                     elementValue={curRowCode}
                                     labelText="Строка"
                                     changeFunc={dictRowClick}
+                                    withDictionary={true}
+                                />
+                                <IUDFormTextField
+                                    elementCode="column"
+                                    elementValue={curColCode}
+                                    labelText="Графа"
+                                    changeFunc={dictColumnClick}
                                     withDictionary={true}
                                 />
                             </div>
@@ -125,18 +127,17 @@ const CustomDialog = props => {
             </DialogContent>
             <DialogActions sx={STYLES.PADDING_DIALOG_BUTTONS_RIGHT}>
                 {renderSwitch()}
-                <Button variant="contained" onClick={closeForm}>
-                    Отмена
-                </Button>
+                <Button onClick={closeForm}>Отмена</Button>
             </DialogActions>
         </Dialog>
     );
 };
 
-CustomDialog.propTypes = {
+//Контроль свойств - Диалог
+IUDFormDialog.propTypes = {
     formOpen: PropTypes.bool.isRequired,
     closeForm: PropTypes.func.isRequired,
-    curStatus: PropTypes.oneOf(Object.values(Statuses).filter(x => typeof x === "number")),
+    curStatus: PropTypes.oneOf(Object.values(STATUSES).filter(x => typeof x === "number")),
     curCode: PropTypes.string,
     curName: PropTypes.string,
     curColCode: PropTypes.string,
@@ -148,8 +149,8 @@ CustomDialog.propTypes = {
     dictRowClick: PropTypes.func.isRequired
 };
 
-//----------------
-//Интерфейс модуля
-//----------------
+//--------------------
+//Интерфейс компонента
+//--------------------
 
-export { CustomDialog };
+export { IUDFormDialog };

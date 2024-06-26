@@ -1,5 +1,6 @@
 /*
-    Парус 8 - Редактор настройки регламентированного отчёта
+    Парус 8 - Панели мониторинга - РО - Редактор настройки регламентированного отчёта
+    Панель мониторинга: Корневая панель редактора
 */
 
 //---------------------
@@ -12,10 +13,10 @@ import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { NavigationCtx } from "../../context/navigation"; //Контекст навигации
-import { CustomTabPanel } from "./custom_tab_panel"; //Кастомный Tab
+import { SectionTabPanel } from "./section_tab_panel"; //Кастомный Tab
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
-import { Statuses, dataCellRender } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
-import { CustomDialog } from "./custom_dialog"; //Кастомное диалоговое окно
+import { STATUSES, dataCellRender } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
+import { IUDFormDialog } from "./iud_form_dialog"; //Кастомное диалоговое окно
 
 //-----------
 //Тело модуля
@@ -93,7 +94,7 @@ const RrpConfEditor = () => {
     const { executeStored } = useContext(BackEndСtx);
 
     //Подключение к контексту приложения
-    const { pOnlineShowDictionary } = useContext(ApplicationСtx);
+    const { pOnlineShowDictionary, pOnlineShowUnit } = useContext(ApplicationСtx);
 
     //Подключение к контексту навигации
     const { getNavigationSearch } = useContext(NavigationCtx);
@@ -105,37 +106,37 @@ const RrpConfEditor = () => {
 
     //Отработка нажатия на кнопку добавления секции
     const addSectionClick = () => {
-        setFormData({ status: Statuses.CREATE, prn: Number(getNavigationSearch().NRN) });
+        setFormData({ status: STATUSES.CREATE, prn: Number(getNavigationSearch().NRN) });
         openForm();
     };
 
     //Отработка нажатия на кнопку исправления секции
     const editSectionClick = (rn, code, name) => {
-        setFormData({ rn: rn, code: code, name: name, status: Statuses.EDIT });
+        setFormData({ rn: rn, code: code, name: name, status: STATUSES.EDIT });
         openForm();
     };
 
     //Отработка нажатия на кнопку удаления секции
     const deleteSectionClick = (rn, code, name) => {
-        setFormData({ rn: rn, code: code, name: name, status: Statuses.DELETE });
+        setFormData({ rn: rn, code: code, name: name, status: STATUSES.DELETE });
         openForm();
     };
 
     //Отработка нажатия на кнопку добавления показателя раздела
     const addColumnRowClick = (prn, sctnCode, sctnName) => {
-        setFormData({ status: Statuses.COLUMNROW_CREATE, prn: prn, sctnCode: sctnCode, sctnName: sctnName });
+        setFormData({ status: STATUSES.COLUMNROW_CREATE, prn: prn, sctnCode: sctnCode, sctnName: sctnName });
         openForm();
     };
 
     //Отработка нажатия на кнопку исправления показателя раздела
     const editColumnRowClick = (rn, name) => {
-        setFormData({ status: Statuses.COLUMNROW_EDIT, rn: rn, name: name });
+        setFormData({ status: STATUSES.COLUMNROW_EDIT, rn: rn, name: name });
         openForm();
     };
 
     //Отработка нажатия на кнопку удаления показателя раздела
     const deleteColumnRowClick = (rn, name) => {
-        setFormData({ status: Statuses.COLUMNROW_DELETE, rn: rn, name: name });
+        setFormData({ status: STATUSES.COLUMNROW_DELETE, rn: rn, name: name });
         openForm();
     };
 
@@ -174,9 +175,9 @@ const RrpConfEditor = () => {
     //Нажатие на кнопку подтверждения создания/исправления/удаления на форме
     const formBtnOkClick = () => {
         let formStateProps = {};
-        if (formData.status === (Statuses.CREATE || Statuses.EDIT || Statuses.COLUMNROW_CREATE))
+        if (formData.status === (STATUSES.CREATE || STATUSES.EDIT || STATUSES.COLUMNROW_CREATE))
             formStateProps = { ...formStateProps, code: document.querySelector("#code-outlined").value };
-        if (formData.status === (Statuses.CREATE || Statuses.EDIT || Statuses.COLUMNROW_CREATE || Statuses.COLUMNROW_EDIT))
+        if (formData.status === (STATUSES.CREATE || STATUSES.EDIT || STATUSES.COLUMNROW_CREATE || STATUSES.COLUMNROW_EDIT))
             formStateProps = { ...formStateProps, name: document.querySelector("#name-outlined").value };
         setFormData(pv => ({
             ...pv,
@@ -198,40 +199,40 @@ const RrpConfEditor = () => {
     const changeSections = useCallback(async () => {
         if (formData.filled) {
             switch (formData.status) {
-                case Statuses.CREATE:
+                case STATUSES.CREATE:
                     insertSections();
                     clearFormData();
                     break;
-                case Statuses.EDIT:
+                case STATUSES.EDIT:
                     updateSections();
                     clearFormData();
                     break;
-                case Statuses.DELETE:
+                case STATUSES.DELETE:
                     deleteSections();
                     clearFormData();
                     break;
-                case Statuses.COLUMNROW_CREATE:
+                case STATUSES.COLUMNROW_CREATE:
                     addColumnRow();
                     clearFormData();
                     break;
-                case Statuses.COLUMNROW_EDIT:
+                case STATUSES.COLUMNROW_EDIT:
                     editColumnRow();
                     clearFormData();
                     break;
-                case Statuses.COLUMNROW_DELETE:
+                case STATUSES.COLUMNROW_DELETE:
                     deleteColumnRow();
                     clearFormData();
                     break;
             }
             setRrpDoc(pv => ({ ...pv, reload: true }));
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        //eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData]);
 
     //Добавление раздела
     const insertSections = useCallback(async () => {
         const data = await executeStored({
-            stored: "PKG_P8PANELS_RRPCONFED.INSERT_RRPCONF_SECTIONS",
+            stored: "PKG_P8PANELS_RRPCONFED.RRPCONFSCTN_INSERT",
             args: {
                 NPRN: formData.prn,
                 SCODE: formData.code,
@@ -247,7 +248,7 @@ const RrpConfEditor = () => {
     //Исправление раздела
     const updateSections = useCallback(async () => {
         await executeStored({
-            stored: "PKG_P8PANELS_RRPCONFED.UPDATE_RRPCONF_SECTIONS",
+            stored: "PKG_P8PANELS_RRPCONFED.RRPCONFSCTN_UPDATE",
             args: {
                 NRN: formData.rn,
                 SCODE: formData.code,
@@ -259,7 +260,7 @@ const RrpConfEditor = () => {
     //Удаление раздела
     const deleteSections = useCallback(async () => {
         await executeStored({
-            stored: "PKG_P8PANELS_RRPCONFED.DELETE_RRPCONF_SECTIONS",
+            stored: "PKG_P8PANELS_RRPCONFED.RRPCONFSCTN_DELETE",
             args: {
                 NRN: formData.rn
             }
@@ -269,7 +270,7 @@ const RrpConfEditor = () => {
     //Добавление показателя раздела
     const addColumnRow = useCallback(async () => {
         await executeStored({
-            stored: "PKG_P8PANELS_RRPCONFED.INSERT_RRPCONF_COLUMNROW",
+            stored: "PKG_P8PANELS_RRPCONFED.RRPCONFSCTNMRK_INSERT",
             args: {
                 NPRN: formData.prn,
                 SCODE: formData.code,
@@ -285,20 +286,20 @@ const RrpConfEditor = () => {
     //Исправление показателя раздела
     const editColumnRow = useCallback(async () => {
         await executeStored({
-            stored: "PKG_P8PANELS_RRPCONFED.UPDATE_RRPCONF_COLUMNROW",
+            stored: "PKG_P8PANELS_RRPCONFED.RRPCONFSCTNMRK_UPDATE",
             args: { NRN: formData.rn, SNAME: formData.name }
         });
     }, [executeStored, formData.name, formData.rn]);
 
     //Удаление показателя раздела
     const deleteColumnRow = useCallback(async () => {
-        await executeStored({ stored: "PKG_P8PANELS_RRPCONFED.DELETE_RRPCONF_COLUMNROW", args: { NRN: formData.rn } });
+        await executeStored({ stored: "PKG_P8PANELS_RRPCONFED.RRPCONFSCTNMRK_DELETE", args: { NRN: formData.rn } });
     }, [executeStored, formData.rn]);
 
     //Получение мнемокода и наименования показателя раздела
     const getSctnMrkCodeName = useCallback(async () => {
         const data = await executeStored({
-            stored: "PKG_P8PANELS_RRPCONFED.GET_RRPCONFSCTNMRK_CODE_NAME",
+            stored: "PKG_P8PANELS_RRPCONFED.RRPCONFSCTNMRK_GET_CODE_NAME",
             args: { SSCTNCODE: formData.sctnCode, SROWCODE: formData.rowCode, SCOLUMNCODE: formData.colCode }
         });
         setFormData(pv => ({
@@ -380,8 +381,21 @@ const RrpConfEditor = () => {
             }));
             setTabValue(tabFocus);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        //eslint-disable-next-line react-hooks/exhaustive-deps
     }, [rrpDoc.reload, rrpDoc.docLoaded, dataGrid.reload, dataGrid.docLoaded, executeStored]);
+
+    //Отбор показателя раздела по ид.
+    const showRrpConfSctnMrk = async rn => {
+        const data = await executeStored({
+            stored: "PKG_P8PANELS_RRPCONFED.SELECT_RRPCONFSCTNMRK",
+            args: {
+                NRN: rn
+            }
+        });
+        if (data.NIDENT) {
+            pOnlineShowUnit({ unitCode: "RRPConfigSectionMark", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+        } else showMsgErr(TEXTS.NO_DATA_FOUND);
+    };
 
     //При необходимости обновить данные таблицы
     useEffect(() => {
@@ -395,7 +409,7 @@ const RrpConfEditor = () => {
 
     //Получение наименования и мнемокода показателя раздела при заполнении необходимых полей
     useEffect(() => {
-        formData.status == Statuses.COLUMNROW_CREATE && formData.sctnName && formData.sctnCode && formData.colCode && formData.rowCode
+        formData.status == STATUSES.COLUMNROW_CREATE && formData.sctnName && formData.sctnCode && formData.colCode && formData.rowCode
             ? getSctnMrkCodeName()
             : null;
     }, [formData.colCode, formData.rowCode, formData.sctnCode, formData.sctnName, formData.status, getSctnMrkCodeName]);
@@ -404,7 +418,7 @@ const RrpConfEditor = () => {
     return (
         <Box sx={{ width: "100%" }}>
             {formOpen ? (
-                <CustomDialog
+                <IUDFormDialog
                     formOpen={formOpen}
                     closeForm={closeForm}
                     curStatus={formData.status}
@@ -450,10 +464,8 @@ const RrpConfEditor = () => {
                     </Stack>
                     {rrpDoc.sections.map((s, i) => {
                         return (
-                            <CustomTabPanel key={s.rn} value={tabValue} index={i}>
-                                <Button variant="contained" onClick={() => addColumnRowClick(s.rn, s.code, s.name)}>
-                                    + Добавить
-                                </Button>
+                            <SectionTabPanel key={s.rn} value={tabValue} index={i}>
+                                <Button onClick={() => addColumnRowClick(s.rn, s.code, s.name)}>+ Добавить</Button>
                                 {s.dataLoaded ? (
                                     <P8PDataGrid
                                         {...P8P_DATA_GRID_CONFIG_PROPS}
@@ -462,10 +474,12 @@ const RrpConfEditor = () => {
                                         rows={s.rows}
                                         size={P8P_DATA_GRID_SIZE.LARGE}
                                         reloading={s.reload}
-                                        dataCellRender={prms => dataCellRender({ ...prms }, editColumnRowClick, deleteColumnRowClick)}
+                                        dataCellRender={prms =>
+                                            dataCellRender({ ...prms }, showRrpConfSctnMrk, editColumnRowClick, deleteColumnRowClick)
+                                        }
                                     />
                                 ) : null}
-                            </CustomTabPanel>
+                            </SectionTabPanel>
                         );
                     })}
                 </Box>

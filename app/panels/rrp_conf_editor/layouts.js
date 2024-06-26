@@ -1,5 +1,5 @@
 /*
-    Парус 8 - 
+    Парус 8 - Панели мониторинга - РО - Редактор настройки регламентированного отчёта
     Дополнительная разметка и вёрстка клиентских элементов
 */
 
@@ -8,7 +8,7 @@
 //---------------------
 
 import React from "react"; //Классы React
-import { Stack, IconButton, Icon, Typography } from "@mui/material"; //Интерфейсные компоненты
+import { Stack, IconButton, Icon, Link } from "@mui/material"; //Интерфейсные компоненты
 
 //---------
 //Константы
@@ -20,19 +20,27 @@ export const STYLES = {
 };
 
 //Статусы диалогового окна
-export const Statuses = { CREATE: 0, EDIT: 1, DELETE: 2, COLUMNROW_CREATE: 3, COLUMNROW_EDIT: 4, COLUMNROW_DELETE: 5 };
+export const STATUSES = { CREATE: 0, EDIT: 1, DELETE: 2, COLUMNROW_CREATE: 3, COLUMNROW_EDIT: 4, COLUMNROW_DELETE: 5 };
 
 //-----------
 //Тело модуля
 //-----------
 
 //Генерация представления ячейки c данными
-export const dataCellRender = ({ row, columnDef }, editCR, deleteCR) => {
+export const dataCellRender = ({ row, columnDef }, showRrpConfSctnMrk, editCR, deleteCR) => {
     let data = row[columnDef.name];
     columnDef.name != "SROW_NAME" && data != undefined && columnDef.visible == true
         ? (data = (
               <Stack direction="row">
-                  <Typography width="-webkit-fill-available">{row[columnDef.name]}</Typography>
+                  <Link
+                      component="button"
+                      width="-webkit-fill-available"
+                      onClick={() => {
+                          showRrpConfSctnMrk(row["NRN_" + columnDef.name.substring(5)]);
+                      }}
+                  >
+                      {row[columnDef.name]}
+                  </Link>
                   <IconButton justifyContent="flex-end" onClick={() => editCR(row["NRN_" + columnDef.name.substring(5)], row[columnDef.name])}>
                       <Icon>edit</Icon>
                   </IconButton>
