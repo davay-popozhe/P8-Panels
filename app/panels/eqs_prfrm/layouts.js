@@ -29,7 +29,9 @@ export const STYLES = {
     DCR_PLAN_CELL_STYLE: { cursor: "pointer", backgroundColor: "lightblue", border: "1px solid rgba(0, 0, 0) !important" },
     DCR_FACT_RELATED_CELL_STYLE: { cursor: "pointer", backgroundColor: "green", border: "1px solid rgba(0, 0, 0) !important" },
     DCR_FACT_NOT_RELATED_CELL_STYLE: { cursor: "pointer", backgroundColor: "crimson", border: "1px solid rgba(0, 0, 0) !important" },
-    FILTER_DIALOG_ACTIONS: { justifyContent: "center" }
+    DCR_DOUBLE_CELL: { padding: "unset" },
+    DCR_DOUBLE_CELL_GRID_ITEM: backgroundColor => ({ cursor: "pointer", backgroundColor }),
+    HIDDEN_PARAGRAPH: { display: "none" }
 };
 
 //-----------
@@ -155,26 +157,26 @@ export const dataCellRender = ({ row, columnDef }, showEquipSrv) => {
         //Случай двойного закрашивания месяца
         case "green red":
         case "red green":
-            cellStyle = { ...cellStyle, padding: "unset" };
+            cellStyle = { ...cellStyle, ...STYLES.DCR_DOUBLE_CELL };
             cellProps = { title: formatDate(columnDef.name) };
             data = (
-                <Stack sx={{ justifyContent: "center" }} direction="row">
+                <Stack justifyContent={"center"} direction="row">
                     <Grid container maxHeight="100%">
                         <Grid
                             item
                             xs={6}
-                            sx={{ cursor: "pointer", backgroundColor: "green" }}
+                            sx={STYLES.DCR_DOUBLE_CELL_GRID_ITEM("green")}
                             onClick={() => showEquipSrv({ date: columnDef.name, workType: row["SWRKTYPE"], info: row["groupName"] })}
                         >
-                            <p style={{ display: "none" }}>g</p>
+                            <p style={STYLES.HIDDEN_PARAGRAPH}>g</p>
                         </Grid>
                         <Grid
                             item
                             xs={6}
-                            sx={{ cursor: "pointer", backgroundColor: "crimson" }}
+                            sx={STYLES.DCR_DOUBLE_CELL_GRID_ITEM("crimson")}
                             onClick={() => showEquipSrv({ date: columnDef.name, workType: row["SWRKTYPE"], info: row["groupName"] })}
                         >
-                            <p style={{ display: "none" }}>r</p>
+                            <p style={STYLES.HIDDEN_PARAGRAPH}>r</p>
                         </Grid>
                     </Grid>
                 </Stack>

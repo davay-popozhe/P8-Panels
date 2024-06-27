@@ -8,7 +8,7 @@
 //---------------------
 
 import React, { useState, useContext, useCallback, useEffect } from "react"; //Классы React
-import { Grid, Paper, Box, Link } from "@mui/material"; //Интерфейсные компоненты
+import { Grid, Paper, Box } from "@mui/material"; //Интерфейсные компоненты
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
@@ -16,6 +16,7 @@ import { ApplicationСtx } from "../../context/application"; //Контекст 
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { headCellRender, dataCellRender, groupCellRender, DIGITS_REG_EXP, MONTH_NAME_REG_EXP, DAY_NAME_REG_EXP } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
 import { TEXTS } from "../../../app.text"; //Тектовые ресурсы и константы
+import { Filter } from "./filter"; //Компонент фильтра
 import { FilterDialog } from "./filter_dialog"; //Компонент диалогового окна фильтра отбора
 
 //-----------
@@ -35,24 +36,20 @@ const EqsPrfrm = () => {
 
     //Состояние фильтра
     const [filter, setFilter] = useState({
-        belong: "",
-        prodObj: "",
-        techServ: "",
-        respDep: "",
-        fromMonth: 1,
-        fromYear: 1990,
-        toMonth: 1,
-        toYear: 1990
+        isOpen: false,
+        isDefault: false,
+        isSetByUser: false,
+        values: {
+            belong: "",
+            prodObj: "",
+            techServ: "",
+            respDep: "",
+            fromMonth: 1,
+            fromYear: 1990,
+            toMonth: 1,
+            toYear: 1990
+        }
     });
-
-    //Состояние хранения копии фильтра
-    const [filterCopy, setFilterCopy] = useState({ ...filter });
-
-    //Состояние открытия фильтра
-    const [filterOpen, setFilterOpen] = useState(true);
-
-    //Состояние данных по умолчанию для фильтра
-    const [defaultLoaded, setDefaultLoaded] = useState(false);
 
     //Состояние ячейки заголовка даты (по раскрытию/скрытию)
     const [activeRef, setActiveRef] = useState();
@@ -75,14 +72,14 @@ const EqsPrfrm = () => {
             const data = await executeStored({
                 stored: "PKG_P8PANELS_EQUIPSRV.EQUIPSRV_GRID",
                 args: {
-                    SBELONG: filter.belong,
-                    SPRODOBJ: filter.prodObj,
-                    STECHSERV: filter.techServ,
-                    SRESPDEP: filter.respDep,
-                    NFROMMONTH: filter.fromMonth,
-                    NFROMYEAR: filter.fromYear,
-                    NTOMONTH: filter.toMonth,
-                    NTOYEAR: filter.toYear
+                    SBELONG: filter.values.belong,
+                    SPRODOBJ: filter.values.prodObj,
+                    STECHSERV: filter.values.techServ,
+                    SRESPDEP: filter.values.respDep,
+                    NFROMMONTH: filter.values.fromMonth,
+                    NFROMYEAR: filter.values.fromYear,
+                    NTOMONTH: filter.values.toMonth,
+                    NTOYEAR: filter.values.toYear
                 },
                 respArg: "COUT",
                 attributeValueProcessor: (name, val) => (["caption", "name", "parent"].includes(name) ? undefined : val)
@@ -144,8 +141,11 @@ const EqsPrfrm = () => {
             stored: "PKG_P8PANELS_EQUIPSRV.GET_DEFAULT_FP",
             respArg: "COUT"
         });
-        setFilter(pv => ({ ...pv, belong: data.JURPERS, fromMonth: 1, fromYear: data.YEAR, toMonth: 12, toYear: data.YEAR }));
-        setDefaultLoaded(true);
+        setFilter(pv => ({
+            ...pv,
+            values: { ...pv.values, belong: data.JURPERS, fromMonth: 1, fromYear: data.YEAR, toMonth: 12, toYear: data.YEAR },
+            isDefault: true
+        }));
     }, [executeStored]);
 
     //Отбор документа (ТОиР или Ремонтных ведомостей) по ячейке даты
@@ -158,10 +158,10 @@ const EqsPrfrm = () => {
         const data = await executeStored({
             stored: "PKG_P8PANELS_EQUIPSRV.SELECT_EQUIPSRV",
             args: {
-                SBELONG: filter.belong,
-                SPRODOBJ: filter.prodObj,
-                STECHSERV: filter.techServ ? filter.techServ : null,
-                SRESPDEP: filter.respDep ? filter.respDep : null,
+                SBELONG: filter.values.belong,
+                SPRODOBJ: filter.values.prodObj,
+                STECHSERV: filter.values.techServ ? filter.values.techServ : null,
+                SRESPDEP: filter.values.respDep ? filter.values.respDep : null,
                 STECHNAME: techName,
                 SSRVKIND: servKind,
                 NYEAR: Number(year),
@@ -176,10 +176,11 @@ const EqsPrfrm = () => {
         } else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 
-    //Открыть фильтр
-    const openFilter = () => {
-        setFilterOpen(true);
-    };
+    //Показать/скрыть фильтр
+    const setFilterOpen = isOpen => setFilter(pv => ({ ...pv, isOpen }));
+
+    //Установить значение фильтра
+    const setFilterValues = values => setFilter(pv => ({ ...pv, isSetByUser: true, values: { ...values } }));
 
     //Отработка события скрытия/раскрытия ячейки даты
     const handleClick = (e, ref) => {
@@ -195,16 +196,20 @@ const EqsPrfrm = () => {
         loadData();
     }, [loadData, dataGrid.reload]);
 
-    //При открытом фильтре
+    //При изменении фильтра
     useEffect(() => {
-        if (filterOpen) {
-            {
-                setFilterCopy({ ...filter });
-                if (!defaultLoaded) loadDefaultFilter();
-            }
-        }
-        //eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filterOpen]);
+        if (filter.isSetByUser) setDataGrid({ reload: true });
+    }, [
+        filter.isSetByUser,
+        filter.values.belong,
+        filter.values.prodObj,
+        filter.values.techServ,
+        filter.values.respDep,
+        filter.values.fromMonth,
+        filter.values.fromYear,
+        filter.values.toMonth,
+        filter.values.toYear
+    ]);
 
     //При нажатии скрытии/раскрытии ячейки даты, фокус на неё
     useEffect(() => {
@@ -218,28 +223,34 @@ const EqsPrfrm = () => {
         //eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refIsDeprecated]);
 
+    //При загрузке фильтра по умолчанию
+    useEffect(() => {
+        if (filter.isDefault) setFilterOpen(true);
+    }, [filter.isDefault]);
+
+    //При подключении к страницк
+    useEffect(() => {
+        loadDefaultFilter();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    //При открытии диалога фильтра
+    const handleFilterClick = () => setFilterOpen(true);
+
+    //При изменении фильтра в диалоге
+    const handleFilterOk = filter => {
+        setFilterValues(filter);
+        setFilterOpen(false);
+    };
+
+    //При закрытии диалога фильтра
+    const handleFilterCancel = () => setFilterOpen(false);
+
     //Генерация содержимого
     return (
         <div>
-            <FilterDialog
-                filter={filter}
-                filterCopy={filterCopy}
-                filterOpen={filterOpen}
-                setFilter={setFilter}
-                setFilterOpen={setFilterOpen}
-                setDataGrid={setDataGrid}
-            />
-            <Link component="button" variant="body2" textAlign={"left"} onClick={openFilter}>
-                Фильтр отбора: {filter.belong ? `Принадлежность: ${filter.belong}` : ""}{" "}
-                {filter.prodObj ? `Производственный объект: ${filter.prodObj}` : ""} {filter.techServ ? `Техническая служба: ${filter.techServ}` : ""}{" "}
-                {filter.respDep ? `Ответственное подразделение: ${filter.respDep}` : ""}{" "}
-                {filter.fromMonth && filter.fromYear
-                    ? `Начало периода: ${filter.fromMonth < 10 ? "0" + filter.fromMonth : filter.fromMonth}.${filter.fromYear}`
-                    : ""}{" "}
-                {filter.toMonth && filter.toYear
-                    ? `Конец периода: ${filter.toMonth < 10 ? "0" + filter.toMonth : filter.toMonth}.${filter.toYear}`
-                    : ""}
-            </Link>
+            {filter.isOpen ? <FilterDialog initial={filter.values} onOk={handleFilterOk} onCancel={handleFilterCancel} /> : null}
+            <Filter filter={filter.values} onClick={handleFilterClick} />
             {dataGrid.dataLoaded ? (
                 <Paper variant="outlined">
                     <Grid container spacing={1}>

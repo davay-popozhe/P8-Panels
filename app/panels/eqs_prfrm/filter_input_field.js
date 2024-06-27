@@ -1,81 +1,89 @@
 /*
     Парус 8 - Панели мониторинга - ТОиР - Выполнение работ
-    Панель мониторинга: Компонент поля ввода
+    Компонент: Поле ввода диалога фильтра
 */
 
 //---------------------
 //Подключение библиотек
 //---------------------
 
-import React, { useEffect, useState, useCallback } from "react"; //Классы React
+import React, { useEffect, useState } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { FormControl, InputLabel, Input, InputAdornment, IconButton, Icon, FormHelperText, Select, MenuItem } from "@mui/material"; //Интерфейсные компоненты
-import { MONTH_ARRAY } from "./filter_dialog"; //Название месяцев
+
+//---------
+//Константы
+//---------
+
+//Стили
+const STYLES = {
+    HELPER_TEXT: { color: "red" }
+};
 
 //---------------
 //Тело компонента
 //---------------
 
 //Поле ввода
-const FilterInputField = props => {
-    //Свойства
-    const { elementCode, elementValue, labelText, changeFunc, required, isDateField, yearArray } = props;
+const FilterInputField = ({ elementCode, elementValue, labelText, onChange, required = false, items = null, dictionary }) => {
+    //Значение элемента
+    const [value, setValue] = useState(elementValue);
 
-    //Состояние идентификатора элемента
-    const [elementId, setElementId] = useState("");
-
-    //Формирование идентификатора элемента
-    const generateId = useCallback(async () => {
-        setElementId(!isDateField ? `${elementCode}-input` : `${elementCode}-select`);
-    }, [elementCode, isDateField]);
-
-    //При рендере поля ввода
+    //При получении нового значения из вне
     useEffect(() => {
-        generateId();
-    }, [generateId]);
+        setValue(elementValue);
+    }, [elementValue]);
+
+    //Выбор значения из словаря
+    const handleDictionaryClick = () =>
+        dictionary ? dictionary(res => (res ? handleChange({ target: { name: elementCode, value: res } }) : null)) : null;
+
+    //Изменение значения элемента
+    const handleChange = e => {
+        setValue(e.target.value);
+        if (onChange) onChange(e.target.name, e.target.value);
+    };
 
     //Генерация поля с выбором из словаря Парус
-    const renderInput = () => {
+    const renderInput = validationError => {
         return (
             <Input
-                error={!elementValue && required ? true : false}
-                id={elementId}
-                value={elementValue}
+                error={validationError}
+                id={elementCode}
+                name={elementCode}
+                value={value}
                 endAdornment={
-                    <InputAdornment position="end">
-                        <IconButton aria-label={`${elementCode} select`} onClick={changeFunc} edge="end">
-                            <Icon>list</Icon>
-                        </IconButton>
-                    </InputAdornment>
+                    dictionary ? (
+                        <InputAdornment position="end">
+                            <IconButton aria-label={`${elementCode} select`} onClick={handleDictionaryClick} edge="end">
+                                <Icon>list</Icon>
+                            </IconButton>
+                        </InputAdornment>
+                    ) : null
                 }
-                aria-describedby={`${elementId}-helper-text`}
+                aria-describedby={`${elementCode}-helper-text`}
                 label={labelText}
+                onChange={handleChange}
             />
         );
     };
 
     //Генерация поля с выпадающим списком
-    const renderSelect = () => {
+    const renderSelect = (items, validationError) => {
         return (
             <Select
-                error={elementValue ? false : true}
-                id={elementId}
-                value={elementValue}
-                aria-describedby={`${elementId}-helper-text`}
+                error={validationError}
+                id={elementCode}
+                name={elementCode}
+                value={value}
+                aria-describedby={`${elementCode}-helper-text`}
                 label={labelText}
-                onChange={changeFunc}
+                onChange={handleChange}
             >
-                {labelText === "Месяц"
-                    ? MONTH_ARRAY.map((item, i) => (
-                          <MenuItem key={i + 1} value={i + 1}>
-                              {item}
-                          </MenuItem>
-                      ))
-                    : null}
-                {labelText === "Год"
-                    ? yearArray.map(item => (
-                          <MenuItem key={item} value={item}>
-                              {item}
+                {items
+                    ? items.map((item, i) => (
+                          <MenuItem key={i} value={item.value}>
+                              {item.caption}
                           </MenuItem>
                       ))
                     : null}
@@ -83,13 +91,16 @@ const FilterInputField = props => {
         );
     };
 
+    //Признак ошибки валидации
+    const validationError = !value && required ? true : false;
+
     //Генерация содержимого
     return (
-        <FormControl readOnly={isDateField ? false : true} fullWidth variant="standard">
-            <InputLabel htmlFor={elementId}>{labelText}</InputLabel>
-            {isDateField ? renderSelect() : renderInput()}
-            {required && !elementValue ? (
-                <FormHelperText id={`${elementId}-helper-text`} sx={{ color: "red" }}>
+        <FormControl fullWidth variant="standard">
+            <InputLabel htmlFor={elementCode}>{labelText}</InputLabel>
+            {items ? renderSelect(items, validationError) : renderInput(validationError)}
+            {validationError ? (
+                <FormHelperText id={`${elementCode}-helper-text`} sx={STYLES.HELPER_TEXT}>
                     *Обязательное поле
                 </FormHelperText>
             ) : null}
@@ -102,16 +113,10 @@ FilterInputField.propTypes = {
     elementCode: PropTypes.string.isRequired,
     elementValue: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     labelText: PropTypes.string.isRequired,
-    changeFunc: PropTypes.func.isRequired,
     required: PropTypes.bool,
-    isDateField: PropTypes.bool,
-    yearArray: PropTypes.arrayOf(PropTypes.number)
-};
-
-//Значения по умолчанию - Поле ввода
-FilterInputField.defaultProps = {
-    required: false,
-    isDateField: false
+    items: PropTypes.arrayOf(PropTypes.object),
+    dictionary: PropTypes.func,
+    onChange: PropTypes.func
 };
 
 //--------------------

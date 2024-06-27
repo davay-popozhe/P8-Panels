@@ -1,52 +1,89 @@
 /*
     Парус 8 - Панели мониторинга - ТОиР - Выполнение работ
-    Панель мониторинга: Диалоговое окно фильтра отбора
+    Компонент: Диалоговое окно фильтра отбора
 */
 
 //---------------------
 //Подключение библиотек
 //---------------------
 
-import React, { useState, useContext, useEffect, useCallback } from "react"; //Классы React
+import React, { useState, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
-import { Dialog, DialogTitle, IconButton, Icon, DialogContent, DialogActions, Button, Paper, Box, Grid } from "@mui/material"; //Интерфейсные компоненты
+import { Dialog, DialogTitle, IconButton, Icon, DialogContent, DialogActions, Button, Box, Grid } from "@mui/material"; //Интерфейсные компоненты
 import { FilterInputField } from "./filter_input_field"; //Компонент поля ввода
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
-import { STYLES } from "./layouts"; //Стили
 
 //---------
 //Константы
 //---------
 
 //Массив месяцев
-export const MONTH_ARRAY = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+const MONTH_ARRAY = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+
+//Стили
+const STYLES = {
+    DIALOG_ACTIONS: { justifyContent: "center" },
+    CLOSE_BUTTON: {
+        position: "absolute",
+        right: 8,
+        top: 8,
+        color: theme => theme.palette.grey[500]
+    }
+};
+
+//-----------------------
+//Вспомогательные функции
+//-----------------------
+
+//Формирование списка лет
+const buildYears = () => {
+    const res = [1990];
+    const today = new Date();
+    for (let i = res[0] + 1; i <= today.getFullYear(); i++) res.push(i);
+    return res;
+};
+
+//Выбор принадлежности
+const selectJuridicalPersons = (showDictionary, callBack) => {
+    showDictionary({
+        unitCode: "JuridicalPersons",
+        callBack: res => (res.success === true ? callBack(res.outParameters.out_CODE) : callBack(null))
+    });
+};
+
+//Выбор производственного объекта
+const selectEquipConfiguration = (showDictionary, callBack) => {
+    showDictionary({
+        unitCode: "EquipConfiguration",
+        callBack: res => (res.success === true ? callBack(res.outParameters.out_CODE) : callBack(null))
+    });
+};
+
+//Выбор подразделения
+const selectInsDepartment = (showDictionary, callBack) => {
+    showDictionary({
+        unitCode: "INS_DEPARTMENT",
+        callBack: res => (res.success === true ? callBack(res.outParameters.out_CODE) : callBack(null))
+    });
+};
 
 //---------------
 //Тело компонента
 //---------------
 
 //Диалоговое окно фильтра отбора
-const FilterDialog = props => {
-    //Свойства
-    const { filter, filterCopy, filterOpen, setFilter, setFilterOpen, setDataGrid } = props;
-
-    //Состояние ограничения редактирования фильтра
-    const [filterLock, setFilterLock] = useState(false);
-
-    //Состояние массива лет
-    const [years, setYears] = useState({ array: [1990], filled: false });
+const FilterDialog = ({ initial, onCancel, onOk }) => {
+    //Собственное состояние
+    const [filter, setFilter] = useState({ ...initial });
 
     //Подключение к контексту приложения
     const { pOnlineShowDictionary } = useContext(ApplicationСtx);
 
-    //Закрыть фильтр
-    const closeFilter = e => {
-        if (filterLock && e != undefined) setFilter(filterCopy);
-        setFilterOpen(false);
-    };
+    //При закрытии диалога без изменения фильтра
+    const handleCancel = () => (onCancel ? onCancel() : null);
 
-    //Очистить фильтр
-    const clearFilter = () => {
+    //При очистке фильтра
+    const handleClear = () => {
         setFilter({
             belong: "",
             prodObj: "",
@@ -59,179 +96,128 @@ const FilterDialog = props => {
         });
     };
 
-    //Заполнение состояния массива лет
-    const getYearArray = useCallback(async () => {
-        const today = new Date();
-        for (let i = years.array[0] + 1; i <= today.getFullYear(); i++) {
-            setYears(pv => ({ ...pv, array: [...pv.array, i] }));
-        }
-        setYears(pv => ({ ...pv, filled: true }));
-        //eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    //При закрытии диалога с изменением фильтра
+    const handleOK = () => (onOk ? onOk(filter) : null);
 
-    //Только при первичном рендере
-    useEffect(() => {
-        if (filterOpen && !years.filled) getYearArray();
-    }, [filterOpen, getYearArray, years.filled]);
+    //При изменении значения элемента
+    const handleFilterItemChange = (item, value) => setFilter(pv => ({ ...pv, [item]: value }));
 
     //Генерация содержимого
     return (
         <div>
-            <Dialog open={filterOpen} onClose={closeFilter}>
+            <Dialog open onClose={handleCancel} fullWidth maxWidth="sm">
                 <DialogTitle>Фильтр отбора</DialogTitle>
-                <IconButton
-                    aria-label="close"
-                    onClick={closeFilter}
-                    sx={{
-                        position: "absolute",
-                        right: 8,
-                        top: 8,
-                        color: theme => theme.palette.grey[500]
-                    }}
-                >
+                <IconButton aria-label="close" onClick={handleCancel} sx={STYLES.CLOSE_BUTTON}>
                     <Icon>close</Icon>
                 </IconButton>
                 <DialogContent>
-                    <Paper>
-                        <Box component="section" sx={{ p: 1 }}>
-                            <FilterInputField
-                                elementCode="belong"
-                                elementValue={filter.belong}
-                                labelText="Принадлежность"
-                                changeFunc={() => {
-                                    pOnlineShowDictionary({
-                                        unitCode: "JuridicalPersons",
-                                        callBack: res =>
-                                            res.success === true ? setFilter(pv => ({ ...pv, belong: res.outParameters.out_CODE })) : null
-                                    });
-                                }}
-                                required={true}
-                            />
-                        </Box>
-                        <Box component="section" sx={{ p: 1 }}>
-                            <FilterInputField
-                                elementCode="prodObj"
-                                elementValue={filter.prodObj}
-                                labelText="Производственный объект"
-                                changeFunc={() => {
-                                    pOnlineShowDictionary({
-                                        unitCode: "EquipConfiguration",
-                                        callBack: res =>
-                                            res.success === true ? setFilter(pv => ({ ...pv, prodObj: res.outParameters.out_CODE })) : null
-                                    });
-                                }}
-                                required={true}
-                            />
-                        </Box>
-                        <Box component="section" sx={{ p: 1 }}>
-                            <FilterInputField
-                                elementCode="techServ"
-                                elementValue={filter.techServ}
-                                labelText="Техническая служба"
-                                changeFunc={() => {
-                                    pOnlineShowDictionary({
-                                        unitCode: "INS_DEPARTMENT",
-                                        callBack: res =>
-                                            res.success === true ? setFilter(pv => ({ ...pv, techServ: res.outParameters.out_CODE })) : null
-                                    });
-                                }}
-                            />
-                        </Box>
-                        <Box component="section" sx={{ p: 1 }}>
-                            <FilterInputField
-                                elementCode="respDep"
-                                elementValue={filter.respDep}
-                                labelText="Ответственное подразделение"
-                                changeFunc={() => {
-                                    pOnlineShowDictionary({
-                                        unitCode: "INS_DEPARTMENT",
-                                        callBack: res =>
-                                            res.success === true ? setFilter(pv => ({ ...pv, respDep: res.outParameters.out_CODE })) : null
-                                    });
-                                }}
-                            />
-                        </Box>
-                        <Box component="section" sx={{ p: 1 }}>
-                            <Grid container spacing={2}>
-                                <Grid textAlign={"center"} item xs={4}>
-                                    Начало периода:
-                                </Grid>
-                                <Grid item xs={4}>
-                                    <FilterInputField
-                                        elementCode="from-month"
-                                        elementValue={filter.fromMonth}
-                                        labelText="Месяц"
-                                        changeFunc={e => setFilter(pv => ({ ...pv, fromMonth: e.target.value }))}
-                                        required={true}
-                                        isDateField={true}
-                                    />
-                                </Grid>
-                                <Grid item xs={4}>
-                                    <FilterInputField
-                                        elementCode="from-year"
-                                        elementValue={filter.fromYear}
-                                        labelText="Год"
-                                        changeFunc={e => setFilter(pv => ({ ...pv, fromYear: e.target.value }))}
-                                        required={true}
-                                        isDateField={true}
-                                        yearArray={years.array}
-                                    />
-                                </Grid>
+                    <Box component="section" p={1}>
+                        <FilterInputField
+                            elementCode="belong"
+                            elementValue={filter.belong}
+                            labelText="Принадлежность"
+                            dictionary={callBack => selectJuridicalPersons(pOnlineShowDictionary, callBack)}
+                            required={true}
+                            onChange={handleFilterItemChange}
+                        />
+                    </Box>
+                    <Box component="section" p={1}>
+                        <FilterInputField
+                            elementCode="prodObj"
+                            elementValue={filter.prodObj}
+                            labelText="Производственный объект"
+                            dictionary={callBack => selectEquipConfiguration(pOnlineShowDictionary, callBack)}
+                            required={true}
+                            onChange={handleFilterItemChange}
+                        />
+                    </Box>
+                    <Box component="section" p={1}>
+                        <FilterInputField
+                            elementCode="techServ"
+                            elementValue={filter.techServ}
+                            labelText="Техническая служба"
+                            dictionary={callBack => selectInsDepartment(pOnlineShowDictionary, callBack)}
+                            onChange={handleFilterItemChange}
+                        />
+                    </Box>
+                    <Box component="section" p={1}>
+                        <FilterInputField
+                            elementCode="respDep"
+                            elementValue={filter.respDep}
+                            labelText="Ответственное подразделение"
+                            dictionary={callBack => selectInsDepartment(pOnlineShowDictionary, callBack)}
+                            onChange={handleFilterItemChange}
+                        />
+                    </Box>
+                    <Box component="section" p={1}>
+                        <Grid container spacing={2} alignItems={"center"}>
+                            <Grid textAlign={"left"} item xs={4}>
+                                Начало периода:
                             </Grid>
-                        </Box>
-                        <Box component="section" sx={{ p: 1 }}>
-                            <Grid container spacing={2}>
-                                <Grid textAlign={"center"} item xs={4}>
-                                    Конец периода:
-                                </Grid>
-                                <Grid item xs={4}>
-                                    <FilterInputField
-                                        elementCode="to-month"
-                                        elementValue={filter.toMonth}
-                                        labelText="Месяц"
-                                        changeFunc={e => setFilter(pv => ({ ...pv, toMonth: e.target.value }))}
-                                        required={true}
-                                        isDateField={true}
-                                    />
-                                </Grid>
-                                <Grid item xs={4}>
-                                    <FilterInputField
-                                        elementCode="to-year"
-                                        elementValue={filter.toYear}
-                                        labelText="Год"
-                                        changeFunc={e => setFilter(pv => ({ ...pv, toYear: e.target.value }))}
-                                        required={true}
-                                        isDateField={true}
-                                        yearArray={years.array}
-                                    />
-                                </Grid>
+                            <Grid item xs={4}>
+                                <FilterInputField
+                                    elementCode="fromMonth"
+                                    elementValue={filter.fromMonth}
+                                    labelText="Месяц"
+                                    required={true}
+                                    items={MONTH_ARRAY.map((item, i) => ({ value: i + 1, caption: item }))}
+                                    onChange={handleFilterItemChange}
+                                />
                             </Grid>
-                        </Box>
-                    </Paper>
+                            <Grid item xs={4}>
+                                <FilterInputField
+                                    elementCode="fromYear"
+                                    elementValue={filter.fromYear}
+                                    labelText="Год"
+                                    required={true}
+                                    items={buildYears().map(item => ({ value: item, caption: item }))}
+                                    onChange={handleFilterItemChange}
+                                />
+                            </Grid>
+                        </Grid>
+                    </Box>
+                    <Box component="section" p={1}>
+                        <Grid container spacing={2} alignItems={"center"}>
+                            <Grid textAlign={"left"} item xs={4}>
+                                Конец периода:
+                            </Grid>
+                            <Grid item xs={4}>
+                                <FilterInputField
+                                    elementCode="toMonth"
+                                    elementValue={filter.toMonth}
+                                    labelText="Месяц"
+                                    required={true}
+                                    items={MONTH_ARRAY.map((item, i) => ({ value: i + 1, caption: item }))}
+                                    onChange={handleFilterItemChange}
+                                />
+                            </Grid>
+                            <Grid item xs={4}>
+                                <FilterInputField
+                                    elementCode="toYear"
+                                    elementValue={filter.toYear}
+                                    labelText="Год"
+                                    required={true}
+                                    items={buildYears().map(item => ({ value: item, caption: item }))}
+                                    onChange={handleFilterItemChange}
+                                />
+                            </Grid>
+                        </Grid>
+                    </Box>
                 </DialogContent>
-                <DialogActions sx={{ ...STYLES.FILTER_DIALOG_ACTIONS }}>
+                <DialogActions sx={STYLES.DIALOG_ACTIONS}>
                     <Button
                         variant="text"
                         disabled={
                             filter.belong && filter.prodObj && filter.fromMonth && filter.fromYear && filter.toMonth && filter.toYear ? false : true
                         }
-                        onClick={() => {
-                            setFilterLock(true);
-                            setDataGrid({ reload: true });
-                            closeFilter();
-                        }}
+                        onClick={handleOK}
                     >
                         Сформировать
                     </Button>
-                    <Button variant="text" onClick={clearFilter}>
+                    <Button variant="text" onClick={handleClear}>
                         Очистить
                     </Button>
-                    <Button
-                        variant="text"
-                        onClick={() => {
-                            setFilter(filterCopy);
-                        }}
-                    >
+                    <Button variant="text" onClick={handleCancel}>
                         Отмена
                     </Button>
                 </DialogActions>
@@ -242,12 +228,9 @@ const FilterDialog = props => {
 
 //Контроль свойств компонента - Диалоговое окно фильтра отбора
 FilterDialog.propTypes = {
-    filter: PropTypes.object.isRequired,
-    filterCopy: PropTypes.object.isRequired,
-    filterOpen: PropTypes.bool.isRequired,
-    setFilter: PropTypes.func.isRequired,
-    setFilterOpen: PropTypes.func.isRequired,
-    setDataGrid: PropTypes.func.isRequired
+    initial: PropTypes.object.isRequired,
+    onOk: PropTypes.func,
+    onCancel: PropTypes.func
 };
 
 //--------------------
