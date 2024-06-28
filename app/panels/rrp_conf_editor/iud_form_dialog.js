@@ -7,40 +7,123 @@
 //Подключение библиотек
 //---------------------
 
-import React from "react"; //Классы React
+import React, { useState, useContext } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Dialog, DialogTitle, IconButton, Icon, DialogContent, Typography, DialogActions, Button } from "@mui/material"; //Интерфейсные компоненты
 //import { MessagingСtx } from "../../context/messaging";
-import { IUDFormTextField } from "./iud_form_text_filed"; //Кастомные строки ввода
-import { STATUSES, STYLES } from "./layouts"; //Статусы и стили диалогового окна
+import { ApplicationСtx } from "../../context/application"; //Контекст приложения
+import { IUDFormTextField } from "./iud_form_text_field"; //Кастомные строки ввода
+import { STATUSES } from "./layouts"; //Статусы и стили диалогового окна
+
+//---------
+//Константы
+//---------
+
+//Стили
+const STYLES = {
+    DIALOG_ACTIONS: { justifyContent: "center" },
+    CLOSE_BUTTON: {
+        position: "absolute",
+        right: 8,
+        top: 8,
+        color: theme => theme.palette.grey[500]
+    }
+};
+
+//Выбор подразделения
+// const selectInsDepartment = (showDictionary, callBack) => {
+//     showDictionary({
+//         unitCode: "INS_DEPARTMENT",
+//         callBack: res => (res.success === true ? callBack(res.outParameters.out_CODE) : callBack(null))
+//     });
+// };
+
+//Выбор строки
+const selectRow = (showDictionary, callBack) => {
+    showDictionary({
+        unitCode: "RRPRow",
+        callBack: res =>
+            res.success === true
+                ? callBack(res.outParameters.out_CODE, res.outParameters.out_RRPVERSION_CODE, res.outParameters.out_RRPVERSION)
+                : callBack(null)
+    });
+    // pOnlineShowDictionary({
+    //     unitCode: "RRPRow",
+    //     callBack: res =>
+    //         res.success === true
+    //             ? setFormData(pv => ({
+    //                   ...pv,
+    //                   rowCode: res.outParameters.out_CODE,
+    //                   rowVCode: res.outParameters.out_RRPVERSION_CODE,
+    //                   rowVRn: res.outParameters.out_RRPVERSION
+    //               }))
+    //             : null
+    // });
+};
+
+//Выбор графы
+const selectColumn = (showDictionary, callBack) => {
+    showDictionary({
+        unitCode: "RRPColumn",
+        callBack: res =>
+            res.success === true
+                ? callBack(res.outParameters.out_CODE, res.outParameters.out_RRPVERSION_CODE, res.outParameters.out_RRPVERSION)
+                : callBack(null)
+    });
+    // pOnlineShowDictionary({
+    //     unitCode: "RRPColumn",
+    //     callBack: res =>
+    //         res.success === true
+    //             ? setFormData(pv => ({
+    //                   ...pv,
+    //                   colCode: res.outParameters.out_CODE,
+    //                   colVCode: res.outParameters.out_RRPVERSION_CODE,
+    //                   colVRn: res.outParameters.out_RRPVERSION
+    //               }))
+    //             : null
+    // });
+};
 
 //---------------
 //Тело компонента
 //---------------
 
-const IUDFormDialog = props => {
+const IUDFormDialog = ({ initial, onOk, onCancel }) => {
     //Свойства компонента
-    const {
-        formOpen,
-        closeForm,
-        curStatus,
-        curCode,
-        curName,
-        curColCode,
-        curRowCode,
-        btnOkClick,
-        codeOnChange,
-        nameOnChange,
-        dictColumnClick,
-        dictRowClick
-    } = props;
+    // const {
+    //     formOpen,
+    //     closeForm,
+    //     curStatus,
+    //     curCode,
+    //     curName,
+    //     curColCode,
+    //     curRowCode,
+    //     btnOkClick,
+    //     codeOnChange,
+    //     nameOnChange,
+    //     dictColumnClick,
+    //     dictRowClick
+
+    // } = props;
+
+    //Собственное состояние
+    const [formData, setFormData] = useState({ ...initial });
 
     //Подключение к контексту сообщений
     //const { showMsgWarn } = useContext(MessagingСtx);
 
+    //Подключение к контексту приложения
+    const { pOnlineShowDictionary } = useContext(ApplicationСtx);
+
+    //При закрытии диалога без изменений
+    const handleCancel = () => (onCancel ? onCancel() : null);
+
+    //При закрытии диалога с изменениями
+    const handleOK = () => (onOk ? onOk(formData) : null);
+
     //Формирование заголовка диалогового окна
     const formTitle = () => {
-        switch (curStatus) {
+        switch (formData.status) {
             case STATUSES.CREATE:
                 return "Добавление раздела";
             case STATUSES.EDIT:
@@ -59,7 +142,7 @@ const IUDFormDialog = props => {
     //Отрисовка диалогового окна
     const renderSwitch = () => {
         var btnText = "";
-        switch (curStatus) {
+        switch (formData.status) {
             case STATUSES.CREATE:
             case STATUSES.COLUMNROW_CREATE:
                 btnText = "Добавить";
@@ -73,52 +156,43 @@ const IUDFormDialog = props => {
                 btnText = "Удалить";
                 break;
         }
-        return <Button onClick={btnOkClick}>{btnText}</Button>;
+        return <Button onClick={handleOK}>{btnText}</Button>;
     };
 
     return (
-        <Dialog open={formOpen} onClose={closeForm}>
+        <Dialog open onClose={handleCancel}>
             <DialogTitle>{formTitle()}</DialogTitle>
-            <IconButton
-                aria-label="close"
-                onClick={closeForm}
-                sx={{
-                    position: "absolute",
-                    right: 8,
-                    top: 8,
-                    color: theme => theme.palette.grey[500]
-                }}
-            >
+            <IconButton aria-label="close" onClick={handleCancel} sx={STYLES.CLOSE_BUTTON}>
                 <Icon>close</Icon>
             </IconButton>
             <DialogContent>
-                {curStatus == STATUSES.DELETE || curStatus == STATUSES.COLUMNROW_DELETE ? (
-                    curStatus == STATUSES.DELETE ? (
-                        <Typography>Вы хотите удалить раздел {curName}?</Typography>
+                {formData.status == STATUSES.DELETE || formData.status == STATUSES.COLUMNROW_DELETE ? (
+                    formData.status == STATUSES.DELETE ? (
+                        <Typography>Вы хотите удалить раздел {formData.name}?</Typography>
                     ) : (
-                        <Typography>Вы хотите удалить показатель раздела {curName}?</Typography>
+                        <Typography>Вы хотите удалить показатель раздела {formData.name}?</Typography>
                     )
                 ) : (
                     <div>
-                        {curStatus != STATUSES.COLUMNROW_EDIT ? (
-                            <IUDFormTextField elementCode="code" elementValue={curCode} labelText="Мнемокод" changeFunc={codeOnChange} />
+                        {formData.status != STATUSES.COLUMNROW_EDIT ? (
+                            <IUDFormTextField elementCode="code" elementValue={formData.code} labelText="Мнемокод" onChange={handleOK} />
                         ) : null}
-                        <IUDFormTextField elementCode="name" elementValue={curName} labelText="Наименование" changeFunc={nameOnChange} />
-                        {curStatus == STATUSES.COLUMNROW_CREATE ? (
+                        <IUDFormTextField elementCode="name" elementValue={formData.name} labelText="Наименование" onChange={handleOK} />
+                        {formData.status == STATUSES.COLUMNROW_CREATE ? (
                             <div>
                                 <IUDFormTextField
                                     elementCode="row"
-                                    elementValue={curRowCode}
+                                    elementValue={formData.rowCode}
                                     labelText="Строка"
-                                    changeFunc={dictRowClick}
-                                    withDictionary={true}
+                                    onChange={handleOK}
+                                    dictionary={callBack => selectRow(pOnlineShowDictionary, callBack)}
                                 />
                                 <IUDFormTextField
                                     elementCode="column"
-                                    elementValue={curColCode}
+                                    elementValue={formData.colCode}
                                     labelText="Графа"
-                                    changeFunc={dictColumnClick}
-                                    withDictionary={true}
+                                    onChange={handleOK}
+                                    dictionary={callBack => selectColumn(pOnlineShowDictionary, callBack)}
                                 />
                             </div>
                         ) : null}
@@ -127,7 +201,7 @@ const IUDFormDialog = props => {
             </DialogContent>
             <DialogActions sx={STYLES.PADDING_DIALOG_BUTTONS_RIGHT}>
                 {renderSwitch()}
-                <Button onClick={closeForm}>Отмена</Button>
+                <Button onClick={handleCancel}>Отмена</Button>
             </DialogActions>
         </Dialog>
     );
@@ -135,18 +209,9 @@ const IUDFormDialog = props => {
 
 //Контроль свойств - Диалог
 IUDFormDialog.propTypes = {
-    formOpen: PropTypes.bool.isRequired,
-    closeForm: PropTypes.func.isRequired,
-    curStatus: PropTypes.oneOf(Object.values(STATUSES).filter(x => typeof x === "number")),
-    curCode: PropTypes.string,
-    curName: PropTypes.string,
-    curColCode: PropTypes.string,
-    curRowCode: PropTypes.string,
-    btnOkClick: PropTypes.func.isRequired,
-    codeOnChange: PropTypes.func.isRequired,
-    nameOnChange: PropTypes.func.isRequired,
-    dictColumnClick: PropTypes.func.isRequired,
-    dictRowClick: PropTypes.func.isRequired
+    initial: PropTypes.object.isRequired,
+    onOk: PropTypes.func,
+    onCancel: PropTypes.func
 };
 
 //--------------------

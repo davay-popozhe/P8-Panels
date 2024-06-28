@@ -32,6 +32,8 @@ const RrpConfEditor = () => {
         columnsDef: [],
         groups: [],
         rows: [],
+        fixedHeader: false,
+        fixedColumns: 0,
         reload: false
     };
 
@@ -138,38 +140,6 @@ const RrpConfEditor = () => {
     const deleteColumnRowClick = (rn, name) => {
         setFormData({ status: STATUSES.COLUMNROW_DELETE, rn: rn, name: name });
         openForm();
-    };
-
-    //Отработка нажатия на словарь граф
-    const dictColumnClick = () => {
-        pOnlineShowDictionary({
-            unitCode: "RRPColumn",
-            callBack: res =>
-                res.success === true
-                    ? setFormData(pv => ({
-                          ...pv,
-                          colCode: res.outParameters.out_CODE,
-                          colVCode: res.outParameters.out_RRPVERSION_CODE,
-                          colVRn: res.outParameters.out_RRPVERSION
-                      }))
-                    : null
-        });
-    };
-
-    //Отработка нажатия на словарь строк
-    const dictRowClick = () => {
-        pOnlineShowDictionary({
-            unitCode: "RRPRow",
-            callBack: res =>
-                res.success === true
-                    ? setFormData(pv => ({
-                          ...pv,
-                          rowCode: res.outParameters.out_CODE,
-                          rowVCode: res.outParameters.out_RRPVERSION_CODE,
-                          rowVRn: res.outParameters.out_RRPVERSION
-                      }))
-                    : null
-        });
     };
 
     //Нажатие на кнопку подтверждения создания/исправления/удаления на форме
@@ -338,6 +308,8 @@ const RrpConfEditor = () => {
                     columnsDef: [...(s.XDATA.XCOLUMNS_DEF || [])],
                     groups: [...(s.XDATA.XGROUPS || [])],
                     rows: [...(s.XDATA.XROWS || [])],
+                    fixedHeader: s.XDATA.XDATA_GRID.fixedHeader,
+                    fixedColumns: s.XDATA.XDATA_GRID.fixedColumns,
                     reload: false
                 });
                 //Ищем загружен ли уже раздел с таким же ид.
@@ -414,25 +386,19 @@ const RrpConfEditor = () => {
             : null;
     }, [formData.colCode, formData.rowCode, formData.sctnCode, formData.sctnName, formData.status, getSctnMrkCodeName]);
 
+    //При изменении фильтра в диалоге
+    const handleFilterOk = filter => {
+        setFormData(filter);
+        setForm(false);
+    };
+
+    //При закрытии диалога фильтра
+    const handleFilterCancel = () => setForm(false);
+
     //Генерация содержимого
     return (
         <Box sx={{ width: "100%" }}>
-            {formOpen ? (
-                <IUDFormDialog
-                    formOpen={formOpen}
-                    closeForm={closeForm}
-                    curStatus={formData.status}
-                    curCode={formData.code}
-                    curName={formData.name}
-                    curColCode={formData.colCode}
-                    curRowCode={formData.rowCode}
-                    btnOkClick={formBtnOkClick}
-                    codeOnChange={v => setFormData(pv => ({ ...pv, code: v }))}
-                    nameOnChange={v => setFormData(pv => ({ ...pv, name: v }))}
-                    dictColumnClick={dictColumnClick}
-                    dictRowClick={dictRowClick}
-                />
-            ) : null}
+            {formOpen ? <IUDFormDialog initial={formData} onOk={handleFilterOk} onCancel={handleFilterCancel} /> : null}
             {rrpDoc.docLoaded ? (
                 <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
                     <Stack direction="row">
@@ -445,12 +411,8 @@ const RrpConfEditor = () => {
                                         label={
                                             <Stack direction="row" textAlign="center">
                                                 {s.name}
-                                                <IconButton onClick={() => editSectionClick(s.rn, s.code, s.name)}>
-                                                    <Icon>edit</Icon>
-                                                </IconButton>
-                                                <IconButton onClick={() => deleteSectionClick(s.rn, s.code, s.name)}>
-                                                    <Icon>delete</Icon>
-                                                </IconButton>
+                                                <Icon onClick={() => editSectionClick(s.rn, s.code, s.name)}>edit</Icon>
+                                                <Icon onClick={() => deleteSectionClick(s.rn, s.code, s.name)}>delete</Icon>
                                             </Stack>
                                         }
                                         wrapped
@@ -472,6 +434,8 @@ const RrpConfEditor = () => {
                                         columnsDef={s.columnsDef}
                                         groups={s.groups}
                                         rows={s.rows}
+                                        fixedHeader={s.fixedHeader}
+                                        fixedColumns={s.fixedColumns}
                                         size={P8P_DATA_GRID_SIZE.LARGE}
                                         reloading={s.reload}
                                         dataCellRender={prms =>

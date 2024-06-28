@@ -16,42 +16,55 @@ import { STYLES } from "./layouts"; //Стили диалогового окна
 //Тело компонента
 //---------------
 
-const IUDFormTextField = props => {
-    //Свойства
-    const { elementCode, elementValue, labelText, changeFunc, withDictionary, ...other } = props;
-
-    //Состояние идентификатора элемента
-    const [elementId, setElementId] = useState("");
+const IUDFormTextField = ({ elementCode, elementValue, labelText, onChange, dictionary, ...other }) => {
+    //Значение элемента
+    const [value, setValue] = useState(elementValue);
 
     //Формирование идентификатора элемента
-    const generateId = useCallback(async () => {
-        setElementId(`${elementCode}-input`);
-    }, [elementCode]);
+    // const generateId = useCallback(async () => {
+    //     setElementId(`${elementCode}-input`);
+    // }, [elementCode]);
 
     //При рендере поля ввода
+    // useEffect(() => {
+    //     generateId();
+    // }, [generateId]);
+
+    //При получении нового значения из вне
     useEffect(() => {
-        generateId();
-    }, [generateId]);
+        setValue(elementValue);
+    }, [elementValue]);
+
+    //Выбор значения из словаря
+    const handleDictionaryClick = () =>
+        dictionary ? dictionary(res => (res ? handleChange({ target: { name: elementCode, value: res } }) : null)) : null;
+
+    //Изменение значения элемента
+    const handleChange = e => {
+        setValue(e.target.value);
+        if (onChange) onChange(e.target.name, e.target.value);
+    };
 
     return (
         <Box sx={{ p: 1 }}>
             <FormControl sx={STYLES.DIALOG_WINDOW_WIDTH} {...other}>
-                <InputLabel htmlFor={elementId}>{labelText}</InputLabel>
+                <InputLabel htmlFor={elementCode}>{labelText}</InputLabel>
                 <Input
-                    id={elementId}
-                    value={elementValue ? elementValue : ""}
-                    onChange={!withDictionary ? e => changeFunc(e.target.value) : null}
-                    aria-describedby={`${elementCode}-helper-text`}
-                    label={labelText}
+                    id={elementCode}
+                    name={elementCode}
+                    value={value}
                     endAdornment={
-                        withDictionary ? (
+                        dictionary ? (
                             <InputAdornment position="end">
-                                <IconButton aria-label={`${elementCode} select`} onClick={changeFunc} edge="end">
+                                <IconButton aria-label={`${elementCode} select`} onClick={handleDictionaryClick} edge="end">
                                     <Icon>list</Icon>
                                 </IconButton>
                             </InputAdornment>
                         ) : null
                     }
+                    aria-describedby={`${elementCode}-helper-text`}
+                    label={labelText}
+                    onChange={handleChange}
                 />
             </FormControl>
         </Box>
@@ -63,8 +76,8 @@ IUDFormTextField.propTypes = {
     elementCode: PropTypes.string.isRequired,
     elementValue: PropTypes.string,
     labelText: PropTypes.string.isRequired,
-    changeFunc: PropTypes.func.isRequired,
-    withDictionary: PropTypes.bool
+    onChange: PropTypes.func,
+    dictionary: PropTypes.func
 };
 
 //--------------------

@@ -29,6 +29,7 @@ export const STATUSES = { CREATE: 0, EDIT: 1, DELETE: 2, COLUMNROW_CREATE: 3, CO
 //Генерация представления ячейки c данными
 export const dataCellRender = ({ row, columnDef }, showRrpConfSctnMrk, editCR, deleteCR) => {
     let data = row[columnDef.name];
+    let cellStyle = { display: "flex" };
     columnDef.name != "SROW_NAME" && data != undefined && columnDef.visible == true
         ? (data = (
               <Stack direction="row">
@@ -41,10 +42,10 @@ export const dataCellRender = ({ row, columnDef }, showRrpConfSctnMrk, editCR, d
                   >
                       {row[columnDef.name]}
                   </Link>
-                  <IconButton justifyContent="flex-end" onClick={() => editCR(row["NRN_" + columnDef.name.substring(5)], row[columnDef.name])}>
+                  <IconButton onClick={() => editCR(row["NRN_" + columnDef.name.substring(5)], row[columnDef.name])}>
                       <Icon>edit</Icon>
                   </IconButton>
-                  <IconButton justifyContent="flex-end" onClick={() => deleteCR(row["NRN_" + columnDef.name.substring(5)], row[columnDef.name])}>
+                  <IconButton onClick={() => deleteCR(row["NRN_" + columnDef.name.substring(5)], row[columnDef.name])}>
                       <Icon>delete</Icon>
                   </IconButton>
               </Stack>
