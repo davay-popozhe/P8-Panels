@@ -8,19 +8,20 @@
 //---------------------
 
 import React from "react"; //Классы React
-import { Stack, IconButton, Icon, Link } from "@mui/material"; //Интерфейсные компоненты
+import { Box, IconButton, Icon, Link } from "@mui/material"; //Интерфейсные компоненты
 
 //---------
 //Константы
 //---------
 
+//Стили
 export const STYLES = {
-    DIALOG_WINDOW_WIDTH: { width: 400 },
-    PADDING_DIALOG_BUTTONS_RIGHT: { paddingRight: "32px" }
+    BOX_ROW: { display: "flex", justifyContent: "center", alignItems: "center" },
+    LINK_STYLE: { component: "button", width: "-webkit-fill-available" }
 };
 
 //Статусы диалогового окна
-export const STATUSES = { CREATE: 0, EDIT: 1, DELETE: 2, COLUMNROW_CREATE: 3, COLUMNROW_EDIT: 4, COLUMNROW_DELETE: 5 };
+export const STATUSES = { CREATE: 0, EDIT: 1, DELETE: 2, RRPCONFSCTNMRK_CREATE: 3, RRPCONFSCTNMRK_EDIT: 4, RRPCONFSCTNMRK_DELETE: 5 };
 
 //-----------
 //Тело модуля
@@ -29,13 +30,11 @@ export const STATUSES = { CREATE: 0, EDIT: 1, DELETE: 2, COLUMNROW_CREATE: 3, CO
 //Генерация представления ячейки c данными
 export const dataCellRender = ({ row, columnDef }, showRrpConfSctnMrk, editCR, deleteCR) => {
     let data = row[columnDef.name];
-    let cellStyle = { display: "flex" };
     columnDef.name != "SROW_NAME" && data != undefined && columnDef.visible == true
         ? (data = (
-              <Stack direction="row">
+              <Box sx={STYLES.BOX_ROW}>
                   <Link
-                      component="button"
-                      width="-webkit-fill-available"
+                      sx={STYLES.LINK_STYLE}
                       onClick={() => {
                           showRrpConfSctnMrk(row["NRN_" + columnDef.name.substring(5)]);
                       }}
@@ -48,7 +47,7 @@ export const dataCellRender = ({ row, columnDef }, showRrpConfSctnMrk, editCR, d
                   <IconButton onClick={() => deleteCR(row["NRN_" + columnDef.name.substring(5)], row[columnDef.name])}>
                       <Icon>delete</Icon>
                   </IconButton>
-              </Stack>
+              </Box>
           ))
         : null;
     return { data };

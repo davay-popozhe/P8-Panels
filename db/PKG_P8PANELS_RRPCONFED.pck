@@ -1,7 +1,7 @@
 create or replace package PKG_P8PANELS_RRPCONFED as
 
   /* Добавление раздела регламентированного отчёта */
-  procedure INSERT_RRPCONF_SECTIONS
+  procedure RRPCONFSCTN_INSERT
   (
     NPRN                    in number,   -- Ид. настройки форм регламентированного отчёта
     SCODE                   in varchar2, -- Мнемокод
@@ -10,7 +10,7 @@ create or replace package PKG_P8PANELS_RRPCONFED as
   );
   
   /* Исправление раздела регламентированного отчёта */
-  procedure UPDATE_RRPCONF_SECTIONS
+  procedure RRPCONFSCTN_UPDATE
   (
     NRN                     in number,   -- Ид. раздела
     SCODE                   in varchar2, -- Мнемокод раздела
@@ -18,13 +18,13 @@ create or replace package PKG_P8PANELS_RRPCONFED as
   );
   
   /* Удаление раздела регламентированного отчёта */
-  procedure DELETE_RRPCONF_SECTIONS
+  procedure RRPCONFSCTN_DELETE
   (
-    NRN                     in number -- Ид. раздела
+    NRN                     in number   -- Ид. раздела
   );
   
   /* Добавление показателя раздела регламентированного отчёта */
-  procedure INSERT_RRPCONF_COLUMNROW
+  procedure  RRPCONFSCTNMRK_INSERT
   (
     NPRN                    in number,   -- Ид. раздела
     SCODE                   in varchar2, -- Мнемокод показателя раздела
@@ -37,26 +37,33 @@ create or replace package PKG_P8PANELS_RRPCONFED as
   );
   
   /* Исправление показателя раздела регламентированного отчёта */
-  procedure UPDATE_RRPCONF_COLUMNROW
+  procedure  RRPCONFSCTNMRK_UPDATE
   (
     NRN                     in number,  -- Ид. показателя раздела            
     SNAME                   in varchar2 -- Новое наименование
   );
   
   /* Удаление показателя раздела регламентированного отчёта */
-  procedure DELETE_RRPCONF_COLUMNROW
+  procedure  RRPCONFSCTNMRK_DELETE
   (        
     NRN                     in number   -- Ид. показателя раздела
   );
   
   /* Формирование кода и наименования показателя раздела регламентированного отчёта */
-  procedure GET_RRPCONFSCTNMRK_CODE_NAME
+  procedure RRPCONFSCTNMRK_GET_CODE_NAME
   ( 
     SSCTNCODE               in varchar2,  -- Мнемокод раздела  
     SROWCODE                in varchar2,  -- Мнемокод строки
     SCOLUMNCODE             in varchar2,  -- Мнемокод графы
     SCODE                   out varchar2, -- Мнемокод показателя раздела
     SNAME                   out varchar2  -- Наименование показателя раздела    
+  );
+  
+  /* Отбор показателя раздела по ид. */
+  procedure SELECT_RRPCONFSCTNMRK
+  (
+    NRN                     in number,  -- Ид. показателя раздела
+    NIDENT                  out number  -- Ид. буфера подобранных (списка отмеченных записей, null - не найдено)
   );
 
   /* Получение разделов регламентированного отчёта */
@@ -71,7 +78,7 @@ end PKG_P8PANELS_RRPCONFED;
 create or replace package body PKG_P8PANELS_RRPCONFED as
 
   /* Добавление раздела регламентированного отчёта */
-  procedure INSERT_RRPCONF_SECTIONS
+  procedure RRPCONFSCTN_INSERT
   (
     NPRN                    in number,                             -- Ид. настройки форм регламентированного отчёта
     SCODE                   in varchar2,                           -- Мнемокод
@@ -95,10 +102,10 @@ create or replace package body PKG_P8PANELS_RRPCONFED as
                          NLINKS_UPDATE       => 0,
                          NDUP_RN             => null,
                          NRN                 => NRN);
-  end INSERT_RRPCONF_SECTIONS;
+  end RRPCONFSCTN_INSERT;
   
   /* Исправление раздела регламентированного отчёта */
-  procedure UPDATE_RRPCONF_SECTIONS
+  procedure RRPCONFSCTN_UPDATE
   (
     NRN                     in number,                             -- Ид. раздела
     SCODE                   in varchar2,                           -- Мнемокод раздела
@@ -120,10 +127,10 @@ create or replace package body PKG_P8PANELS_RRPCONFED as
                          SCLSF_CODE          => null,
                          NFORMULA_UPDATE     => 0,
                          NMARK_UPDATE        => 0);
-  end UPDATE_RRPCONF_SECTIONS;
+  end RRPCONFSCTN_UPDATE;
   
   /* Удаление раздела регламентированного отчёта */
-  procedure DELETE_RRPCONF_SECTIONS
+  procedure RRPCONFSCTN_DELETE
   (
     NRN                     in number                              -- Ид. раздела
   )
@@ -131,10 +138,10 @@ create or replace package body PKG_P8PANELS_RRPCONFED as
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Рег. номер организации
   begin
     P_RRPCONFSCTN_DELETE(NRN => NRN, NCOMPANY => NCOMPANY);
-  end DELETE_RRPCONF_SECTIONS;
+  end RRPCONFSCTN_DELETE;
   
   /* Добавление показателя раздела регламентированного отчёта */
-  procedure INSERT_RRPCONF_COLUMNROW
+  procedure RRPCONFSCTNMRK_INSERT
   (
     NPRN                    in number,                             -- Ид. раздела
     SCODE                   in varchar2,                           -- Мнемокод показателя раздела
@@ -170,10 +177,10 @@ create or replace package body PKG_P8PANELS_RRPCONFED as
                             SNOTE              => null,
                             NDUP_RN            => null,
                             NRN                => NRN);
-  end INSERT_RRPCONF_COLUMNROW;
+  end RRPCONFSCTNMRK_INSERT;
   
   /* Исправление показателя раздела регламентированного отчёта */
-  procedure UPDATE_RRPCONF_COLUMNROW
+  procedure RRPCONFSCTNMRK_UPDATE
   (
     NRN                     in number,                             -- Ид. показателя раздела            
     SNAME                   in varchar2                            -- Новое наименование
@@ -228,10 +235,10 @@ create or replace package body PKG_P8PANELS_RRPCONFED as
                             SCLSF_CODE         => null,
                             NFORMULA_UPDATE    => 0,
                             SNOTE              => null);
-  end UPDATE_RRPCONF_COLUMNROW;
+  end RRPCONFSCTNMRK_UPDATE;
   
   /* Удаление показателя раздела регламентированного отчёта */
-  procedure DELETE_RRPCONF_COLUMNROW
+  procedure RRPCONFSCTNMRK_DELETE
   (        
     NRN                     in number                              -- Ид. показателя раздела
   )
@@ -239,10 +246,10 @@ create or replace package body PKG_P8PANELS_RRPCONFED as
     NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Рег. номер организации
   begin
     P_RRPCONFSCTNMRK_DELETE(NCOMPANY => NCOMPANY, NRN => NRN);
-  end DELETE_RRPCONF_COLUMNROW;
+  end RRPCONFSCTNMRK_DELETE;
   
   /* Формирование кода и наименования показателя раздела регламентированного отчёта */
-  procedure GET_RRPCONFSCTNMRK_CODE_NAME
+  procedure RRPCONFSCTNMRK_GET_CODE_NAME
   ( 
     SSCTNCODE               in varchar2,                           -- Мнемокод раздела  
     SROWCODE                in varchar2,                           -- Мнемокод строки
@@ -267,7 +274,34 @@ create or replace package body PKG_P8PANELS_RRPCONFED as
                                NCHANGE_NAME        => 1,
                                NCHANGE_NAME_PARENT => 0,
                                SNAME               => SNAME);
-  end GET_RRPCONFSCTNMRK_CODE_NAME;
+  end RRPCONFSCTNMRK_GET_CODE_NAME;
+  
+  /* Отбор показателя раздела по ид. */
+  procedure SELECT_RRPCONFSCTNMRK
+  (
+    NRN                     in number,                             -- Ид. показателя раздела
+    NIDENT                  out number                             -- Ид. буфера подобранных (списка отмеченных записей, null - не найдено)
+  )
+  is
+    NCOMPANY                PKG_STD.TREF := GET_SESSION_COMPANY(); -- Рег. номер организации
+    NSELECTLIST             PKG_STD.TREF;                          -- Рег. номер добавленной записи буфера подобранных
+  begin
+    /* Сформируем идентификатор буфера */
+    if (NIDENT is null) then
+      NIDENT := GEN_IDENT();
+    end if;
+    /* Добавим подобранное в список отмеченных записей */
+    P_SELECTLIST_BASE_INSERT(NIDENT       => NIDENT,
+                             NCOMPANY     => NCOMPANY,
+                             NDOCUMENT    => NRN,
+                             SUNITCODE    => 'RRPConfigSectionMark',
+                             SACTIONCODE  => null,
+                             NCRN         => null,
+                             NDOCUMENT1   => null,
+                             SUNITCODE1   => null,
+                             SACTIONCODE1 => null,
+                             NRN          => NSELECTLIST);
+  end SELECT_RRPCONFSCTNMRK;
 
   /* Получение разделов регламентированного отчёта */
   procedure GET_RRPCONF_SECTIONS
@@ -343,12 +377,13 @@ create or replace package body PKG_P8PANELS_RRPCONFED as
                  and T.VERSION = NVERSION)
     loop
       /* Инициализируем таблицу данных */
-      RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE();
+      RDG := PKG_P8PANELS_VISUAL.TDATA_GRID_MAKE(BFIXED_HEADER => true, NFIXED_COLUMNS => 1);
       /* Формируем структуру заголовка */
       PKG_P8PANELS_VISUAL.TDATA_GRID_ADD_COL_DEF(RDATA_GRID => RDG,
                                                  SNAME      => 'SROW_NAME',
                                                  SCAPTION   => 'Наименование строки',
-                                                 SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR);
+                                                 SDATA_TYPE => PKG_P8PANELS_VISUAL.SDATA_TYPE_STR,
+                                                 NWIDTH     => 150);
       /* Цикл формирования колонок с графами */
       for CL in CN(C.NRN)
       loop

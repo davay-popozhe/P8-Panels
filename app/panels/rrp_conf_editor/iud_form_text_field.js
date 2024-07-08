@@ -7,10 +7,18 @@
 //Подключение библиотек
 //---------------------
 
-import React, { useState, useCallback, useEffect } from "react"; //Классы React
+import React, { useState, useEffect } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Box, FormControl, InputLabel, Input, InputAdornment, IconButton, Icon } from "@mui/material"; //Интерфейсные компоненты
-import { STYLES } from "./layouts"; //Стили диалогового окна
+
+//---------
+//Константы
+//---------
+
+//Стили
+export const STYLES = {
+    DIALOG_WINDOW_WIDTH: { width: 400 }
+};
 
 //---------------
 //Тело компонента
@@ -19,16 +27,6 @@ import { STYLES } from "./layouts"; //Стили диалогового окна
 const IUDFormTextField = ({ elementCode, elementValue, labelText, onChange, dictionary, ...other }) => {
     //Значение элемента
     const [value, setValue] = useState(elementValue);
-
-    //Формирование идентификатора элемента
-    // const generateId = useCallback(async () => {
-    //     setElementId(`${elementCode}-input`);
-    // }, [elementCode]);
-
-    //При рендере поля ввода
-    // useEffect(() => {
-    //     generateId();
-    // }, [generateId]);
 
     //При получении нового значения из вне
     useEffect(() => {
@@ -47,12 +45,12 @@ const IUDFormTextField = ({ elementCode, elementValue, labelText, onChange, dict
 
     return (
         <Box sx={{ p: 1 }}>
-            <FormControl sx={STYLES.DIALOG_WINDOW_WIDTH} {...other}>
+            <FormControl variant="standard" sx={STYLES.DIALOG_WINDOW_WIDTH} {...other}>
                 <InputLabel htmlFor={elementCode}>{labelText}</InputLabel>
                 <Input
                     id={elementCode}
                     name={elementCode}
-                    value={value}
+                    value={value ? value : ""}
                     endAdornment={
                         dictionary ? (
                             <InputAdornment position="end">
@@ -62,9 +60,9 @@ const IUDFormTextField = ({ elementCode, elementValue, labelText, onChange, dict
                             </InputAdornment>
                         ) : null
                     }
-                    aria-describedby={`${elementCode}-helper-text`}
-                    label={labelText}
                     onChange={handleChange}
+                    multiline
+                    maxRows={4}
                 />
             </FormControl>
         </Box>
