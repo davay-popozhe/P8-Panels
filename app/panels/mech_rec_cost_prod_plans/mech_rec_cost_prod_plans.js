@@ -42,7 +42,7 @@ import { BackEndСtx } from "../../context/backend"; //Контекст взаи
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { P8P_GANTT_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
 import { P8PGantt, taskLegendDesc } from "../../components/p8p_gantt"; //Диаграмма Ганта
-import { xml2JSON, formatDateJSONDateOnly, formatDateRF } from "../../core/utils"; //Вспомогательные функции
+import { xml2JSON, formatDateJSONDateOnly, formatDateRF, hasValue } from "../../core/utils"; //Вспомогательные функции
 import { useFilteredPlanCtlgs } from "./hooks"; //Вспомогательные хуки
 import { CostRouteListsDataGrid } from "./datagrids/fcroutlst";
 import { IncomFromDepsDataGrid } from "./datagrids/incomefromdeps";
@@ -205,7 +205,7 @@ const taskDialogRenderer = ({ task, taskColors, close, handleTaskDetailOpen }) =
             </CardContent>
             <CardActions disableSpacing>
                 <Box p={2} display="flex" justifyContent="center" sx={STYLES.TASK_DIALOG_ACTION_CONTAINER}>
-                    {task.type ? (
+                    {hasValue(task.type) ? (
                         <Button size="large" variant="contained" color="primary" onClick={() => handleTaskDetailOpen(task.rn, task.type)}>
                             {task["detail_list"]}
                         </Button>
