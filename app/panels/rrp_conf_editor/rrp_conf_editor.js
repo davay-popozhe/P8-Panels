@@ -11,15 +11,15 @@ import React, { useCallback, useContext, useState, useEffect } from "react"; //�
 import { Box, Tab, Tabs, IconButton, Icon, Stack, Button } from "@mui/material"; //Интерфейсные компоненты
 import { P8PDataGrid, P8P_DATA_GRID_SIZE } from "../../components/p8p_data_grid"; //Таблица данных
 import { P8P_DATA_GRID_CONFIG_PROPS } from "../../config_wrapper"; //Подключение компонентов к настройкам приложения
+import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { NavigationCtx } from "../../context/navigation"; //Контекст навигации
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
-import { TEXTS } from "../../../app.text"; //Текстовые константы
-import { SectionTabPanel } from "./section_tab_panel"; //Кастомный Tab
-import { ApplicationСtx } from "../../context/application"; //Контекст приложения
+import { SectionTabPanel } from "./section_tab_panel"; //Компонент вкладки раздела
+import { IUDFormDialog } from "./iud_form_dialog"; //Диалог добавления/исправления/удаления компонентов настройки регламентированного отчёта
 import { STATUSES, dataCellRender } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
-import { IUDFormDialog } from "./iud_form_dialog"; //Кастомное диалоговое окно
-import { STYLES as COMMON_STYLES } from "./layouts";
+import { TEXTS } from "../../../app.text"; //Текстовые константы
+import { STYLES as COMMON_STYLES } from "./layouts"; //Общие стили
 
 //---------
 //Константы
@@ -248,7 +248,7 @@ const RrpConfEditor = () => {
             }));
             setTabValue(tabFocus);
         }
-        //eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [rrpDoc.reload, rrpDoc.docLoaded, dataGrid.reload, dataGrid.docLoaded, executeStored]);
 
     //Отбор показателя раздела по ид.
@@ -269,8 +269,8 @@ const RrpConfEditor = () => {
         loadData();
     }, [rrpDoc.reload, dataGrid.reload, loadData]);
 
-    const handleDialogReload = data => {
-        console.log(JSON.stringify(data));
+    //При изменениях элемента
+    const handleDialogReload = () => {
         setRrpDoc(pv => ({ ...pv, reload: true }));
     };
 

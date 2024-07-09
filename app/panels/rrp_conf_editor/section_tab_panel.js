@@ -18,6 +18,7 @@ import { Box, Typography } from "@mui/material"; //Интерфейсные ко
 const SectionTabPanel = props => {
     const { children, value, index, ...other } = props;
 
+    //Генерация содержимого
     return (
         <div role="tabpanel" hidden={value !== index} id={`tabpanel-${index}`} aria-labelledby={`tab-${index}`} {...other}>
             {value === index && (

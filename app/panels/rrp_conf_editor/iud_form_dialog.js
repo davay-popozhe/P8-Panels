@@ -10,10 +10,9 @@
 import React, { useState, useContext, useCallback, useEffect } from "react"; //Классы React
 import PropTypes from "prop-types"; //Контроль свойств компонента
 import { Dialog, DialogTitle, IconButton, Icon, DialogContent, Typography, DialogActions, Button } from "@mui/material"; //Интерфейсные компоненты
-//import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
-import { IUDFormTextField } from "./iud_form_text_field"; //Кастомные строки ввода
+import { IUDFormTextField } from "./iud_form_text_field"; //Компонент поля ввода
 import { STATUSES } from "./layouts"; //Статусы и стили диалогового окна
 
 //---------
@@ -39,9 +38,6 @@ const IUDFormDialog = ({ initial, onClose, onReload }) => {
     //Собственное состояние
     const [formData, setFormData] = useState({ ...initial });
 
-    //Подключение к контексту сообщений
-    //const { showMsgWarn } = useContext(MessagingСtx);
-
     //Подключение к контексту приложения
     const { pOnlineShowDictionary } = useContext(ApplicationСtx);
 
@@ -62,7 +58,7 @@ const IUDFormDialog = ({ initial, onClose, onReload }) => {
     //Отработка добавления/изсправления/удаления элемента
     const handleReload = () => {
         if (onReload) {
-            onReload(formData);
+            onReload();
         } else null;
     };
 
@@ -264,6 +260,7 @@ const IUDFormDialog = ({ initial, onClose, onReload }) => {
             : null;
     }, [formData.colCode, formData.rowCode, formData.sctnCode, formData.sctnName, formData.status, getSctnMrkCodeName]);
 
+    //Генерация содержимого
     return (
         <Dialog open onClose={handleCancel}>
             <DialogTitle>{formTitle()}</DialogTitle>
