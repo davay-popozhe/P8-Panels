@@ -1,5 +1,5 @@
 /*
-    Парус 8 - 
+    Парус 8 - Панели мониторинга - РО - Редактор настройки регламентированного отчёта
     Дополнительная разметка и вёрстка клиентских элементов
 */
 
@@ -8,38 +8,46 @@
 //---------------------
 
 import React from "react"; //Классы React
-import { Stack, IconButton, Icon, Typography } from "@mui/material"; //Интерфейсные компоненты
+import { Box, IconButton, Icon, Link } from "@mui/material"; //Интерфейсные компоненты
 
 //---------
 //Константы
 //---------
 
+//Стили
 export const STYLES = {
-    DIALOG_WINDOW_WIDTH: { width: 400 },
-    PADDING_DIALOG_BUTTONS_RIGHT: { paddingRight: "32px" }
+    BOX_ROW: { display: "flex", justifyContent: "center", alignItems: "center" },
+    LINK_STYLE: { component: "button", width: "-webkit-fill-available" }
 };
 
 //Статусы диалогового окна
-export const Statuses = { CREATE: 0, EDIT: 1, DELETE: 2, COLUMNROW_CREATE: 3, COLUMNROW_EDIT: 4, COLUMNROW_DELETE: 5 };
+export const STATUSES = { CREATE: 0, EDIT: 1, DELETE: 2, RRPCONFSCTNMRK_CREATE: 3, RRPCONFSCTNMRK_EDIT: 4, RRPCONFSCTNMRK_DELETE: 5 };
 
 //-----------
 //Тело модуля
 //-----------
 
 //Генерация представления ячейки c данными
-export const dataCellRender = ({ row, columnDef }, editCR, deleteCR) => {
+export const dataCellRender = ({ row, columnDef }, showRrpConfSctnMrk, editCR, deleteCR) => {
     let data = row[columnDef.name];
     columnDef.name != "SROW_NAME" && data != undefined && columnDef.visible == true
         ? (data = (
-              <Stack direction="row">
-                  <Typography width="-webkit-fill-available">{row[columnDef.name]}</Typography>
-                  <IconButton justifyContent="flex-end" onClick={() => editCR(row["NRN_" + columnDef.name.substring(5)], row[columnDef.name])}>
+              <Box sx={STYLES.BOX_ROW}>
+                  <Link
+                      sx={STYLES.LINK_STYLE}
+                      onClick={() => {
+                          showRrpConfSctnMrk(row["NRN_" + columnDef.name.substring(5)]);
+                      }}
+                  >
+                      {row[columnDef.name]}
+                  </Link>
+                  <IconButton onClick={() => editCR(row["NRN_" + columnDef.name.substring(5)], row[columnDef.name])}>
                       <Icon>edit</Icon>
                   </IconButton>
-                  <IconButton justifyContent="flex-end" onClick={() => deleteCR(row["NRN_" + columnDef.name.substring(5)], row[columnDef.name])}>
+                  <IconButton onClick={() => deleteCR(row["NRN_" + columnDef.name.substring(5)], row[columnDef.name])}>
                       <Icon>delete</Icon>
                   </IconButton>
-              </Stack>
+              </Box>
           ))
         : null;
     return { data };
