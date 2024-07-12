@@ -17,7 +17,8 @@ import { NavigationCtx } from "../../context/navigation"; //Контекст н�
 import { MessagingСtx } from "../../context/messaging"; //Контекст сообщений
 import { SectionTabPanel } from "./section_tab_panel"; //Компонент вкладки раздела
 import { IUDFormDialog } from "./iud_form_dialog"; //Диалог добавления/исправления/удаления компонентов настройки регламентированного отчёта
-import { STATUSES, dataCellRender } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
+import { dataCellRender } from "./layouts"; //Дополнительная разметка и вёрстка клиентских элементов
+import { STATUSES } from "./iud_form_dialog"; //Статусы диалогового окна
 import { TEXTS } from "../../../app.text"; //Текстовые константы
 import { STYLES as COMMON_STYLES } from "./layouts"; //Общие стили
 
@@ -178,7 +179,7 @@ const RrpConfEditor = () => {
             //Переменная номера раздела с фокусом
             let tabFocus = 0;
             const data = await executeStored({
-                stored: "PKG_P8PANELS_RRPCONFED.GET_RRPCONF_SECTIONS",
+                stored: "PKG_P8PANELS_RRPCONFED.RRPCONF_GET_SECTIONS",
                 args: {
                     NRN_RRPCONF: Number(getNavigationSearch().NRN)
                 },
@@ -254,13 +255,21 @@ const RrpConfEditor = () => {
     //Отбор показателя раздела по ид.
     const showRrpConfSctnMrk = async rn => {
         const data = await executeStored({
-            stored: "PKG_P8PANELS_RRPCONFED.SELECT_RRPCONFSCTNMRK",
+            stored: "PKG_P8PANELS_RRPCONFED.RRPCONFSCTNMRK_GET_CODES",
             args: {
                 NRN: rn
             }
         });
-        if (data.NIDENT) {
-            pOnlineShowUnit({ unitCode: "RRPConfigSectionMark", inputParameters: [{ name: "in_SelectList_Ident", value: data.NIDENT }] });
+        if (data) {
+            pOnlineShowUnit({
+                unitCode: "RRPConfig",
+                showMethod: "main_mrk_settings",
+                inputParameters: [
+                    { name: "in_CODE", value: data.SRRPCONF },
+                    { name: "in_SCTN_CODE", value: data.SRRPCONFSCTN },
+                    { name: "in_MRK_CODE", value: data.SRRPCONFSCTNMRK }
+                ]
+            });
         } else showMsgErr(TEXTS.NO_DATA_FOUND);
     };
 
@@ -324,7 +333,7 @@ const RrpConfEditor = () => {
                                     <Box sx={{ ...STYLES.TABS_PADDING, ...COMMON_STYLES.BOX_ROW }}>
                                         <P8PDataGrid
                                             {...P8P_DATA_GRID_CONFIG_PROPS}
-                                            containerComponentProps={{ elevation: 6 }}
+                                            containerComponentProps={{ elevation: 6, style: { width: window.innerWidth * 0.95 } }}
                                             columnsDef={s.columnsDef}
                                             groups={s.groups}
                                             rows={s.rows}

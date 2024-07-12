@@ -13,7 +13,6 @@ import { Dialog, DialogTitle, IconButton, Icon, DialogContent, Typography, Dialo
 import { ApplicationСtx } from "../../context/application"; //Контекст приложения
 import { BackEndСtx } from "../../context/backend"; //Контекст взаимодействия с сервером
 import { IUDFormTextField } from "./iud_form_text_field"; //Компонент поля ввода
-import { STATUSES } from "./layouts"; //Статусы и стили диалогового окна
 
 //---------
 //Константы
@@ -29,6 +28,9 @@ const STYLES = {
     },
     PADDING_DIALOG_BUTTONS_RIGHT: { paddingRight: "32px" }
 };
+
+//Статусы диалогового окна
+export const STATUSES = { CREATE: 0, EDIT: 1, DELETE: 2, RRPCONFSCTNMRK_CREATE: 3, RRPCONFSCTNMRK_EDIT: 4, RRPCONFSCTNMRK_DELETE: 5 };
 
 //---------------
 //Тело компонента
@@ -178,7 +180,7 @@ const IUDFormDialog = ({ initial, onClose, onReload }) => {
 
     //Отрисовка диалогового окна
     const renderSwitch = () => {
-        var btnText = "";
+        let btnText = "";
         switch (formData.status) {
             case STATUSES.CREATE:
             case STATUSES.RRPCONFSCTNMRK_CREATE:

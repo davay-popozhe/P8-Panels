@@ -17,11 +17,8 @@ import { Box, IconButton, Icon, Link } from "@mui/material"; //Интерфей�
 //Стили
 export const STYLES = {
     BOX_ROW: { display: "flex", justifyContent: "center", alignItems: "center" },
-    LINK_STYLE: { component: "button", width: "-webkit-fill-available" }
+    LINK_STYLE: { component: "button", cursor: "pointer", width: "-webkit-fill-available" }
 };
-
-//Статусы диалогового окна
-export const STATUSES = { CREATE: 0, EDIT: 1, DELETE: 2, RRPCONFSCTNMRK_CREATE: 3, RRPCONFSCTNMRK_EDIT: 4, RRPCONFSCTNMRK_DELETE: 5 };
 
 //-----------
 //Тело модуля
