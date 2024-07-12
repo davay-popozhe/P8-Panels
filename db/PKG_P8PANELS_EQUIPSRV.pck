@@ -124,7 +124,8 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
     /* Если графики ТОиР */
     if (NWORKTYPE = 0) then
       for C in (select T.RN,
-                       T.COMPANY
+                       T.COMPANY,
+                       T.CRN
                   from EQTCHSRV       T,
                        JURPERSONS     J,
                        EQTECSRVKIND   SK,
@@ -162,7 +163,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                                  NDOCUMENT    => C.RN,
                                  SUNITCODE    => 'EquipTechServices',
                                  SACTIONCODE  => null,
-                                 NCRN         => null,
+                                 NCRN         => C.CRN,
                                  NDOCUMENT1   => null,
                                  SUNITCODE1   => null,
                                  SACTIONCODE1 => null,
@@ -171,7 +172,8 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
       /* Иначе ремонтные ведомости */
     else
       for C in (select T.RN,
-                       T.COMPANY
+                       T.COMPANY,
+                       T.CRN
                   from EQRPSHEETS   T,
                        JURPERSONS   J,
                        EQTECSRVKIND SK,
@@ -199,7 +201,7 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                                  NDOCUMENT    => C.RN,
                                  SUNITCODE    => 'EquipRepairSheets',
                                  SACTIONCODE  => null,
-                                 NCRN         => null,
+                                 NCRN         => C.CRN,
                                  NDOCUMENT1   => null,
                                  SUNITCODE1   => null,
                                  SACTIONCODE1 => null,
@@ -303,10 +305,13 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                                   EQS.RN            NEQS_RN
                              from EQTCHSRV   EQV,
                                   JURPERSONS J,
+                                  EQCONFIG   EC,
                                   DOCLINKS   DL,
                                   EQRPSHEETS EQS
                             where EQV.JUR_PERS = J.RN
                               and J.CODE = SBELONG
+                              and EQV.EQCONFIG = EC.RN
+                              and EC.CODE = SPRODOBJ
                               and EQV.RN = DL.IN_DOCUMENT(+)
                               and DL.OUT_UNITCODE(+) = 'EquipRepairSheets'
                               and DL.OUT_DOCUMENT = EQS.RN(+)) B,
@@ -340,13 +345,16 @@ create or replace package body PKG_P8PANELS_EQUIPSRV as
                                   EQS.EQCONFIG     NEQCONFIG,
                                   EQS.TECSRVKIND   NTECSRVKIND
                              from EQRPSHEETS EQS,
-                                  JURPERSONS J
+                                  JURPERSONS J,
+                                  EQCONFIG   EC
                             where not exists (select 1
                                      from DOCLINKS DL
                                     where DL.OUT_DOCUMENT = EQS.RN
                                       and DL.IN_UNITCODE = 'EquipTechServices')
                               and EQS.JURPERSONS = J.RN
-                              and J.CODE = SBELONG) B,
+                              and J.CODE = SBELONG
+                              and EQS.EQCONFIG = EC.RN   
+                              and EC.CODE = SPRODOBJ) B,
                           EQRPSHWRK C
                     where B.NEQS_RN = C.PRN(+)) TT,
                   EQTECSRVKIND EK,
