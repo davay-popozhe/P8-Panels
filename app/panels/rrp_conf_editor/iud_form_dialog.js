@@ -246,14 +246,20 @@ const IUDFormDialog = ({ initial, onClose, onReload }) => {
     const getSctnMrkCodeName = useCallback(async () => {
         const data = await executeStored({
             stored: "PKG_P8PANELS_RRPCONFED.RRPCONFSCTNMRK_GET_CODE_NAME",
-            args: { SSCTNCODE: formData.sctnCode, SROWCODE: formData.rowCode, SCOLUMNCODE: formData.colCode }
+            args: {
+                SSCTNCODE: formData.sctnCode,
+                SROWCODE: formData.rowCode,
+                NROWVER: formData.rowVRn,
+                SCOLUMNCODE: formData.colCode,
+                NCOLUMNVER: formData.colVRn
+            }
         });
         setFormData(pv => ({
             ...pv,
             code: data.SCODE,
             name: data.SNAME
         }));
-    }, [executeStored, formData.colCode, formData.rowCode, formData.sctnCode]);
+    }, [executeStored, formData.colCode, formData.colVRn, formData.rowCode, formData.rowVRn, formData.sctnCode]);
 
     //Получение наименования и мнемокода показателя раздела при заполнении необходимых полей
     useEffect(() => {

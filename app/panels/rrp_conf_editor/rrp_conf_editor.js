@@ -21,15 +21,32 @@ import { dataCellRender } from "./layouts"; //Дополнительная ра�
 import { STATUSES } from "./iud_form_dialog"; //Статусы диалогового окна
 import { TEXTS } from "../../../app.text"; //Текстовые константы
 import { STYLES as COMMON_STYLES } from "./layouts"; //Общие стили
+import { useWindowResize } from "./hooks";
 
 //---------
 //Константы
 //---------
 
+//Высота меню Парус (пиксели)
+const pxOuterMenuH = 53;
+//Высота заголовка панели (пиксели)
+const pxPanelHeaderH = 64;
+//Ширина кнопки добавления раздела (пиксели)
+const pxSectionAddButtonW = 40;
+
 //Стили
 export const STYLES = {
+    PANELS_MAIN_COLOR: { backgroundColor: "#1976d2" },
+    ICON_WHITE: { color: "white" },
     TABS_BOTTOM_LINE: { borderBottom: 1, borderColor: "divider" },
-    TABS_PADDING: { paddingTop: 1, paddingBottom: 1 }
+    TABS_PADDING: { padding: "5px" },
+    TABS_SIZES: { maxHeight: 150 },
+    GRID_PADDING: { paddingTop: 1, paddingBottom: 1 },
+    GRID_SIZES: {
+        padding: 0,
+        minWidth: 400,
+        minHeight: 300
+    }
 };
 
 //-----------
@@ -125,7 +142,7 @@ const RrpConfEditor = () => {
     const { showMsgErr } = useContext(MessagingСtx);
 
     //Переключение раздела
-    const handleChange = (event, newValue) => {
+    const handleSectionChange = (event, newValue) => {
         setTabValue(newValue);
     };
 
@@ -289,6 +306,17 @@ const RrpConfEditor = () => {
         clearFormData();
     };
 
+    //Состояние ширины и высоты рабочей области окна
+    const [width, height] = useWindowResize();
+
+    //Состояние высоты вкладок с разделами
+    const [pxTabsH, setPxTabsH] = useState(0);
+
+    //При рендере данных
+    useEffect(() => {
+        rrpDoc.docLoaded ? setPxTabsH(document.getElementById("sectionTabs").offsetHeight) : null;
+    }, [rrpDoc.docLoaded]);
+
     //Генерация содержимого
     return (
         <Box sx={{ width: "100%" }}>
@@ -296,13 +324,22 @@ const RrpConfEditor = () => {
             {rrpDoc.docLoaded ? (
                 <Box>
                     <Stack direction="row" sx={STYLES.TABS_BOTTOM_LINE}>
-                        <Tabs value={tabValue} onChange={handleChange} aria-label="section tab">
+                        <Tabs
+                            id="sectionTabs"
+                            value={tabValue}
+                            onChange={handleSectionChange}
+                            variant="scrollable"
+                            scrollButtons={false}
+                            visibleScrollbar
+                            aria-label="section tab"
+                            sx={{ ...STYLES.TABS_SIZES, maxWidth: width - pxSectionAddButtonW }}
+                        >
                             {rrpDoc.sections.map((s, i) => {
                                 return (
                                     <Tab
                                         key={s.rn}
                                         {...a11yProps(i)}
-                                        sx={{ padding: "10px" }}
+                                        sx={STYLES.TABS_PADDING}
                                         label={
                                             <Box sx={COMMON_STYLES.BOX_ROW}>
                                                 {s.name}
@@ -319,9 +356,9 @@ const RrpConfEditor = () => {
                                 );
                             })}
                         </Tabs>
-                        <Box display="flex" justifyContent="center" alignItems="center">
+                        <Box display="flex" justifyContent="center" alignItems="center" sx={STYLES.PANELS_MAIN_COLOR}>
                             <IconButton onClick={addSectionClick}>
-                                <Icon>add</Icon>
+                                <Icon sx={STYLES.ICON_WHITE}>add</Icon>
                             </IconButton>
                         </Box>
                     </Stack>
@@ -329,11 +366,18 @@ const RrpConfEditor = () => {
                         return (
                             <SectionTabPanel key={s.rn} value={tabValue} index={i}>
                                 <Button onClick={() => addRRPCONFSCTNMRKClick(s.rn, s.code, s.name)}>Добавить</Button>
-                                {s.dataLoaded ? (
-                                    <Box sx={{ ...STYLES.TABS_PADDING, ...COMMON_STYLES.BOX_ROW }}>
+                                {s.dataLoaded && s.columnsDef.length > 1 ? (
+                                    <Box sx={{ ...STYLES.GRID_PADDING, ...COMMON_STYLES.BOX_ROW }}>
                                         <P8PDataGrid
                                             {...P8P_DATA_GRID_CONFIG_PROPS}
-                                            containerComponentProps={{ elevation: 6, style: { width: window.innerWidth * 0.95 } }}
+                                            containerComponentProps={{
+                                                elevation: 6,
+                                                style: {
+                                                    ...STYLES.GRID_SIZES,
+                                                    maxWidth: width * 0.95,
+                                                    maxHeight: (height - pxOuterMenuH - pxPanelHeaderH - pxTabsH) * 0.88
+                                                }
+                                            }}
                                             columnsDef={s.columnsDef}
                                             groups={s.groups}
                                             rows={s.rows}
