@@ -294,8 +294,8 @@ create or replace package body PKG_P8PANELS_RRPCONFED as
                          NHTML_HIDE_NAME_COL => RES.HTML_HIDE_NAME_COL,
                          NHTML_MAKE_HIER_GRP => RES.HTML_MAKE_HIER_GRP,
                          SCLSF_CODE          => RES.CLSF_CODE,
-                         NFORMULA_UPDATE     => 0,
-                         NMARK_UPDATE        => 0);
+                         NFORMULA_UPDATE     => 1,
+                         NMARK_UPDATE        => 1);
   end RRPCONFSCTN_UPDATE;
   
   /* Удаление раздела регламентированного отчёта */
@@ -365,7 +365,7 @@ create or replace package body PKG_P8PANELS_RRPCONFED as
     NCOUNT := F_RRPCONFSCTNMRK_NEXT_NUMB(NCOMPANY => NCOMPANY, NPRN => NPRN);
     P_RRPCONFSCTNMRK_INSERT(NCOMPANY           => NCOMPANY,
                             NPRN               => NPRN,
-                            NNUMB              => NCOUNT + 1,
+                            NNUMB              => NCOUNT,
                             SCODE              => SCODE,
                             SNAME              => SNAME,
                             SRRPROW            => SROWCODE,
