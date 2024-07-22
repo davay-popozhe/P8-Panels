@@ -52,10 +52,9 @@ const selectJuridicalPersons = (showDictionary, callBack) => {
 };
 
 //Выбор производственного объекта
-const selectEquipConfiguration = (showDictionary, callBack, jurPersCode) => {
+const selectEquipConfiguration = (showDictionary, callBack) => {
     showDictionary({
         unitCode: "EquipConfiguration",
-        inputParameters: jurPersCode ? [{ name: "in_JUR_PERS_CODE", value: jurPersCode }] : null,
         callBack: res => (res.success === true ? callBack(res.outParameters.out_CODE) : callBack(null))
     });
 };
@@ -127,7 +126,7 @@ const FilterDialog = ({ initial, onCancel, onOk }) => {
                             elementCode="prodObj"
                             elementValue={filter.prodObj}
                             labelText="Производственный объект"
-                            dictionary={callBack => selectEquipConfiguration(pOnlineShowDictionary, callBack, filter.belong)}
+                            dictionary={callBack => selectEquipConfiguration(pOnlineShowDictionary, callBack)}
                             required={true}
                             onChange={handleFilterItemChange}
                         />
